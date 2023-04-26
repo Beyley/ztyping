@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "soloud_c.h": "c"
+        "soloud_c.h": "c",
+        "fontstash.h": "c"
     }
 }

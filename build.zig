@@ -1,5 +1,6 @@
 const std = @import("std");
 const SoLoud = @import("libs/soloud/build.zig");
+const Fontstash = @import("libs/fontstash/build.zig");
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -25,6 +26,7 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
+    exe.addIncludePath("libs/fontstash/src");
     exe.addIncludePath("libs/soloud/include");
 
     var build_options = SoLoud.SoloudBuildOptions{};
@@ -61,6 +63,10 @@ pub fn build(b: *std.Build) !void {
     );
 
     exe.linkLibrary(soloud);
+
+    var fontstash = Fontstash.buildFontstash(b, target, optimize, false);
+
+    exe.linkLibrary(fontstash);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

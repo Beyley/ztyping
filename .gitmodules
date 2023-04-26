@@ -1,3 +1,6 @@
 [submodule "libs/soloud"]
 	path = libs/soloud
-	url = https://github.com/jarikomppa/soloud
+	url = https://github.com/Beyley/soloud
+[submodule "libs/fontstash"]
+	path = libs/fontstash
+	url = https://github.com/Beyley/fontstash
