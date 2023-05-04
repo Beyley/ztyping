@@ -1,9 +1,12 @@
 const std = @import("std");
 const zaudio = @import("zaudio");
+const gfx = @import("gfx.zig");
 
-const c = @cImport({
+pub const c = @cImport({
     @cInclude("fontstash.h");
     @cInclude("SDL.h");
+    @cInclude("SDL_syswm.h");
+    @cInclude("wgpu.h");
 });
 
 pub var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
@@ -30,13 +33,22 @@ pub fn main() !void {
     defer c.SDL_Quit();
     std.debug.print("Initialized SDL\n", .{});
 
-    const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640, 480, c.SDL_WINDOW_SHOWN);
-    if (window == null) {
+    const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640, 480, c.SDL_WINDOW_SHOWN) orelse {
         std.debug.print("SDL window creation failed! err:{s}\n", .{c.SDL_GetError()});
         return error.CreateWindowFailure;
-    }
+    };
     defer c.SDL_DestroyWindow(window);
     std.debug.print("Created SDL window\n", .{});
+
+    var instance = try gfx.create_instance();
+    defer c.wgpuInstanceDrop(instance);
+
+    std.debug.print("got instance 0x{x}\n", .{@ptrToInt(instance.?)});
+
+    var surface = try gfx.create_surface(instance, window);
+    defer c.wgpuSurfaceDrop(surface);
+
+    std.debug.print("got surface 0x{x}\n", .{@ptrToInt(surface.?)});
 
     var isRunning = true;
     while (isRunning) {

@@ -14,6 +14,10 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
+    //Link libc and libc++, libc++ for wgpu
+    exe.linkLibC();
+    exe.linkLibCpp();
+
     { //zaudio
         const zaudio_pkg = zaudio.package(b, target, optimize, .{});
         zaudio_pkg.link(exe);
@@ -29,6 +33,9 @@ pub fn build(b: *std.Build) !void {
         const sdl_pkg = try sdl.createSDL(b, target, optimize, sdl.getDefaultOptionsForTarget(target));
         exe.linkLibrary(sdl_pkg);
         exe.addIncludePath("libs/SDL/include");
+
+        //Add the C macros to the exe
+        try exe.c_macros.appendSlice(sdl_pkg.c_macros.items);
     } //SDL
 
     { //wgpu
@@ -77,6 +84,8 @@ pub fn build(b: *std.Build) !void {
 
         exe.addLibraryPath(try std.mem.concat(b.allocator, u8, &.{ root_path, "libs/wgpu-native/target/", cross_target.items, "/", if (optimize == std.builtin.OptimizeMode.Debug) "debug" else "release" }));
         exe.linkSystemLibrary("wgpu_native");
+
+        exe.addIncludePath("libs/wgpu-native/ffi");
     } //wgpu
 
     b.installArtifact(exe);
