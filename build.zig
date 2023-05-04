@@ -1,6 +1,7 @@
 const std = @import("std");
-const SoLoud = @import("libs/soloud/build.zig");
-const Fontstash = @import("libs/fontstash/build.zig");
+const zaudio = @import("libs/zaudio/build.zig");
+const sdl = @import("libs/SDL/build.zig");
+const fontstash = @import("libs/fontstash/build.zig");
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
@@ -13,44 +14,70 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
-    exe.addIncludePath("libs/fontstash/src");
-    exe.addIncludePath("libs/soloud/include");
-
-    var build_options = SoLoud.SoloudBuildOptions{};
-
-    { //soloud
-        build_options.with_sdl1 = false;
-        build_options.with_sdl2 = true;
-        build_options.with_sdl1_static = false;
-        build_options.with_sdl2_static = false;
-        build_options.with_portaudio = true;
-        build_options.with_openal = true;
-        build_options.with_xaudio2 = false;
-        build_options.with_winmm = false;
-        build_options.with_wasapi = false;
-        build_options.with_oss = true;
-        build_options.with_nosound = true;
-        build_options.with_miniaudio = false;
-
-        if (target.isWindows()) {
-            build_options.with_xaudio2 = false;
-            build_options.with_wasapi = true;
-            build_options.with_winmm = true;
-            build_options.with_oss = false;
-        }
-
-        if (target.isDarwin()) {
-            build_options.with_oss = false;
-        }
-
-        var soloud = try SoLoud.buildSoloud(b, target, optimize, build_options);
-        exe.linkLibrary(soloud);
-    } //soloud
+    { //zaudio
+        const zaudio_pkg = zaudio.package(b, target, optimize, .{});
+        zaudio_pkg.link(exe);
+    } //zaudio
 
     { //fontstash
-        var fontstash = Fontstash.buildFontstash(b, target, optimize, false);
-        exe.linkLibrary(fontstash);
+        var fontstash_lib = fontstash.buildFontstash(b, target, optimize, false);
+        exe.linkLibrary(fontstash_lib);
+        exe.addIncludePath("libs/fontstash/src");
     } //fontstash
+
+    { //SDL
+        const sdl_pkg = try sdl.createSDL(b, target, optimize, sdl.getDefaultOptionsForTarget(target));
+        exe.linkLibrary(sdl_pkg);
+        exe.addIncludePath("libs/SDL/include");
+    } //SDL
+
+    { //wgpu
+        const wgpu_native_path = root_path ++ "libs/wgpu-native/";
+
+        //Get the users name
+        var username = std.os.getenv("USER") orelse return error.UserVariableNotSet;
+
+        //TODO: install the proper toolchains
+
+        //Get the possible path to `cross`
+        //TODO: make this logic much smarter
+        var cross_path = try std.mem.concat(b.allocator, u8, &.{ "/home/", username, "/.cargo/bin/cross" });
+
+        //Array list will store our target name
+        var cross_target = std.ArrayList(u8).init(b.allocator);
+
+        //Add cpu arch
+        try cross_target.appendSlice(@tagName(target.getCpuArch()));
+        try cross_target.append('-');
+        //Add special thing
+        switch (target.getOsTag()) {
+            .windows => try cross_target.appendSlice("pc"),
+            .linux => try cross_target.appendSlice("unknown"),
+            else => {
+                //if theres no special thing, pop the last hyphen
+                _ = cross_target.pop();
+            },
+        }
+        try cross_target.append('-');
+        //Add OS
+        try cross_target.appendSlice(@tagName(target.getOsTag()));
+        try cross_target.append('-');
+        //Add ABI
+        try cross_target.appendSlice(@tagName(target.getAbi()));
+
+        var build_result = try std.ChildProcess.exec(.{
+            .allocator = b.allocator,
+            .argv = &.{ cross_path, "build", "--target", cross_target.items, if (optimize == std.builtin.OptimizeMode.Debug) "" else "--release" },
+            .cwd = wgpu_native_path,
+        });
+        defer b.allocator.free(build_result.stdout);
+        defer b.allocator.free(build_result.stderr);
+
+        // std.debug.print("cross output: {s}\n", .{build_result.stderr});
+
+        exe.addLibraryPath(try std.mem.concat(b.allocator, u8, &.{ root_path, "libs/wgpu-native/target/", cross_target.items, "/", if (optimize == std.builtin.OptimizeMode.Debug) "debug" else "release" }));
+        exe.linkSystemLibrary("wgpu_native");
+    } //wgpu
 
     b.installArtifact(exe);
 

@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "soloud_c.h": "c",
-        "fontstash.h": "c"
+        "fontstash.h": "c",
+        "keyboard-shortcuts-inhibit-unstable-v1-client-protocol.h": "c"
     }
 }

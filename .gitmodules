@@ -1,6 +1,9 @@
-[submodule "libs/soloud"]
-	path = libs/soloud
-	url = https://github.com/Beyley/soloud
 [submodule "libs/fontstash"]
 	path = libs/fontstash
 	url = https://github.com/Beyley/fontstash
+[submodule "libs/wgpu-native"]
+	path = libs/wgpu-native
+	url = https://github.com/gfx-rs/wgpu-native
+[submodule "libs/SDL"]
+	path = libs/SDL
+	url = https://github.com/Beyley/SDL
