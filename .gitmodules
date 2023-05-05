@@ -7,3 +7,6 @@
 [submodule "libs/SDL"]
 	path = libs/SDL
 	url = https://github.com/Beyley/SDL
+[submodule "libs/cimgui"]
+	path = libs/cimgui
+	url = https://github.com/cimgui/cimgui

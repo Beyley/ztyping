@@ -3,6 +3,7 @@ const zaudio = @import("libs/zaudio/build.zig");
 const sdl = @import("libs/SDL/build.zig");
 const fontstash = @import("libs/fontstash/build.zig");
 const wgpu = @import("wgpu.zig");
+const cimgui = @import("libs/cimgui/build.zig");
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
@@ -51,6 +52,14 @@ pub fn build(b: *std.Build) !void {
 
         exe.addIncludePath("libs/wgpu-native/ffi");
     } //wgpu
+
+    { //cimgui
+        const cimgui_lib = try cimgui.create_cimgui(b, target, optimize);
+
+        exe.linkLibrary(cimgui_lib);
+
+        exe.addIncludePath("libs/cimgui/");
+    } //cimgui
 
     b.installArtifact(exe);
 

@@ -7,6 +7,8 @@ pub const c = @cImport({
     @cInclude("SDL.h");
     @cInclude("SDL_syswm.h");
     @cInclude("wgpu.h");
+    @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", "1");
+    @cInclude("cimgui.h");
 });
 
 pub var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
