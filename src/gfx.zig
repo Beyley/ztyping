@@ -27,6 +27,27 @@ pub fn requestAdapter(instance: c.WGPUInstance, surface: c.WGPUSurface) !c.WGPUA
     return adapter;
 }
 
+pub fn setErrorCallbacks(device: c.WGPUDevice) void {
+    c.wgpuDeviceSetUncapturedErrorCallback(device, uncapturedError, null);
+    c.wgpuDeviceSetDeviceLostCallback(device, deviceLost, null);
+
+    std.debug.print("setup wgpu device callbacks\n", .{});
+}
+
+fn uncapturedError(error_type: c.WGPUErrorType, message: [*c]const u8, user_data: ?*anyopaque) callconv(.C) void {
+    _ = user_data;
+
+    std.debug.print("Got uncaptured error {d} with message {s}\n", .{ error_type, std.mem.span(message) });
+    @panic("uncaptured wgpu error");
+}
+
+fn deviceLost(reason: c.WGPUDeviceLostReason, message: [*c]const u8, user_data: ?*anyopaque) callconv(.C) void {
+    _ = user_data;
+
+    std.debug.print("Device lost! reason {d} with message {s}\n", .{ reason, std.mem.span(message) });
+    @panic("device lost");
+}
+
 pub fn requestDevice(adapter: c.WGPUAdapter) !c.WGPUDevice {
     var device: c.WGPUDevice = undefined;
 

@@ -60,6 +60,8 @@ pub fn main() !void {
     var device = try gfx.requestDevice(adapter);
     defer c.wgpuDeviceDrop(device);
 
+    gfx.setErrorCallbacks(device);
+
     var isRunning = true;
     while (isRunning) {
         var ev: c.SDL_Event = undefined;
