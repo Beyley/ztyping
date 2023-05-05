@@ -2,13 +2,17 @@ const std = @import("std");
 const builtin = @import("builtin");
 const c = @import("main.zig").c;
 
-pub fn create_instance() !c.WGPUInstance {
-    return c.wgpuCreateInstance(&c.WGPUInstanceDescriptor{
+pub fn createInstance() !c.WGPUInstance {
+    var instance = c.wgpuCreateInstance(&c.WGPUInstanceDescriptor{
         .nextInChain = null,
-    }) orelse error.InstanceCreationError;
+    });
+
+    std.debug.print("got instance 0x{x}\n", .{@ptrToInt(instance.?)});
+
+    return instance orelse error.InstanceCreationError;
 }
 
-pub fn request_adapter(instance: c.WGPUInstance, surface: c.WGPUSurface) !c.WGPUAdapter {
+pub fn requestAdapter(instance: c.WGPUInstance, surface: c.WGPUSurface) !c.WGPUAdapter {
     var adapter: c.WGPUAdapter = undefined;
 
     c.wgpuInstanceRequestAdapter(instance, &c.WGPURequestAdapterOptions{
@@ -16,12 +20,45 @@ pub fn request_adapter(instance: c.WGPUInstance, surface: c.WGPUSurface) !c.WGPU
         .nextInChain = null,
         .powerPreference = c.WGPUPowerPreference_HighPerformance,
         .forceFallbackAdapter = false,
-    }, handle_adapter_callback, @ptrCast(*anyopaque, &adapter));
+    }, handleAdapterCallback, @ptrCast(*anyopaque, &adapter));
+
+    std.debug.print("got adapter 0x{x}\n", .{@ptrToInt(adapter.?)});
 
     return adapter;
 }
 
-pub fn handle_adapter_callback(status: c.WGPURequestAdapterStatus, adapter: c.WGPUAdapter, message: [*c]const u8, userdata: ?*anyopaque) callconv(.C) void {
+pub fn requestDevice(adapter: c.WGPUAdapter) !c.WGPUDevice {
+    var device: c.WGPUDevice = undefined;
+
+    c.wgpuAdapterRequestDevice(adapter, &c.WGPUDeviceDescriptor{
+        .label = null,
+        .requiredFeaturesCount = 0,
+        .requiredFeatures = null,
+        .requiredLimits = null,
+        .defaultQueue = c.WGPUQueueDescriptor{
+            .nextInChain = null,
+            .label = null,
+        },
+        .nextInChain = null,
+    }, handleDeviceCallback, @ptrCast(*anyopaque, &device));
+
+    std.debug.print("got device 0x{x}\n", .{@ptrToInt(adapter.?)});
+
+    return device;
+}
+
+pub fn handleDeviceCallback(status: c.WGPURequestDeviceStatus, device: c.WGPUDevice, message: [*c]const u8, userdata: ?*anyopaque) callconv(.C) void {
+    var device_ptr: *c.WGPUDevice = @ptrCast(*c.WGPUDevice, @alignCast(@alignOf(c.WGPUDevice), userdata));
+
+    if (status != c.WGPURequestDeviceStatus_Success) {
+        std.debug.print("Failed to get wgpu adapter, status: {d}, message {s}", .{ status, std.mem.span(message) });
+        @panic("Unable to aquire wgpu adapter!");
+    }
+
+    device_ptr.* = device;
+}
+
+pub fn handleAdapterCallback(status: c.WGPURequestAdapterStatus, adapter: c.WGPUAdapter, message: [*c]const u8, userdata: ?*anyopaque) callconv(.C) void {
     var adapter_ptr: *c.WGPUAdapter = @ptrCast(*c.WGPUAdapter, @alignCast(@alignOf(c.WGPUAdapter), userdata));
 
     if (status != c.WGPURequestAdapterStatus_Success) {
@@ -32,7 +69,7 @@ pub fn handle_adapter_callback(status: c.WGPURequestAdapterStatus, adapter: c.WG
     adapter_ptr.* = adapter;
 }
 
-pub fn create_surface(instance: c.WGPUInstance, window: *c.SDL_Window) !c.WGPUSurface {
+pub fn createSurface(instance: c.WGPUInstance, window: *c.SDL_Window) !c.WGPUSurface {
     var info: c.SDL_SysWMinfo = undefined;
     c.SDL_GetVersion(&info.version);
     var result = c.SDL_GetWindowWMInfo(window, &info);
@@ -75,5 +112,9 @@ pub fn create_surface(instance: c.WGPUInstance, window: *c.SDL_Window) !c.WGPUSu
         return error.UnknownWindowSubsystem;
     }
 
-    return c.wgpuInstanceCreateSurface(instance, &descriptor) orelse error.SurfaceCreationError;
+    var surface = c.wgpuInstanceCreateSurface(instance, &descriptor);
+
+    std.debug.print("got surface 0x{x}\n", .{@ptrToInt(surface.?)});
+
+    return surface orelse error.SurfaceCreationError;
 }

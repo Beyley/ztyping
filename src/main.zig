@@ -7,8 +7,8 @@ pub const c = @cImport({
     @cInclude("SDL.h");
     @cInclude("SDL_syswm.h");
     @cInclude("wgpu.h");
-    @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", "1");
-    @cInclude("cimgui.h");
+    // @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", "1");
+    // @cInclude("cimgui.h");
 });
 
 pub var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
@@ -45,21 +45,20 @@ pub fn main() !void {
     std.debug.print("Created SDL window\n", .{});
 
     //Create the webgpu instance
-    var instance = try gfx.create_instance();
+    var instance = try gfx.createInstance();
     defer c.wgpuInstanceDrop(instance);
 
-    std.debug.print("got instance 0x{x}\n", .{@ptrToInt(instance.?)});
-
     //Create the webgpu surface
-    var surface = try gfx.create_surface(instance, window);
+    var surface = try gfx.createSurface(instance, window);
     defer c.wgpuSurfaceDrop(surface);
 
-    std.debug.print("got surface 0x{x}\n", .{@ptrToInt(surface.?)});
-
-    var adapter = try gfx.request_adapter(instance, surface);
+    //Request an adapter
+    var adapter = try gfx.requestAdapter(instance, surface);
     defer c.wgpuAdapterDrop(adapter);
 
-    std.debug.print("got adapter 0x{x}\n", .{@ptrToInt(adapter.?)});
+    //Request a device
+    var device = try gfx.requestDevice(adapter);
+    defer c.wgpuDeviceDrop(device);
 
     var isRunning = true;
     while (isRunning) {
