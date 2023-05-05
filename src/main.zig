@@ -56,6 +56,11 @@ pub fn main() !void {
 
     std.debug.print("got surface 0x{x}\n", .{@ptrToInt(surface.?)});
 
+    var adapter = try gfx.request_adapter(instance, surface);
+    defer c.wgpuAdapterDrop(adapter);
+
+    std.debug.print("got adapter 0x{x}\n", .{@ptrToInt(adapter.?)});
+
     var isRunning = true;
     while (isRunning) {
         var ev: c.SDL_Event = undefined;

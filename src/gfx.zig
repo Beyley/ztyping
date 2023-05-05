@@ -8,6 +8,30 @@ pub fn create_instance() !c.WGPUInstance {
     }) orelse error.InstanceCreationError;
 }
 
+pub fn request_adapter(instance: c.WGPUInstance, surface: c.WGPUSurface) !c.WGPUAdapter {
+    var adapter: c.WGPUAdapter = undefined;
+
+    c.wgpuInstanceRequestAdapter(instance, &c.WGPURequestAdapterOptions{
+        .compatibleSurface = surface,
+        .nextInChain = null,
+        .powerPreference = c.WGPUPowerPreference_HighPerformance,
+        .forceFallbackAdapter = false,
+    }, handle_adapter_callback, @ptrCast(*anyopaque, &adapter));
+
+    return adapter;
+}
+
+pub fn handle_adapter_callback(status: c.WGPURequestAdapterStatus, adapter: c.WGPUAdapter, message: [*c]const u8, userdata: ?*anyopaque) callconv(.C) void {
+    var adapter_ptr: *c.WGPUAdapter = @ptrCast(*c.WGPUAdapter, @alignCast(@alignOf(c.WGPUAdapter), userdata));
+
+    if (status != c.WGPURequestAdapterStatus_Success) {
+        std.debug.print("Failed to get wgpu adapter, status: {d}, message {s}", .{ status, std.mem.span(message) });
+        @panic("Unable to aquire wgpu adapter!");
+    }
+
+    adapter_ptr.* = adapter;
+}
+
 pub fn create_surface(instance: c.WGPUInstance, window: *c.SDL_Window) !c.WGPUSurface {
     var info: c.SDL_SysWMinfo = undefined;
     c.SDL_GetVersion(&info.version);
