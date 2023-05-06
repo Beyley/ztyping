@@ -336,3 +336,23 @@ pub fn createRenderPipeline(device: c.WGPUDevice, layout: c.WGPUPipelineLayout, 
 
     return pipeline orelse error.UnableToCreateRenderPipeline;
 }
+
+pub fn createSwapChain(device: c.WGPUDevice, surface: c.WGPUSurface, format: c.WGPUTextureFormat, window: *c.SDL_Window) !c.WGPUSwapChain {
+    var width: c_int = undefined;
+    var height: c_int = undefined;
+    c.SDL_GL_GetDrawableSize(window, &width, &height);
+
+    var swap_chain = c.wgpuDeviceCreateSwapChain(device, surface, &c.WGPUSwapChainDescriptor{
+        .usage = c.WGPUTextureUsage_RenderAttachment,
+        .format = format,
+        .presentMode = c.WGPUPresentMode_Fifo,
+        .nextInChain = null,
+        .width = @intCast(u32, width),
+        .height = @intCast(u32, height),
+        .label = "Swapchain",
+    });
+
+    std.debug.print("got swap chain 0x{x} with size {d}x{d}\n", .{ @ptrToInt(swap_chain.?), width, height });
+
+    return swap_chain orelse error.UnableToCreateSwapChain;
+}

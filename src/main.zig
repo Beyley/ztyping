@@ -68,16 +68,24 @@ pub fn main() !void {
     var shader = try gfx.createShaderModule(device);
     defer c.wgpuShaderModuleDrop(shader);
 
+    //Get the surface format
     var preferred_surface_format = c.wgpuSurfaceGetPreferredFormat(surface, adapter);
 
+    //Create the bind group layouts
     var bind_group_layouts = try gfx.createBindGroupLayouts(device);
     defer bind_group_layouts.deinit();
 
+    //Create the render pipeline layout
     var render_pipeline_layout = try gfx.createPipelineLayout(device, bind_group_layouts);
     defer c.wgpuPipelineLayoutDrop(render_pipeline_layout);
 
+    //Create the render pipeline
     var render_pipeline = try gfx.createRenderPipeline(device, render_pipeline_layout, shader, preferred_surface_format);
     defer c.wgpuRenderPipelineDrop(render_pipeline);
+
+    //Create the swapchain
+    var swap_chain = try gfx.createSwapChain(device, surface, preferred_surface_format, window);
+    defer c.wgpuSwapChainDrop(swap_chain);
 
     var isRunning = true;
     while (isRunning) {
