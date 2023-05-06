@@ -1,5 +1,6 @@
 const std = @import("std");
 const zaudio = @import("zaudio");
+const zmath = @import("zmath");
 const gfx = @import("gfx.zig");
 
 pub const c = @cImport({
@@ -60,7 +61,21 @@ pub fn main() !void {
     var device = try gfx.requestDevice(adapter);
     defer c.wgpuDeviceDrop(device);
 
+    //Setup the error callbacks
     gfx.setErrorCallbacks(device);
+
+    //Create our shader module
+    var shader = try gfx.createShaderModule(device);
+    defer c.wgpuShaderModuleDrop(shader);
+
+    var preferred_surface_format = c.wgpuSurfaceGetPreferredFormat(surface, adapter);
+    _ = preferred_surface_format;
+
+    var bind_group_layouts = try gfx.createBindGroupLayouts(device);
+    defer bind_group_layouts.deinit();
+
+    var pipeline_layout = try gfx.createPipelineLayout(device, bind_group_layouts);
+    defer c.wgpuPipelineLayoutDrop(pipeline_layout);
 
     var isRunning = true;
     while (isRunning) {
@@ -71,5 +86,8 @@ pub fn main() !void {
                 isRunning = false;
             }
         }
+
+        var mat = zmath.orthographicOffCenterLh(0, 640, 0, 480, 0, 1);
+        _ = mat;
     }
 }

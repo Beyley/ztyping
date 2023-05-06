@@ -1,6 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const c = @import("main.zig").c;
+const zmath = @import("zmath");
 
 pub fn createInstance() !c.WGPUInstance {
     var instance = c.wgpuCreateInstance(&c.WGPUInstanceDescriptor{
@@ -52,13 +53,13 @@ pub fn requestDevice(adapter: c.WGPUAdapter) !c.WGPUDevice {
     var device: c.WGPUDevice = undefined;
 
     c.wgpuAdapterRequestDevice(adapter, &c.WGPUDeviceDescriptor{
-        .label = null,
+        .label = "Device",
         .requiredFeaturesCount = 0,
         .requiredFeatures = null,
         .requiredLimits = null,
         .defaultQueue = c.WGPUQueueDescriptor{
             .nextInChain = null,
-            .label = null,
+            .label = "Default Queue",
         },
         .nextInChain = null,
     }, handleDeviceCallback, @ptrCast(*anyopaque, &device));
@@ -101,7 +102,7 @@ pub fn createSurface(instance: c.WGPUInstance, window: *c.SDL_Window) !c.WGPUSur
 
     var descriptor: c.WGPUSurfaceDescriptor = .{
         .nextInChain = null,
-        .label = null,
+        .label = "Surface",
     };
     if (info.subsystem == c.SDL_SYSWM_X11) {
         if (@hasDecl(c, "SDL_VIDEO_DRIVER_X11")) {
@@ -138,4 +139,113 @@ pub fn createSurface(instance: c.WGPUInstance, window: *c.SDL_Window) !c.WGPUSur
     std.debug.print("got surface 0x{x}\n", .{@ptrToInt(surface.?)});
 
     return surface orelse error.SurfaceCreationError;
+}
+
+pub const BindGroupLayouts = struct {
+    texture_sampler: c.WGPUBindGroupLayout,
+    projection_matrix: c.WGPUBindGroupLayout,
+    pub fn deinit(self: BindGroupLayouts) void {
+        c.wgpuBindGroupLayoutDrop(self.texture_sampler);
+        c.wgpuBindGroupLayoutDrop(self.projection_matrix);
+    }
+};
+
+pub fn createBindGroupLayouts(device: c.WGPUDevice) !BindGroupLayouts {
+    var layouts: BindGroupLayouts = undefined;
+
+    layouts.texture_sampler = c.wgpuDeviceCreateBindGroupLayout(device, &c.WGPUBindGroupLayoutDescriptor{
+        .nextInChain = null,
+        .label = "Texture/Sampler bind group layout",
+        .entryCount = 2,
+        .entries = @as([]const c.WGPUBindGroupLayoutEntry, &.{
+            c.WGPUBindGroupLayoutEntry{
+                .nextInChain = null,
+                .binding = 0,
+                .texture = c.WGPUTextureBindingLayout{
+                    .nextInChain = null,
+                    .multisampled = false,
+                    .sampleType = c.WGPUTextureSampleType_Float,
+                    .viewDimension = c.WGPUTextureViewDimension_2D,
+                },
+                .buffer = undefined,
+                .sampler = undefined,
+                .storageTexture = undefined,
+                .visibility = c.WGPUShaderStage_Fragment,
+            },
+            c.WGPUBindGroupLayoutEntry{
+                .nextInChain = null,
+                .binding = 1,
+                .sampler = c.WGPUSamplerBindingLayout{
+                    .nextInChain = null,
+                    .type = c.WGPUSamplerBindingType_Filtering,
+                },
+                .buffer = undefined,
+                .texture = undefined,
+                .storageTexture = undefined,
+                .visibility = c.WGPUShaderStage_Fragment,
+            },
+        }).ptr,
+    });
+    layouts.projection_matrix = c.wgpuDeviceCreateBindGroupLayout(device, &c.WGPUBindGroupLayoutDescriptor{
+        .nextInChain = null,
+        .label = "Projection matrix bind group layout",
+        .entryCount = 1,
+        .entries = &c.WGPUBindGroupLayoutEntry{
+            .nextInChain = null,
+            .binding = 0,
+            .texture = undefined,
+            .buffer = c.WGPUBufferBindingLayout{
+                .nextInChain = null,
+                .type = c.WGPUBufferBindingType_Uniform,
+                .minBindingSize = @sizeOf(zmath.Mat),
+                .hasDynamicOffset = false,
+            },
+            .sampler = undefined,
+            .storageTexture = undefined,
+            .visibility = c.WGPUShaderStage_Fragment,
+        },
+    });
+
+    std.debug.print("got texture/sampler bind group layout 0x{x}\n", .{@ptrToInt(layouts.texture_sampler.?)});
+    std.debug.print("got projection matrix bind group layout 0x{x}\n", .{@ptrToInt(layouts.projection_matrix.?)});
+
+    return layouts;
+}
+
+pub fn createPipelineLayout(device: c.WGPUDevice, bind_group_layouts: BindGroupLayouts) !c.WGPUPipelineLayout {
+    var layout = c.wgpuDeviceCreatePipelineLayout(device, &c.WGPUPipelineLayoutDescriptor{
+        .label = "Pipeline Layout",
+        .bindGroupLayoutCount = 2,
+        .bindGroupLayouts = @as([]const c.WGPUBindGroupLayout, &.{
+            bind_group_layouts.texture_sampler,
+            bind_group_layouts.projection_matrix,
+        }).ptr,
+        .nextInChain = null,
+    });
+
+    std.debug.print("got pipeline layout 0x{x}\n", .{@ptrToInt(layout.?)});
+
+    return layout;
+}
+
+pub fn createShaderModule(device: c.WGPUDevice) !c.WGPUShaderModule {
+    var module = c.wgpuDeviceCreateShaderModule(device, &c.WGPUShaderModuleDescriptor{
+        .label = "Shader",
+        .nextInChain = @ptrCast(
+            [*c]c.WGPUChainedStruct,
+            @constCast(&c.WGPUShaderModuleWGSLDescriptor{
+                .chain = c.WGPUChainedStruct{
+                    .sType = c.WGPUSType_ShaderModuleWGSLDescriptor,
+                    .next = null,
+                },
+                .code = @embedFile("shader.wgsl"),
+            }),
+        ),
+        .hints = null,
+        .hintCount = 0,
+    });
+
+    std.debug.print("got shader module 0x{x}\n", .{@ptrToInt(module.?)});
+
+    return module orelse error.UnableToCreateShaderModule;
 }
