@@ -3,6 +3,12 @@ const builtin = @import("builtin");
 const c = @import("main.zig").c;
 const zmath = @import("zmath");
 
+pub const Vertex = extern struct {
+    position: @Vector(2, f32),
+    tex_coord: @Vector(2, f32),
+    vertex_col: @Vector(4, f32),
+};
+
 pub fn createInstance() !c.WGPUInstance {
     var instance = c.wgpuCreateInstance(&c.WGPUInstanceDescriptor{
         .nextInChain = null,
@@ -248,4 +254,85 @@ pub fn createShaderModule(device: c.WGPUDevice) !c.WGPUShaderModule {
     std.debug.print("got shader module 0x{x}\n", .{@ptrToInt(module.?)});
 
     return module orelse error.UnableToCreateShaderModule;
+}
+
+pub fn createRenderPipeline(device: c.WGPUDevice, layout: c.WGPUPipelineLayout, shader: c.WGPUShaderModule, surface_format: c.WGPUTextureFormat) !c.WGPURenderPipeline {
+    var pipeline = c.wgpuDeviceCreateRenderPipeline(device, &c.WGPURenderPipelineDescriptor{
+        .nextInChain = null,
+        .label = "Render Pipeline",
+        .layout = layout,
+        .vertex = c.WGPUVertexState{
+            .nextInChain = null,
+            .module = shader,
+            .entryPoint = "vs_main",
+            .constantCount = 0,
+            .constants = null,
+            .bufferCount = 1,
+            .buffers = &c.WGPUVertexBufferLayout{
+                .arrayStride = @sizeOf(Vertex),
+                .stepMode = c.WGPUVertexStepMode_Vertex,
+                .attributeCount = 3,
+                .attributes = @as([]const c.WGPUVertexAttribute, &.{
+                    c.WGPUVertexAttribute{
+                        .format = c.WGPUVertexFormat_Float32x2,
+                        .offset = @offsetOf(Vertex, "position"),
+                        .shaderLocation = 0,
+                    },
+                    c.WGPUVertexAttribute{
+                        .format = c.WGPUVertexFormat_Float32x2,
+                        .offset = @offsetOf(Vertex, "tex_coord"),
+                        .shaderLocation = 1,
+                    },
+                    c.WGPUVertexAttribute{
+                        .format = c.WGPUVertexFormat_Float32x4,
+                        .offset = @offsetOf(Vertex, "vertex_col"),
+                        .shaderLocation = 2,
+                    },
+                }).ptr,
+            },
+        },
+        .fragment = &c.WGPUFragmentState{
+            .module = shader,
+            .targets = &c.WGPUColorTargetState{
+                .blend = &c.WGPUBlendState{
+                    .color = c.WGPUBlendComponent{
+                        .srcFactor = c.WGPUBlendFactor_SrcAlpha,
+                        .dstFactor = c.WGPUBlendFactor_OneMinusSrcAlpha,
+                        .operation = c.WGPUBlendOperation_Add,
+                    },
+                    .alpha = c.WGPUBlendComponent{
+                        .srcFactor = c.WGPUBlendFactor_One,
+                        .dstFactor = c.WGPUBlendFactor_OneMinusSrcAlpha,
+                        .operation = c.WGPUBlendOperation_Add,
+                    },
+                },
+                .nextInChain = null,
+                .format = surface_format,
+                .writeMask = c.WGPUColorWriteMask_All,
+            },
+            .targetCount = 1,
+            .constants = null,
+            .constantCount = 0,
+            .entryPoint = "fs_main",
+            .nextInChain = null,
+        },
+        .primitive = c.WGPUPrimitiveState{
+            .cullMode = c.WGPUCullMode_Back,
+            .topology = c.WGPUPrimitiveTopology_TriangleList,
+            .frontFace = c.WGPUFrontFace_CCW,
+            .nextInChain = null,
+            .stripIndexFormat = c.WGPUIndexFormat_Undefined,
+        },
+        .depthStencil = null,
+        .multisample = c.WGPUMultisampleState{
+            .count = 1,
+            .mask = ~@as(u32, 0),
+            .alphaToCoverageEnabled = false,
+            .nextInChain = null,
+        },
+    });
+
+    std.debug.print("got render pipeline 0x{x}\n", .{@ptrToInt(pipeline.?)});
+
+    return pipeline orelse error.UnableToCreateRenderPipeline;
 }

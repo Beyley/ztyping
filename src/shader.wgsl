@@ -21,7 +21,6 @@ fn vs_main(
     @location(0) pos: vec2<f32>,
     @location(1) tex_coord: vec2<f32>,
     @location(2) vertex_col: vec4<f32>,
-    @location(3) tex_id: vec2<u32> //note: this is actually a single u64, but there is no u64 in wgsl :^)
 ) -> VertexOutputs {
     var output: VertexOutputs;
 
