@@ -1,5 +1,6 @@
 const std = @import("std");
 const zaudio = @import("libs/zaudio/build.zig");
+const zmath = @import("libs/zmath/build.zig");
 const sdl = @import("libs/SDL/build.zig");
 const fontstash = @import("libs/fontstash/build.zig");
 const wgpu = @import("wgpu.zig");
@@ -24,6 +25,13 @@ pub fn build(b: *std.Build) !void {
         const zaudio_pkg = zaudio.package(b, target, optimize, .{});
         zaudio_pkg.link(exe);
     } //zaudio
+
+    { //zmath
+        const zmath_pkg = zmath.package(b, target, optimize, .{
+            .options = .{ .enable_cross_platform_determinism = true },
+        });
+        zmath_pkg.link(exe);
+    } //zmath
 
     { //fontstash
         var fontstash_lib = fontstash.buildFontstash(b, target, optimize, false);
