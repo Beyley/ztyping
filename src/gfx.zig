@@ -202,7 +202,7 @@ pub fn createBindGroupLayouts(device: c.WGPUDevice) !BindGroupLayouts {
             },
             .sampler = undefined,
             .storageTexture = undefined,
-            .visibility = c.WGPUShaderStage_Fragment,
+            .visibility = c.WGPUShaderStage_Vertex,
         },
     });
 
