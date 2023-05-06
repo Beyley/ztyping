@@ -61,6 +61,9 @@ pub fn main() !void {
     var device = try gfx.requestDevice(adapter);
     defer c.wgpuDeviceDrop(device);
 
+    //Get the queue
+    var queue = c.wgpuDeviceGetQueue(device) orelse return error.UnableToGetDeviceQueue;
+
     //Setup the error callbacks
     gfx.setErrorCallbacks(device);
 
@@ -87,6 +90,8 @@ pub fn main() !void {
     var swap_chain = try gfx.createSwapChain(device, surface, preferred_surface_format, window);
     defer c.wgpuSwapChainDrop(swap_chain);
 
+    // var mat = zmath.orthographicOffCenterLh(0, 640, 0, 480, 0, 1);
+
     var isRunning = true;
     while (isRunning) {
         var ev: c.SDL_Event = undefined;
@@ -97,7 +102,51 @@ pub fn main() !void {
             }
         }
 
-        var mat = zmath.orthographicOffCenterLh(0, 640, 0, 480, 0, 1);
-        _ = mat;
+        //Get the current texture view
+        var next_texture = c.wgpuSwapChainGetCurrentTextureView(swap_chain) orelse return error.UnableToGetSwapChainTextureView;
+
+        //Create a command encoder
+        var command_encoder = c.wgpuDeviceCreateCommandEncoder(device, &c.WGPUCommandEncoderDescriptor{
+            .nextInChain = null,
+            .label = "Command Encoder",
+        }) orelse return error.UnableToCreateCommandEncoder;
+
+        //Begin a render pass
+        var render_pass_encoder = c.wgpuCommandEncoderBeginRenderPass(command_encoder, &c.WGPURenderPassDescriptor{
+            .label = "Render Pass Encoder",
+            .colorAttachmentCount = 1,
+            .colorAttachments = &c.WGPURenderPassColorAttachment{
+                .view = next_texture,
+                .loadOp = c.WGPULoadOp_Clear,
+                .storeOp = c.WGPUStoreOp_Store,
+                .clearValue = c.WGPUColor{
+                    .r = 0,
+                    .g = 1,
+                    .b = 0,
+                    .a = 1,
+                },
+                .resolveTarget = null,
+            },
+            .depthStencilAttachment = null,
+            .occlusionQuerySet = null,
+            .timestampWriteCount = 0,
+            .timestampWrites = null,
+            .nextInChain = null,
+        }) orelse return error.UnableToBeginRenderPass;
+
+        //Set the pipeline
+        c.wgpuRenderPassEncoderSetPipeline(render_pass_encoder, render_pipeline);
+
+        //TODO: draw things here
+
+        c.wgpuRenderPassEncoderEnd(render_pass_encoder);
+        var command_buffer = c.wgpuCommandEncoderFinish(command_encoder, &c.WGPUCommandBufferDescriptor{
+            .label = "Command buffer",
+            .nextInChain = null,
+        });
+        c.wgpuQueueSubmit(queue, 1, &command_buffer);
+
+        c.wgpuSwapChainPresent(swap_chain);
+        c.wgpuTextureViewDrop(next_texture);
     }
 }
