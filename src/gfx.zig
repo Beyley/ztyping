@@ -358,6 +358,20 @@ pub fn createSwapChain(device: c.WGPUDevice, surface: c.WGPUSurface, format: c.W
     return swap_chain orelse error.UnableToCreateSwapChain;
 }
 
+pub fn createBuffer(device: c.WGPUDevice, size: usize, name: [*c]const u8) !c.WGPUBuffer {
+    var buffer = c.wgpuDeviceCreateBuffer(device, &c.WGPUBufferDescriptor{
+        .nextInChain = null,
+        .label = name,
+        .usage = c.WGPUBufferUsage_Uniform | c.WGPUBufferUsage_CopyDst,
+        .size = @intCast(u64, size),
+        .mappedAtCreation = false,
+    });
+
+    std.debug.print("got buffer 0x{x} ({s}) with size {d}\n", .{ @ptrToInt(buffer.?), name, size });
+
+    return buffer orelse error.UnableToCreateBuffer;
+}
+
 pub const Texture = struct {
     tex: c.WGPUTexture,
     view: c.WGPUTextureView,

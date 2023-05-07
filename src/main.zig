@@ -94,6 +94,10 @@ pub fn main() !void {
     var texture = try gfx.createTexture(allocator, device, queue, @embedFile("content/atlas.qoi"));
     defer texture.deinit();
 
+    //Create the projection matrix buffer
+    var projection_matrix_buffer = try gfx.createBuffer(device, @sizeOf(zmath.Mat), "Projection Matrix Buffer");
+    defer c.wgpuBufferDrop(projection_matrix_buffer);
+
     // var mat = zmath.orthographicOffCenterLh(0, 640, 0, 480, 0, 1);
 
     var isRunning = true;
