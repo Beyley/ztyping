@@ -45,12 +45,31 @@ pub fn build(b: *std.Build) !void {
         exe.linkLibrary(sdl_pkg);
         exe.addIncludePath("libs/SDL/include");
 
+        if (target.getOsTag() == .macos) {
+            sdl.applyMacosLinkerArgs(exe);
+        }
+
         //Add the C macros to the exe
         try exe.c_macros.appendSlice(sdl_pkg.c_macros.items);
     } //SDL
 
     { //wgpu
-        exe.addObjectFile(try wgpu.create_wgpu(b, target, optimize));
+        var wgpu_from_source = b.option(bool, "wgpu_from_source", "Compile WGPU from source") orelse false;
+
+        if (wgpu_from_source) {
+            exe.addObjectFile(try wgpu.create_wgpu(b, target, optimize));
+        } else {
+            var wgpu_bin_path = std.ArrayList(u8).init(b.allocator);
+
+            try wgpu_bin_path.appendSlice(root_path ++ "libs/wgpu-native-bin/");
+
+            try wgpu_bin_path.appendSlice(@tagName(target.getOsTag()));
+            try wgpu_bin_path.append('-');
+            try wgpu_bin_path.appendSlice(@tagName(target.getCpuArch()));
+
+            exe.addLibraryPath(try wgpu_bin_path.toOwnedSlice());
+            exe.linkSystemLibrary("wgpu_native");
+        }
 
         if (target.getOsTag() == .windows) {
             exe.linkSystemLibrary("ws2_32");
