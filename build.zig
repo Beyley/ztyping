@@ -5,6 +5,7 @@ const sdl = @import("libs/SDL/build.zig");
 const fontstash = @import("libs/fontstash/build.zig");
 const wgpu = @import("wgpu.zig");
 const cimgui = @import("libs/cimgui/build.zig");
+const ImageProcessor = @import("image_processor.zig");
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
@@ -68,6 +69,14 @@ pub fn build(b: *std.Build) !void {
 
         exe.addIncludePath("libs/cimgui/");
     } //cimgui
+
+    { //process assets
+        const process_images_step = b.step("Process images", "Process image files into a QOI texture atlas");
+
+        process_images_step.makeFn = ImageProcessor.processImages;
+
+        exe.step.dependOn(process_images_step);
+    } //process assets
 
     b.installArtifact(exe);
 
