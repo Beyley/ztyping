@@ -2,6 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const c = @import("main.zig").c;
 const zmath = @import("zmath");
+const img = @import("zigimg");
 
 pub const Vertex = extern struct {
     position: @Vector(2, f32),
@@ -355,4 +356,84 @@ pub fn createSwapChain(device: c.WGPUDevice, surface: c.WGPUSurface, format: c.W
     std.debug.print("got swap chain 0x{x} with size {d}x{d}\n", .{ @ptrToInt(swap_chain.?), width, height });
 
     return swap_chain orelse error.UnableToCreateSwapChain;
+}
+
+pub const Texture = struct {
+    tex: c.WGPUTexture,
+    view: c.WGPUTextureView,
+    pub fn deinit(self: Texture) void {
+        c.wgpuTextureViewDrop(self.view);
+        c.wgpuTextureDrop(self.tex);
+    }
+};
+
+pub fn createTexture(allocator: std.mem.Allocator, device: c.WGPUDevice, queue: c.WGPUQueue, data: []const u8) !Texture {
+    var stream: img.Image.Stream = .{ .const_buffer = std.io.fixedBufferStream(data) };
+
+    var image = try img.qoi.QOI.readImage(allocator, &stream);
+    defer image.deinit();
+
+    var texFormat: c_uint = c.WGPUTextureFormat_RGBA8UnormSrgb;
+
+    var tex = c.wgpuDeviceCreateTexture(device, &c.WGPUTextureDescriptor{
+        .nextInChain = null,
+        .label = "Texture",
+        .usage = c.WGPUTextureUsage_CopyDst | c.WGPUTextureUsage_TextureBinding,
+        .dimension = c.WGPUTextureDimension_2D,
+        .size = c.WGPUExtent3D{
+            .width = @intCast(u32, image.width),
+            .height = @intCast(u32, image.height),
+            .depthOrArrayLayers = 1,
+        },
+        .format = texFormat,
+        .mipLevelCount = 1,
+        .sampleCount = 1,
+        .viewFormatCount = 1,
+        .viewFormats = &texFormat,
+    }) orelse return error.UnableToCreateDeviceTexture;
+
+    var view = c.wgpuTextureCreateView(tex, &c.WGPUTextureViewDescriptor{
+        .nextInChain = null,
+        .label = "Texture View",
+        .format = texFormat,
+        .dimension = c.WGPUTextureViewDimension_2D,
+        .baseMipLevel = 0,
+        .baseArrayLayer = 0,
+        .mipLevelCount = 1,
+        .arrayLayerCount = 1,
+        .aspect = c.WGPUTextureAspect_All,
+    }) orelse return error.UnableToCreateTextureView;
+
+    c.wgpuQueueWriteTexture(
+        queue,
+        &c.WGPUImageCopyTexture{
+            .nextInChain = null,
+            .texture = tex,
+            .mipLevel = 0,
+            .origin = c.WGPUOrigin3D{
+                .x = 0,
+                .y = 0,
+                .z = 0,
+            },
+            .aspect = c.WGPUTextureAspect_All,
+        },
+        image.pixels.rgba32.ptr,
+        image.pixels.rgba32.len * @sizeOf(img.color.Rgba32),
+        &c.WGPUTextureDataLayout{
+            .nextInChain = null,
+            .bytesPerRow = @intCast(u32, image.width * @sizeOf(img.color.Rgba32)),
+            .offset = 0,
+            .rowsPerImage = @intCast(u32, image.height),
+        },
+        &c.WGPUExtent3D{
+            .width = @intCast(u32, image.width),
+            .height = @intCast(u32, image.height),
+            .depthOrArrayLayers = 1,
+        },
+    );
+
+    return .{
+        .tex = tex,
+        .view = view,
+    };
 }

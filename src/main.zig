@@ -90,6 +90,10 @@ pub fn main() !void {
     var swap_chain = try gfx.createSwapChain(device, surface, preferred_surface_format, window);
     defer c.wgpuSwapChainDrop(swap_chain);
 
+    //Create the texture
+    var texture = try gfx.createTexture(allocator, device, queue, @embedFile("content/atlas.qoi"));
+    defer texture.deinit();
+
     // var mat = zmath.orthographicOffCenterLh(0, 640, 0, 480, 0, 1);
 
     var isRunning = true;

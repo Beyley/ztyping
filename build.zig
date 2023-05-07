@@ -70,6 +70,14 @@ pub fn build(b: *std.Build) !void {
         exe.addIncludePath("libs/cimgui/");
     } //cimgui
 
+    { //zigimg
+        var module = b.addModule("zigimg", .{
+            .source_file = .{ .path = root_path ++ "libs/zigimg/zigimg.zig" },
+        });
+
+        exe.addModule("zigimg", module);
+    } //zigimg
+
     { //process assets
         const process_images_step = b.step("Process images", "Process image files into a QOI texture atlas");
 
