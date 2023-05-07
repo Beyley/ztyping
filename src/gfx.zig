@@ -4,6 +4,47 @@ const c = @import("main.zig").c;
 const zmath = @import("zmath");
 const img = @import("zigimg");
 
+const Self = @This();
+
+instance: c.WGPUInstance = null,
+surface: c.WGPUSurface = null,
+adapter: c.WGPUAdapter = null,
+device: c.WGPUDevice = null,
+queue: c.WGPUQueue = null,
+
+pub fn init(window: *c.SDL_Window) !Self {
+    var self: Self = Self{};
+
+    //Create the webgpu instance
+    self.instance = try createInstance();
+
+    //Create the webgpu surface
+    self.surface = try createSurface(self.instance, window);
+
+    //Request an adapter
+    self.adapter = try requestAdapter(self.instance, self.surface);
+
+    //Request a device
+    self.device = try requestDevice(self.adapter);
+
+    //Get the queue
+    self.queue = c.wgpuDeviceGetQueue(self.device) orelse return error.UnableToGetDeviceQueue;
+
+    return self;
+}
+
+pub fn deinit(self: *Self) void {
+    c.wgpuDeviceDrop(self.device);
+    c.wgpuAdapterDrop(self.adapter);
+    c.wgpuSurfaceDrop(self.surface);
+    c.wgpuInstanceDrop(self.instance);
+
+    self.device = null;
+    self.adapter = null;
+    self.surface = null;
+    self.instance = null;
+}
+
 pub const Vertex = extern struct {
     position: @Vector(2, f32),
     tex_coord: @Vector(2, f32),
@@ -35,9 +76,9 @@ pub fn requestAdapter(instance: c.WGPUInstance, surface: c.WGPUSurface) !c.WGPUA
     return adapter;
 }
 
-pub fn setErrorCallbacks(device: c.WGPUDevice) void {
-    c.wgpuDeviceSetUncapturedErrorCallback(device, uncapturedError, null);
-    c.wgpuDeviceSetDeviceLostCallback(device, deviceLost, null);
+pub fn setErrorCallbacks(self: *Self) void {
+    c.wgpuDeviceSetUncapturedErrorCallback(self.device, uncapturedError, null);
+    c.wgpuDeviceSetDeviceLostCallback(self.device, deviceLost, null);
 
     std.debug.print("setup wgpu device callbacks\n", .{});
 }
@@ -148,6 +189,10 @@ pub fn createSurface(instance: c.WGPUInstance, window: *c.SDL_Window) !c.WGPUSur
     return surface orelse error.SurfaceCreationError;
 }
 
+pub fn getPreferredSurfaceFormat(self: *Self) c.WGPUTextureFormat {
+    return c.wgpuSurfaceGetPreferredFormat(self.surface, self.adapter);
+}
+
 pub const BindGroupLayouts = struct {
     texture_sampler: c.WGPUBindGroupLayout,
     projection_matrix: c.WGPUBindGroupLayout,
@@ -157,10 +202,10 @@ pub const BindGroupLayouts = struct {
     }
 };
 
-pub fn createBindGroupLayouts(device: c.WGPUDevice) !BindGroupLayouts {
+pub fn createBindGroupLayouts(self: *Self) !BindGroupLayouts {
     var layouts: BindGroupLayouts = undefined;
 
-    layouts.texture_sampler = c.wgpuDeviceCreateBindGroupLayout(device, &c.WGPUBindGroupLayoutDescriptor{
+    layouts.texture_sampler = c.wgpuDeviceCreateBindGroupLayout(self.device, &c.WGPUBindGroupLayoutDescriptor{
         .nextInChain = null,
         .label = "Texture/Sampler bind group layout",
         .entryCount = 2,
@@ -193,7 +238,7 @@ pub fn createBindGroupLayouts(device: c.WGPUDevice) !BindGroupLayouts {
             },
         }).ptr,
     });
-    layouts.projection_matrix = c.wgpuDeviceCreateBindGroupLayout(device, &c.WGPUBindGroupLayoutDescriptor{
+    layouts.projection_matrix = c.wgpuDeviceCreateBindGroupLayout(self.device, &c.WGPUBindGroupLayoutDescriptor{
         .nextInChain = null,
         .label = "Projection matrix bind group layout",
         .entryCount = 1,
@@ -219,8 +264,8 @@ pub fn createBindGroupLayouts(device: c.WGPUDevice) !BindGroupLayouts {
     return layouts;
 }
 
-pub fn createPipelineLayout(device: c.WGPUDevice, bind_group_layouts: BindGroupLayouts) !c.WGPUPipelineLayout {
-    var layout = c.wgpuDeviceCreatePipelineLayout(device, &c.WGPUPipelineLayoutDescriptor{
+pub fn createPipelineLayout(self: *Self, bind_group_layouts: BindGroupLayouts) !c.WGPUPipelineLayout {
+    var layout = c.wgpuDeviceCreatePipelineLayout(self.device, &c.WGPUPipelineLayoutDescriptor{
         .label = "Pipeline Layout",
         .bindGroupLayoutCount = 2,
         .bindGroupLayouts = @as([]const c.WGPUBindGroupLayout, &.{
@@ -235,8 +280,8 @@ pub fn createPipelineLayout(device: c.WGPUDevice, bind_group_layouts: BindGroupL
     return layout;
 }
 
-pub fn createShaderModule(device: c.WGPUDevice) !c.WGPUShaderModule {
-    var module = c.wgpuDeviceCreateShaderModule(device, &c.WGPUShaderModuleDescriptor{
+pub fn createShaderModule(self: *Self) !c.WGPUShaderModule {
+    var module = c.wgpuDeviceCreateShaderModule(self.device, &c.WGPUShaderModuleDescriptor{
         .label = "Shader",
         .nextInChain = @ptrCast(
             [*c]c.WGPUChainedStruct,
@@ -257,8 +302,8 @@ pub fn createShaderModule(device: c.WGPUDevice) !c.WGPUShaderModule {
     return module orelse error.UnableToCreateShaderModule;
 }
 
-pub fn createRenderPipeline(device: c.WGPUDevice, layout: c.WGPUPipelineLayout, shader: c.WGPUShaderModule, surface_format: c.WGPUTextureFormat) !c.WGPURenderPipeline {
-    var pipeline = c.wgpuDeviceCreateRenderPipeline(device, &c.WGPURenderPipelineDescriptor{
+pub fn createRenderPipeline(self: *Self, layout: c.WGPUPipelineLayout, shader: c.WGPUShaderModule, surface_format: c.WGPUTextureFormat) !c.WGPURenderPipeline {
+    var pipeline = c.wgpuDeviceCreateRenderPipeline(self.device, &c.WGPURenderPipelineDescriptor{
         .nextInChain = null,
         .label = "Render Pipeline",
         .layout = layout,
@@ -338,12 +383,12 @@ pub fn createRenderPipeline(device: c.WGPUDevice, layout: c.WGPUPipelineLayout, 
     return pipeline orelse error.UnableToCreateRenderPipeline;
 }
 
-pub fn createSwapChain(device: c.WGPUDevice, surface: c.WGPUSurface, format: c.WGPUTextureFormat, window: *c.SDL_Window) !c.WGPUSwapChain {
+pub fn createSwapChain(self: *Self, format: c.WGPUTextureFormat, window: *c.SDL_Window) !c.WGPUSwapChain {
     var width: c_int = undefined;
     var height: c_int = undefined;
     c.SDL_GL_GetDrawableSize(window, &width, &height);
 
-    var swap_chain = c.wgpuDeviceCreateSwapChain(device, surface, &c.WGPUSwapChainDescriptor{
+    var swap_chain = c.wgpuDeviceCreateSwapChain(self.device, self.surface, &c.WGPUSwapChainDescriptor{
         .usage = c.WGPUTextureUsage_RenderAttachment,
         .format = format,
         .presentMode = c.WGPUPresentMode_Fifo,
@@ -358,8 +403,16 @@ pub fn createSwapChain(device: c.WGPUDevice, surface: c.WGPUSurface, format: c.W
     return swap_chain orelse error.UnableToCreateSwapChain;
 }
 
-pub fn createBuffer(device: c.WGPUDevice, size: usize, name: [*c]const u8) !c.WGPUBuffer {
-    var buffer = c.wgpuDeviceCreateBuffer(device, &c.WGPUBufferDescriptor{
+pub fn createCommandEncoder(self: *Self, descriptor: *const c.WGPUCommandEncoderDescriptor) c.WGPUCommandEncoder {
+    return c.wgpuDeviceCreateCommandEncoder(self.device, descriptor);
+}
+
+pub fn queueSubmit(self: *Self, buffers: []const c.WGPUCommandBuffer) void {
+    c.wgpuQueueSubmit(self.queue, @intCast(u32, buffers.len), buffers.ptr);
+}
+
+pub fn createBuffer(self: *Self, size: usize, name: [*c]const u8) !c.WGPUBuffer {
+    var buffer = c.wgpuDeviceCreateBuffer(self.device, &c.WGPUBufferDescriptor{
         .nextInChain = null,
         .label = name,
         .usage = c.WGPUBufferUsage_Uniform | c.WGPUBufferUsage_CopyDst,
@@ -381,7 +434,7 @@ pub const Texture = struct {
     }
 };
 
-pub fn createTexture(allocator: std.mem.Allocator, device: c.WGPUDevice, queue: c.WGPUQueue, data: []const u8) !Texture {
+pub fn createTexture(self: *Self, allocator: std.mem.Allocator, data: []const u8) !Texture {
     var stream: img.Image.Stream = .{ .const_buffer = std.io.fixedBufferStream(data) };
 
     var image = try img.qoi.QOI.readImage(allocator, &stream);
@@ -389,7 +442,7 @@ pub fn createTexture(allocator: std.mem.Allocator, device: c.WGPUDevice, queue: 
 
     var texFormat: c_uint = c.WGPUTextureFormat_RGBA8UnormSrgb;
 
-    var tex = c.wgpuDeviceCreateTexture(device, &c.WGPUTextureDescriptor{
+    var tex = c.wgpuDeviceCreateTexture(self.device, &c.WGPUTextureDescriptor{
         .nextInChain = null,
         .label = "Texture",
         .usage = c.WGPUTextureUsage_CopyDst | c.WGPUTextureUsage_TextureBinding,
@@ -419,7 +472,7 @@ pub fn createTexture(allocator: std.mem.Allocator, device: c.WGPUDevice, queue: 
     }) orelse return error.UnableToCreateTextureView;
 
     c.wgpuQueueWriteTexture(
-        queue,
+        self.queue,
         &c.WGPUImageCopyTexture{
             .nextInChain = null,
             .texture = tex,

@@ -1,7 +1,7 @@
 const std = @import("std");
 const zaudio = @import("zaudio");
 const zmath = @import("zmath");
-const gfx = @import("gfx.zig");
+const Gfx = @import("gfx.zig");
 
 pub const c = @cImport({
     @cInclude("fontstash.h");
@@ -45,57 +45,41 @@ pub fn main() !void {
     defer c.SDL_DestroyWindow(window);
     std.debug.print("Created SDL window\n", .{});
 
-    //Create the webgpu instance
-    var instance = try gfx.createInstance();
-    defer c.wgpuInstanceDrop(instance);
-
-    //Create the webgpu surface
-    var surface = try gfx.createSurface(instance, window);
-    defer c.wgpuSurfaceDrop(surface);
-
-    //Request an adapter
-    var adapter = try gfx.requestAdapter(instance, surface);
-    defer c.wgpuAdapterDrop(adapter);
-
-    //Request a device
-    var device = try gfx.requestDevice(adapter);
-    defer c.wgpuDeviceDrop(device);
-
-    //Get the queue
-    var queue = c.wgpuDeviceGetQueue(device) orelse return error.UnableToGetDeviceQueue;
+    var gfx: Gfx = try Gfx.init(window);
+    defer gfx.deinit();
 
     //Setup the error callbacks
-    gfx.setErrorCallbacks(device);
+    gfx.setErrorCallbacks();
 
     //Create our shader module
-    var shader = try gfx.createShaderModule(device);
+    var shader = try gfx.createShaderModule();
     defer c.wgpuShaderModuleDrop(shader);
 
     //Get the surface format
-    var preferred_surface_format = c.wgpuSurfaceGetPreferredFormat(surface, adapter);
+    var preferred_surface_format = gfx.getPreferredSurfaceFormat();
 
     //Create the bind group layouts
-    var bind_group_layouts = try gfx.createBindGroupLayouts(device);
+    var bind_group_layouts = try gfx.createBindGroupLayouts();
     defer bind_group_layouts.deinit();
 
     //Create the render pipeline layout
-    var render_pipeline_layout = try gfx.createPipelineLayout(device, bind_group_layouts);
+    var render_pipeline_layout = try gfx.createPipelineLayout(bind_group_layouts);
     defer c.wgpuPipelineLayoutDrop(render_pipeline_layout);
 
     //Create the render pipeline
-    var render_pipeline = try gfx.createRenderPipeline(device, render_pipeline_layout, shader, preferred_surface_format);
+    var render_pipeline = try gfx.createRenderPipeline(render_pipeline_layout, shader, preferred_surface_format);
     defer c.wgpuRenderPipelineDrop(render_pipeline);
 
     //Create the swapchain
-    var swap_chain = try gfx.createSwapChain(device, surface, preferred_surface_format, window);
+    var swap_chain = try gfx.createSwapChain(preferred_surface_format, window);
     defer c.wgpuSwapChainDrop(swap_chain);
 
     //Create the texture
-    var texture = try gfx.createTexture(allocator, device, queue, @embedFile("content/atlas.qoi"));
+    var texture = try gfx.createTexture(allocator, @embedFile("content/atlas.qoi"));
     defer texture.deinit();
 
     //Create the projection matrix buffer
-    var projection_matrix_buffer = try gfx.createBuffer(device, @sizeOf(zmath.Mat), "Projection Matrix Buffer");
+    var projection_matrix_buffer = try gfx.createBuffer(@sizeOf(zmath.Mat), "Projection Matrix Buffer");
     defer c.wgpuBufferDrop(projection_matrix_buffer);
 
     // var mat = zmath.orthographicOffCenterLh(0, 640, 0, 480, 0, 1);
@@ -113,7 +97,7 @@ pub fn main() !void {
                     //Delete old swapchain
                     c.wgpuSwapChainDrop(swap_chain);
                     //Create a new swapchain
-                    swap_chain = try gfx.createSwapChain(device, surface, preferred_surface_format, window);
+                    swap_chain = try gfx.createSwapChain(preferred_surface_format, window);
                 }
             }
         }
@@ -122,7 +106,7 @@ pub fn main() !void {
         var next_texture = c.wgpuSwapChainGetCurrentTextureView(swap_chain) orelse return error.UnableToGetSwapChainTextureView;
 
         //Create a command encoder
-        var command_encoder = c.wgpuDeviceCreateCommandEncoder(device, &c.WGPUCommandEncoderDescriptor{
+        var command_encoder = gfx.createCommandEncoder(&c.WGPUCommandEncoderDescriptor{
             .nextInChain = null,
             .label = "Command Encoder",
         }) orelse return error.UnableToCreateCommandEncoder;
@@ -160,7 +144,7 @@ pub fn main() !void {
             .label = "Command buffer",
             .nextInChain = null,
         });
-        c.wgpuQueueSubmit(queue, 1, &command_buffer);
+        gfx.queueSubmit(&.{command_buffer});
 
         c.wgpuSwapChainPresent(swap_chain);
         c.wgpuTextureViewDrop(next_texture);
