@@ -38,7 +38,7 @@ pub fn main() !void {
     std.debug.print("Initialized SDL\n", .{});
 
     //Create the window
-    const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640, 480, c.SDL_WINDOW_SHOWN) orelse {
+    const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640, 480, c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_RESIZABLE) orelse {
         std.debug.print("SDL window creation failed! err:{s}\n", .{c.SDL_GetError()});
         return error.CreateWindowFailure;
     };
@@ -103,6 +103,14 @@ pub fn main() !void {
         if (c.SDL_PollEvent(&ev) != 0) {
             if (ev.type == c.SDL_QUIT) {
                 isRunning = false;
+            }
+            if (ev.type == c.SDL_WINDOWEVENT) {
+                if (ev.window.event == c.SDL_WINDOWEVENT_RESIZED) {
+                    //Delete old swapchain
+                    c.wgpuSwapChainDrop(swap_chain);
+                    //Create a new swapchain
+                    swap_chain = try gfx.createSwapChain(device, surface, preferred_surface_format, window);
+                }
             }
         }
 
