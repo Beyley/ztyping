@@ -5,10 +5,21 @@ const Image = struct {
     width: u32,
     height: u32,
     image: img.Image,
+    fn pathological_multiplier(self: Image) f32 {
+        return @intToFloat(f32, std.math.max(self.width, self.height)) / @intToFloat(f32, std.math.min(self.width, self.height)) * @intToFloat(f32, self.width) * @intToFloat(f32, self.height);
+    }
+    fn sorting_func(context: void, a: Image, b: Image) bool {
+        _ = context;
+        return a.pathological_multiplier() > b.pathological_multiplier();
+    }
 };
 
 pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !void {
-    progress_node.setEstimatedTotalItems(1);
+    var start = std.time.nanoTimestamp();
+    defer step.result_duration_ns = @intCast(u64, std.time.nanoTimestamp() - start);
+
+    step.state = .running;
+    progress_node.activate();
 
     var allocator = step.owner.allocator;
 
@@ -24,32 +35,104 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
     var png_files = try find_png_files(allocator, root_path ++ "content/");
     defer allocator.free(png_files);
 
-    for (png_files) |file_path| {
+    progress_node.setEstimatedTotalItems(png_files.len + 4);
+
+    //ignore errors, just try to make it
+    std.fs.makeDirAbsolute(root_path ++ "zig-cache/atlas-gen/") catch |err| {
+        if (err != std.os.MakeDirError.PathAlreadyExists) {
+            return err;
+        }
+    };
+
+    var cache_dir = try std.fs.openDirAbsolute(root_path ++ "zig-cache/atlas-gen/", .{});
+    defer cache_dir.close();
+
+    var hashes: [][]u8 = try allocator.alloc([]u8, png_files.len);
+    defer allocator.free(hashes);
+
+    var needs_rebuild: bool = false;
+    for (png_files, 0..) |file_path, i| {
+        //Open the png file
+        var file = try std.fs.openFileAbsolute(file_path, .{});
+        defer file.close();
+
+        //Get the length of the PNG file
+        var len = try file.getEndPos();
+
+        //allocate a buffer for the file
+        var buf = try allocator.alloc(u8, len);
+        defer allocator.free(buf);
+
+        //Read the whole file
+        _ = try file.readAll(buf);
+
+        //Create an array which will store our hash
+        var hash = [std.crypto.hash.sha2.Sha256.digest_length]u8{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+        //Hash the file
+        std.crypto.hash.sha2.Sha256.hash(buf, &hash, .{});
+
+        //Get a hex escaped version of the hash
+        var hash_hex = std.ArrayList(u8).init(allocator);
+        try std.fmt.format(hash_hex.writer(), "{s}\n", .{std.fmt.fmtSliceHexLower(&hash)});
+        hashes[i] = try hash_hex.toOwnedSlice();
+
+        //Try to open the file which may contain the hash
+        var cache_file = cache_dir.openFile(hashes[i], .{});
+
+        //If the file failed to open, then we need to rebuild
+        var cach_file_val = cache_file catch {
+            needs_rebuild = true;
+            continue;
+        };
+
+        //Close the file if we make it here
+        cach_file_val.close();
+    }
+
+    if (!needs_rebuild) {
+        step.result_cached = true;
+        return;
+    }
+
+    for (png_files, 0..) |file_path, i| {
+        //Open the PNG file
         var file = try std.fs.openFileAbsolute(file_path, .{});
         defer file.close();
 
         var image_stream: img.Image.Stream = .{ .file = file };
 
+        //Load the file
         var image = try img.png.load(&image_stream, allocator, .{ .temp_allocator = allocator });
         try images.append(.{
             .width = @intCast(u32, image.width),
             .height = @intCast(u32, image.height),
             .image = image,
         });
-        std.debug.print("found image {s} with size {d}x{d}\n", .{ file_path, image.width, image.height });
+        // std.debug.print("found image {s} with size {d}x{d}\n", .{ file_path, image.width, image.height });
+
+        //Create the cache file if it does not exist
+        var cache_file = try cache_dir.createFile(hashes[i], .{});
+        cache_file.close();
+
+        progress_node.setCompletedItems(i + 1);
     }
+
+    std.sort.sort(Image, images.items, {}, Image.sorting_func);
+
+    progress_node.setCompletedItems(png_files.len + 1);
 
     const bin_size = 4096;
 
-    // var start = std.time.nanoTimestamp();
     var packed_images = try packImages(allocator, Image, images.items, .{ .w = bin_size, .h = bin_size });
     defer allocator.free(packed_images);
-    // var end = std.time.nanoTimestamp();
-    // std.debug.print("took {d}ms to pack\n", .{@intToFloat(f64, end - start) / std.time.ns_per_ms});
+
+    progress_node.setCompletedItems(png_files.len + 2);
 
     var final_image = try img.Image.create(allocator, bin_size, bin_size, .rgba32);
     defer final_image.deinit();
 
+    //zero-init the image
     for (0..final_image.pixels.rgba32.len) |i| {
         final_image.pixels.rgba32[i] = .{
             .r = 0,
@@ -59,12 +142,37 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
         };
     }
 
+    for (packed_images) |packed_image| {
+        switch (packed_image.image.image.pixels) {
+            .rgba32 => |pix| {
+                for (0..packed_image.image.height) |y| {
+                    std.mem.copyForwards(img.color.Rgba32, final_image.pixels.rgba32[((y + packed_image.pos.y) * final_image.width) + packed_image.pos.x ..], pix[y * packed_image.image.width .. (y + 1) * packed_image.image.width]);
+                }
+            },
+            .rgb24 => |pix| {
+                for (0..packed_image.image.width) |x| {
+                    for (0..packed_image.image.height) |y| {
+                        var pixel = pix[y * packed_image.image.width + x];
+                        final_image.pixels.rgba32[(y + packed_image.pos.y) * final_image.width + packed_image.pos.x + x] = .{ .r = pixel.r, .g = pixel.g, .b = pixel.b, .a = 255 };
+                    }
+                }
+            },
+            else => return error.UnknownImageFormat,
+        }
+    }
+
+    progress_node.setCompletedItems(png_files.len + 3);
+
     var output_file = try std.fs.createFileAbsolute(root_path ++ "src/content/atlas.qoi", .{});
     defer output_file.close();
 
     var output_stream = .{ .file = output_file };
 
     try img.qoi.QOI.writeImage(allocator, &output_stream, final_image, .{ .qoi = .{} });
+
+    progress_node.setCompletedItems(png_files.len + 4);
+
+    progress_node.end();
 }
 
 ///Finds all png files in a folder recursively
