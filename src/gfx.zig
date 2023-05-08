@@ -17,6 +17,7 @@ render_pipeline_layout: c.WGPUPipelineLayout = null,
 render_pipeline: c.WGPURenderPipeline = null,
 swap_chain: c.WGPUSwapChain = null,
 projection_matrix_buffer: c.WGPUBuffer = null,
+projection_matrix_bind_group: c.WGPUBindGroup = null,
 
 pub fn init(window: *c.SDL_Window) !Self {
     var self: Self = Self{};
@@ -60,6 +61,23 @@ pub fn init(window: *c.SDL_Window) !Self {
     //Create the projection matrix buffer
     self.projection_matrix_buffer = try self.createBuffer(@sizeOf(zmath.Mat), "Projection Matrix Buffer");
 
+    self.projection_matrix_bind_group = c.wgpuDeviceCreateBindGroup(self.device, &c.WGPUBindGroupDescriptor{
+        .nextInChain = null,
+        .label = "Projection Matrix BindGroup",
+        .layout = self.bind_group_layouts.projection_matrix,
+        .entryCount = 1,
+        .entries = &c.WGPUBindGroupEntry{
+            .nextInChain = null,
+            .binding = 0,
+            .buffer = self.projection_matrix_buffer,
+            .size = @sizeOf(zmath.Mat),
+            .offset = 0,
+            .sampler = undefined,
+            .textureView = undefined,
+        },
+    }) orelse return error.UnableToCreateTextureBindGroup;
+    std.debug.print("got projection matrix bind group 0x{x}\n", .{@ptrToInt(self.projection_matrix_bind_group.?)});
+
     return self;
 }
 
@@ -94,6 +112,10 @@ pub const RenderPassEncoder = struct {
 
     pub fn end(self: RenderPassEncoder) void {
         c.wgpuRenderPassEncoderEnd(self.c);
+    }
+
+    pub fn setBindGroup(self: *RenderPassEncoder, groupIndex: u32, group: c.WGPUBindGroup, dynamic_offsets: []const u32) void {
+        c.wgpuRenderPassEncoderSetBindGroup(self.c, groupIndex, group, @intCast(u32, dynamic_offsets.len), dynamic_offsets.ptr);
     }
 };
 

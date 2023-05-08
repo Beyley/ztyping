@@ -95,6 +95,7 @@ pub fn main() !void {
 
         //Set the pipeline
         render_pass_encoder.setPipeline(gfx.render_pipeline);
+        render_pass_encoder.setBindGroup(0, gfx.projection_matrix_bind_group, &.{});
 
         var screen = screen_stack.getLast();
         screen.render(gfx, render_pass_encoder);
