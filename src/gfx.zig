@@ -608,6 +608,20 @@ pub fn queueSubmit(self: *Self, buffers: []const c.WGPUCommandBuffer) void {
     c.wgpuQueueSubmit(self.queue, @intCast(u32, buffers.len), buffers.ptr);
 }
 
+pub fn createVertexBuffer(self: *Self, vertex_count: usize) !c.WGPUBuffer {
+    var buffer = c.wgpuDeviceCreateBuffer(self.device, &c.WGPUBufferDescriptor{
+        .nextInChain = null,
+        .size = vertex_count * @sizeOf(Vertex),
+        .mappedAtCreation = false,
+        .usage = c.WGPUBufferUsage_Vertex | c.WGPUBufferUsage_CopyDst,
+        .label = "Vertex Buffer",
+    });
+
+    std.debug.print("got vertex buffer 0x{x}\n", .{@ptrToInt(buffer.?)});
+
+    return buffer orelse error.UnableToCreateBuffer;
+}
+
 pub fn createUniformBuffer(self: *Self, size: usize, name: [*c]const u8) !c.WGPUBuffer {
     var buffer = c.wgpuDeviceCreateBuffer(self.device, &c.WGPUBufferDescriptor{
         .nextInChain = null,
