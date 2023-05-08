@@ -56,7 +56,7 @@ pub fn init(window: *c.SDL_Window) !Self {
     self.render_pipeline = try self.createRenderPipeline(self.render_pipeline_layout, self.shader, preferred_surface_format);
 
     //Create the swapchain
-    self.swap_chain = try self.createSwapChain(window);
+    self.swap_chain = try self.createSwapChainOptimal(window);
 
     //Create the projection matrix buffer
     self.projection_matrix_buffer = try self.createBuffer(@sizeOf(zmath.Mat), "Projection Matrix Buffer");
@@ -505,7 +505,15 @@ pub fn createRenderPipeline(self: *Self, layout: c.WGPUPipelineLayout, shader: c
     return pipeline orelse error.UnableToCreateRenderPipeline;
 }
 
-pub fn createSwapChain(self: *Self, window: *c.SDL_Window) !c.WGPUSwapChain {
+pub fn createSwapChainOptimal(self: *Self, window: *c.SDL_Window) !c.WGPUSwapChain {
+    //Try to create a swapchain with mailbox
+    return self.createSwapChain(window, true) catch {
+        //If that fails, try to create one with standard VSync
+        return try self.createSwapChain(window, false);
+    };
+}
+
+pub fn createSwapChain(self: *Self, window: *c.SDL_Window, mailbox: bool) !c.WGPUSwapChain {
     //If the swapchain is already set,
     if (self.swap_chain != null) {
         //Drop the swapchain
@@ -521,7 +529,7 @@ pub fn createSwapChain(self: *Self, window: *c.SDL_Window) !c.WGPUSwapChain {
     var swap_chain = c.wgpuDeviceCreateSwapChain(self.device, self.surface, &c.WGPUSwapChainDescriptor{
         .usage = c.WGPUTextureUsage_RenderAttachment,
         .format = self.getPreferredSurfaceFormat(),
-        .presentMode = c.WGPUPresentMode_Fifo,
+        .presentMode = if (mailbox) c.WGPUPresentMode_Mailbox else c.WGPUPresentMode_Fifo,
         .nextInChain = null,
         .width = @intCast(u32, width),
         .height = @intCast(u32, height),

@@ -75,7 +75,7 @@ pub fn main() !void {
             if (ev.type == c.SDL_WINDOWEVENT) {
                 if (ev.window.event == c.SDL_WINDOWEVENT_RESIZED) {
                     //Create a new swapchain
-                    gfx.swap_chain = try gfx.createSwapChain(window);
+                    gfx.swap_chain = try gfx.createSwapChainOptimal(window);
                     gfx.updateProjectionMatrixBuffer(window);
                 }
             }
