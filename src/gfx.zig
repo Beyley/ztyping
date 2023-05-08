@@ -74,8 +74,8 @@ pub fn init(window: *c.SDL_Window) !Self {
             .buffer = self.projection_matrix_buffer,
             .size = @sizeOf(zmath.Mat),
             .offset = 0,
-            .sampler = undefined,
-            .textureView = undefined,
+            .sampler = null,
+            .textureView = null,
         },
     }) orelse return error.UnableToCreateTextureBindGroup;
     std.debug.print("got projection matrix bind group 0x{x}\n", .{@ptrToInt(self.projection_matrix_bind_group.?)});
@@ -143,6 +143,38 @@ pub const Texture = struct {
     pub fn deinit(self: Texture) void {
         c.wgpuTextureViewDrop(self.view);
         c.wgpuTextureDrop(self.tex);
+    }
+    pub fn createBindGroup(self: *Texture, gfx: *const Self) !c.WGPUBindGroup {
+        var bind_group = c.wgpuDeviceCreateBindGroup(gfx.device, &c.WGPUBindGroupDescriptor{
+            .label = "Texture Bind Group",
+            .nextInChain = 0,
+            .entries = @as([]const c.WGPUBindGroupEntry, &.{
+                c.WGPUBindGroupEntry{
+                    .nextInChain = null,
+                    .binding = 0,
+                    .textureView = self.view,
+                    .buffer = null,
+                    .offset = 0,
+                    .size = 0,
+                    .sampler = null,
+                },
+                c.WGPUBindGroupEntry{
+                    .nextInChain = null,
+                    .binding = 1,
+                    .textureView = null,
+                    .buffer = null,
+                    .offset = 0,
+                    .size = 0,
+                    .sampler = gfx.sampler,
+                },
+            }).ptr,
+            .entryCount = 2,
+            .layout = gfx.bind_group_layouts.texture_sampler,
+        }) orelse return error.UnableToCreateBindGroupForTexture;
+
+        std.debug.print("got texture bind group 0x{x}\n", .{@ptrToInt(bind_group)});
+
+        return bind_group;
     }
 };
 

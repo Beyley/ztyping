@@ -54,6 +54,10 @@ pub fn main() !void {
     var texture = try gfx.createTexture(allocator, @embedFile("content/atlas.qoi"));
     defer texture.deinit();
 
+    //Create the bind group for the texture
+    var texture_bind_group = try texture.createBindGroup(&gfx);
+    defer c.wgpuBindGroupDrop(texture_bind_group);
+
     gfx.updateProjectionMatrixBuffer(window);
 
     var screen_stack = std.ArrayList(Screen).init(allocator);
