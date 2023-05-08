@@ -2,6 +2,7 @@ const std = @import("std");
 const zaudio = @import("zaudio");
 const zmath = @import("zmath");
 const Gfx = @import("gfx.zig");
+const Screen = @import("screen.zig");
 
 pub const c = @cImport({
     @cInclude("fontstash.h");
@@ -59,6 +60,14 @@ pub fn main() !void {
 
     // var mat = zmath.orthographicOffCenterLh(0, 640, 0, 480, 0, 1);
 
+    var screen_stack = std.ArrayList(Screen).init(allocator);
+    defer screen_stack.deinit();
+
+    //3 is the common deepest, main menu -> song select -> gameplay
+    try screen_stack.ensureUnusedCapacity(3);
+
+    try screen_stack.append(Screen.MainMenu);
+
     var isRunning = true;
     while (isRunning) {
         var ev: c.SDL_Event = undefined;
@@ -91,6 +100,8 @@ pub fn main() !void {
         render_pass_encoder.setPipeline(gfx.render_pipeline);
 
         //TODO: draw things here
+        var screen = screen_stack.getLast();
+        screen.render(gfx, render_pass_encoder);
 
         render_pass_encoder.end();
 
