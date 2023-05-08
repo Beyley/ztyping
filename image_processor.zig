@@ -163,6 +163,8 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
 
     progress_node.setCompletedItems(png_files.len + 3);
 
+    std.fs.makeDirAbsolute(root_path ++ "src/content/") catch {};
+
     var output_file = try std.fs.createFileAbsolute(root_path ++ "src/content/atlas.qoi", .{});
     defer output_file.close();
 
