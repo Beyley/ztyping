@@ -45,6 +45,7 @@ pub fn main() !void {
     defer c.SDL_DestroyWindow(window);
     std.debug.print("Created SDL window\n", .{});
 
+    //Initialize our graphics
     var gfx: Gfx = try Gfx.init(window);
     defer gfx.deinit();
 
@@ -74,51 +75,34 @@ pub fn main() !void {
             }
         }
 
-        //Get the current texture view
+        //Get the current texture view for the swap chain
         var next_texture = try gfx.getCurrentSwapChainTexture();
 
         //Create a command encoder
-        var command_encoder = gfx.createCommandEncoder(&c.WGPUCommandEncoderDescriptor{
+        var command_encoder = try gfx.createCommandEncoder(&c.WGPUCommandEncoderDescriptor{
             .nextInChain = null,
             .label = "Command Encoder",
-        }) orelse return error.UnableToCreateCommandEncoder;
+        });
 
-        //Begin a render pass
-        var render_pass_encoder = c.wgpuCommandEncoderBeginRenderPass(command_encoder, &c.WGPURenderPassDescriptor{
-            .label = "Render Pass Encoder",
-            .colorAttachmentCount = 1,
-            .colorAttachments = &c.WGPURenderPassColorAttachment{
-                .view = next_texture,
-                .loadOp = c.WGPULoadOp_Clear,
-                .storeOp = c.WGPUStoreOp_Store,
-                .clearValue = c.WGPUColor{
-                    .r = 0,
-                    .g = 1,
-                    .b = 0,
-                    .a = 1,
-                },
-                .resolveTarget = null,
-            },
-            .depthStencilAttachment = null,
-            .occlusionQuerySet = null,
-            .timestampWriteCount = 0,
-            .timestampWrites = null,
-            .nextInChain = null,
-        }) orelse return error.UnableToBeginRenderPass;
+        //Begin the render pass
+        var render_pass_encoder = try command_encoder.beginRenderPass(next_texture);
 
         //Set the pipeline
-        c.wgpuRenderPassEncoderSetPipeline(render_pass_encoder, gfx.render_pipeline);
+        render_pass_encoder.setPipeline(gfx.render_pipeline);
 
         //TODO: draw things here
 
-        c.wgpuRenderPassEncoderEnd(render_pass_encoder);
-        var command_buffer = c.wgpuCommandEncoderFinish(command_encoder, &c.WGPUCommandBufferDescriptor{
+        render_pass_encoder.end();
+
+        var command_buffer = try command_encoder.finish(&c.WGPUCommandBufferDescriptor{
             .label = "Command buffer",
             .nextInChain = null,
         });
+
         gfx.queueSubmit(&.{command_buffer});
 
-        c.wgpuSwapChainPresent(gfx.swap_chain);
+        gfx.swapChainPresent();
+
         c.wgpuTextureViewDrop(next_texture);
     }
 }

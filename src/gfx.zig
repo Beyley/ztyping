@@ -74,7 +74,79 @@ pub fn deinit(self: *Self) void {
     self.adapter = null;
     self.surface = null;
     self.instance = null;
+    self.shader = null;
+    self.swap_chain = null;
+    self.render_pipeline = null;
+    self.render_pipeline_layout = null;
 }
+
+pub const RenderPassEncoder = struct {
+    c: c.WGPURenderPassEncoder,
+
+    pub fn setPipeline(self: RenderPassEncoder, pipeline: c.WGPURenderPipeline) void {
+        c.wgpuRenderPassEncoderSetPipeline(self.c, pipeline);
+    }
+
+    pub fn end(self: RenderPassEncoder) void {
+        c.wgpuRenderPassEncoderEnd(self.c);
+    }
+};
+
+pub const Texture = struct {
+    tex: c.WGPUTexture,
+    view: c.WGPUTextureView,
+    pub fn deinit(self: Texture) void {
+        c.wgpuTextureViewDrop(self.view);
+        c.wgpuTextureDrop(self.tex);
+    }
+};
+
+pub const BindGroupLayouts = struct {
+    texture_sampler: c.WGPUBindGroupLayout,
+    projection_matrix: c.WGPUBindGroupLayout,
+    pub fn deinit(self: *BindGroupLayouts) void {
+        c.wgpuBindGroupLayoutDrop(self.texture_sampler);
+        c.wgpuBindGroupLayoutDrop(self.projection_matrix);
+
+        //Clear them to null, so a proper error gets thrown wgpu side if they are re-used
+        self.texture_sampler = null;
+        self.projection_matrix = null;
+    }
+};
+
+pub const CommandEncoder = struct {
+    c: c.WGPUCommandEncoder,
+
+    pub fn finish(self: CommandEncoder, descriptor: *const c.WGPUCommandBufferDescriptor) !c.WGPUCommandBuffer {
+        return c.wgpuCommandEncoderFinish(self.c, descriptor) orelse error.UnableToFinishCommandEncoder;
+    }
+
+    pub fn beginRenderPass(self: *CommandEncoder, color_attachment: c.WGPUTextureView) !RenderPassEncoder {
+        return .{
+            .c = c.wgpuCommandEncoderBeginRenderPass(self.c, &c.WGPURenderPassDescriptor{
+                .label = "Render Pass Encoder",
+                .colorAttachmentCount = 1,
+                .colorAttachments = &c.WGPURenderPassColorAttachment{
+                    .view = color_attachment,
+                    .loadOp = c.WGPULoadOp_Clear,
+                    .storeOp = c.WGPUStoreOp_Store,
+                    .clearValue = c.WGPUColor{
+                        .r = 0,
+                        .g = 1,
+                        .b = 0,
+                        .a = 1,
+                    },
+                    .resolveTarget = null,
+                },
+                .depthStencilAttachment = null,
+                .occlusionQuerySet = null,
+                .timestampWriteCount = 0,
+                .timestampWrites = null,
+                .nextInChain = null,
+            }) orelse return error.UnableToBeginRenderPass,
+        };
+    }
+};
 
 pub const Vertex = extern struct {
     position: @Vector(2, f32),
@@ -223,19 +295,6 @@ pub fn createSurface(instance: c.WGPUInstance, window: *c.SDL_Window) !c.WGPUSur
 pub fn getPreferredSurfaceFormat(self: *Self) c.WGPUTextureFormat {
     return c.wgpuSurfaceGetPreferredFormat(self.surface, self.adapter);
 }
-
-pub const BindGroupLayouts = struct {
-    texture_sampler: c.WGPUBindGroupLayout,
-    projection_matrix: c.WGPUBindGroupLayout,
-    pub fn deinit(self: *BindGroupLayouts) void {
-        c.wgpuBindGroupLayoutDrop(self.texture_sampler);
-        c.wgpuBindGroupLayoutDrop(self.projection_matrix);
-
-        //Clear them to null, so a proper error gets thrown wgpu side if they are re-used
-        self.texture_sampler = null;
-        self.projection_matrix = null;
-    }
-};
 
 pub fn createBindGroupLayouts(self: *Self) !BindGroupLayouts {
     var layouts: BindGroupLayouts = undefined;
@@ -450,8 +509,14 @@ pub fn getCurrentSwapChainTexture(self: *Self) !c.WGPUTextureView {
     return c.wgpuSwapChainGetCurrentTextureView(self.swap_chain) orelse error.UnableToGetSwapChainTextureView;
 }
 
-pub fn createCommandEncoder(self: *Self, descriptor: *const c.WGPUCommandEncoderDescriptor) c.WGPUCommandEncoder {
-    return c.wgpuDeviceCreateCommandEncoder(self.device, descriptor);
+pub fn swapChainPresent(self: *Self) void {
+    c.wgpuSwapChainPresent(self.swap_chain);
+}
+
+pub fn createCommandEncoder(self: *Self, descriptor: *const c.WGPUCommandEncoderDescriptor) !CommandEncoder {
+    return .{
+        .c = c.wgpuDeviceCreateCommandEncoder(self.device, descriptor) orelse return error.UnableToCreateCommandEncoder,
+    };
 }
 
 pub fn queueSubmit(self: *Self, buffers: []const c.WGPUCommandBuffer) void {
@@ -471,15 +536,6 @@ pub fn createBuffer(self: *Self, size: usize, name: [*c]const u8) !c.WGPUBuffer 
 
     return buffer orelse error.UnableToCreateBuffer;
 }
-
-pub const Texture = struct {
-    tex: c.WGPUTexture,
-    view: c.WGPUTextureView,
-    pub fn deinit(self: Texture) void {
-        c.wgpuTextureViewDrop(self.view);
-        c.wgpuTextureDrop(self.tex);
-    }
-};
 
 pub fn createTexture(self: *Self, allocator: std.mem.Allocator, data: []const u8) !Texture {
     var stream: img.Image.Stream = .{ .const_buffer = std.io.fixedBufferStream(data) };
