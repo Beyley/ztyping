@@ -61,6 +61,7 @@ pub fn init(window: *c.SDL_Window) !Self {
     //Create the projection matrix buffer
     self.projection_matrix_buffer = try self.createBuffer(@sizeOf(zmath.Mat), "Projection Matrix Buffer");
 
+    //Create the projection matrix bind group
     self.projection_matrix_bind_group = c.wgpuDeviceCreateBindGroup(self.device, &c.WGPUBindGroupDescriptor{
         .nextInChain = null,
         .label = "Projection Matrix BindGroup",
