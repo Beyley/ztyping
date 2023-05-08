@@ -18,6 +18,7 @@ render_pipeline: c.WGPURenderPipeline = null,
 swap_chain: c.WGPUSwapChain = null,
 projection_matrix_buffer: c.WGPUBuffer = null,
 projection_matrix_bind_group: c.WGPUBindGroup = null,
+sampler: c.WGPUSampler = null,
 
 pub fn init(window: *c.SDL_Window) !Self {
     var self: Self = Self{};
@@ -78,6 +79,22 @@ pub fn init(window: *c.SDL_Window) !Self {
         },
     }) orelse return error.UnableToCreateTextureBindGroup;
     std.debug.print("got projection matrix bind group 0x{x}\n", .{@ptrToInt(self.projection_matrix_bind_group.?)});
+
+    self.sampler = c.wgpuDeviceCreateSampler(self.device, &c.WGPUSamplerDescriptor{
+        .nextInChain = null,
+        .label = "Sampler",
+        .compare = c.WGPUCompareFunction_Undefined,
+        .mipmapFilter = c.WGPUMipmapFilterMode_Linear,
+        .magFilter = c.WGPUFilterMode_Linear,
+        .minFilter = c.WGPUFilterMode_Linear,
+        .addressModeU = c.WGPUAddressMode_ClampToEdge,
+        .addressModeV = c.WGPUAddressMode_ClampToEdge,
+        .addressModeW = c.WGPUAddressMode_ClampToEdge,
+        .lodMaxClamp = 0,
+        .lodMinClamp = 0,
+        .maxAnisotropy = 1,
+    }) orelse return error.UnableToCreateSampler;
+    std.debug.print("got sampler 0x{x}\n", .{@ptrToInt(self.sampler.?)});
 
     return self;
 }
