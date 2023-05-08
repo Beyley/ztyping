@@ -16,6 +16,7 @@ bind_group_layouts: BindGroupLayouts = undefined,
 render_pipeline_layout: c.WGPUPipelineLayout = null,
 render_pipeline: c.WGPURenderPipeline = null,
 swap_chain: c.WGPUSwapChain = null,
+projection_matrix_buffer: c.WGPUBuffer = null,
 
 pub fn init(window: *c.SDL_Window) !Self {
     var self: Self = Self{};
@@ -56,10 +57,14 @@ pub fn init(window: *c.SDL_Window) !Self {
     //Create the swapchain
     self.swap_chain = try self.createSwapChain(window);
 
+    //Create the projection matrix buffer
+    self.projection_matrix_buffer = try self.createBuffer(@sizeOf(zmath.Mat), "Projection Matrix Buffer");
+
     return self;
 }
 
 pub fn deinit(self: *Self) void {
+    c.wgpuBufferDrop(self.projection_matrix_buffer);
     self.bind_group_layouts.deinit();
     c.wgpuPipelineLayoutDrop(self.render_pipeline_layout);
     c.wgpuRenderPipelineDrop(self.render_pipeline);
@@ -535,6 +540,16 @@ pub fn createBuffer(self: *Self, size: usize, name: [*c]const u8) !c.WGPUBuffer 
     std.debug.print("got buffer 0x{x} ({s}) with size {d}\n", .{ @ptrToInt(buffer.?), name, size });
 
     return buffer orelse error.UnableToCreateBuffer;
+}
+
+pub fn updateProjectionMatrixBuffer(self: *Self, window: *c.SDL_Window) void {
+    var w: c_int = 0;
+    var h: c_int = 0;
+    c.SDL_GL_GetDrawableSize(window, &w, &h);
+
+    var mat = zmath.orthographicOffCenterLh(0, @intToFloat(f32, w), 0, @intToFloat(f32, h), 0, 1);
+
+    c.wgpuQueueWriteBuffer(self.queue, self.projection_matrix_buffer, 0, &mat, @sizeOf(zmath.Mat));
 }
 
 pub fn createTexture(self: *Self, allocator: std.mem.Allocator, data: []const u8) !Texture {

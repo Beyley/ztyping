@@ -54,11 +54,7 @@ pub fn main() !void {
     var texture = try gfx.createTexture(allocator, @embedFile("content/atlas.qoi"));
     defer texture.deinit();
 
-    //Create the projection matrix buffer
-    var projection_matrix_buffer = try gfx.createBuffer(@sizeOf(zmath.Mat), "Projection Matrix Buffer");
-    defer c.wgpuBufferDrop(projection_matrix_buffer);
-
-    // var mat = zmath.orthographicOffCenterLh(0, 640, 0, 480, 0, 1);
+    gfx.updateProjectionMatrixBuffer(window);
 
     var screen_stack = std.ArrayList(Screen).init(allocator);
     defer screen_stack.deinit();
@@ -80,6 +76,7 @@ pub fn main() !void {
                 if (ev.window.event == c.SDL_WINDOWEVENT_RESIZED) {
                     //Create a new swapchain
                     gfx.swap_chain = try gfx.createSwapChain(window);
+                    gfx.updateProjectionMatrixBuffer(window);
                 }
             }
         }
@@ -99,7 +96,6 @@ pub fn main() !void {
         //Set the pipeline
         render_pass_encoder.setPipeline(gfx.render_pipeline);
 
-        //TODO: draw things here
         var screen = screen_stack.getLast();
         screen.render(gfx, render_pass_encoder);
 
