@@ -1,0 +1,29 @@
+name: Native Compilation
+on:
+  push:
+jobs:
+  Build:
+    strategy:
+      fail-fast: false
+      matrix:
+        env:
+          - os: ubuntu-latest
+            name: Linux
+            extras: |
+              sudo apt-get update 
+              sudo apt-get install -y xorg-dev build-essential libudev-dev
+    name: ${{ matrix.env.name }} Build
+    runs-on: ${{ matrix.env.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Checkout submodules, configure git
+        run: |
+          git submodule update --init --recursive --depth 0 
+      - name: Extra prerequisites
+        run: |
+          echo running extras
+          ${{ matrix.env.extras }}
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@v2
+      - name: Build ztyping
+        run: zig build
