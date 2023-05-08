@@ -60,7 +60,7 @@ pub fn init(window: *c.SDL_Window) !Self {
     self.swap_chain = try self.createSwapChainOptimal(window);
 
     //Create the projection matrix buffer
-    self.projection_matrix_buffer = try self.createBuffer(@sizeOf(zmath.Mat), "Projection Matrix Buffer");
+    self.projection_matrix_buffer = try self.createUniformBuffer(@sizeOf(zmath.Mat), "Projection Matrix Buffer");
 
     //Create the projection matrix bind group
     self.projection_matrix_bind_group = c.wgpuDeviceCreateBindGroup(self.device, &c.WGPUBindGroupDescriptor{
@@ -608,7 +608,7 @@ pub fn queueSubmit(self: *Self, buffers: []const c.WGPUCommandBuffer) void {
     c.wgpuQueueSubmit(self.queue, @intCast(u32, buffers.len), buffers.ptr);
 }
 
-pub fn createBuffer(self: *Self, size: usize, name: [*c]const u8) !c.WGPUBuffer {
+pub fn createUniformBuffer(self: *Self, size: usize, name: [*c]const u8) !c.WGPUBuffer {
     var buffer = c.wgpuDeviceCreateBuffer(self.device, &c.WGPUBufferDescriptor{
         .nextInChain = null,
         .label = name,
