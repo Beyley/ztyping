@@ -11,6 +11,11 @@ surface: c.WGPUSurface = null,
 adapter: c.WGPUAdapter = null,
 device: c.WGPUDevice = null,
 queue: c.WGPUQueue = null,
+shader: c.WGPUShaderModule = null,
+bind_group_layouts: BindGroupLayouts = undefined,
+render_pipeline_layout: c.WGPUPipelineLayout = null,
+render_pipeline: c.WGPURenderPipeline = null,
+swap_chain: c.WGPUSwapChain = null,
 
 pub fn init(window: *c.SDL_Window) !Self {
     var self: Self = Self{};
@@ -30,10 +35,36 @@ pub fn init(window: *c.SDL_Window) !Self {
     //Get the queue
     self.queue = c.wgpuDeviceGetQueue(self.device) orelse return error.UnableToGetDeviceQueue;
 
+    //Setup the error callbacks
+    self.setErrorCallbacks();
+
+    //Create our shader module
+    self.shader = try self.createShaderModule();
+
+    //Get the surface format
+    var preferred_surface_format = self.getPreferredSurfaceFormat();
+
+    //Create the bind group layouts
+    self.bind_group_layouts = try self.createBindGroupLayouts();
+
+    //Create the render pipeline layout
+    self.render_pipeline_layout = try self.createPipelineLayout(self.bind_group_layouts);
+
+    //Create the render pipeline
+    self.render_pipeline = try self.createRenderPipeline(self.render_pipeline_layout, self.shader, preferred_surface_format);
+
+    //Create the swapchain
+    self.swap_chain = try self.createSwapChain(window);
+
     return self;
 }
 
 pub fn deinit(self: *Self) void {
+    self.bind_group_layouts.deinit();
+    c.wgpuPipelineLayoutDrop(self.render_pipeline_layout);
+    c.wgpuRenderPipelineDrop(self.render_pipeline);
+    c.wgpuSwapChainDrop(self.swap_chain);
+    c.wgpuShaderModuleDrop(self.shader);
     c.wgpuDeviceDrop(self.device);
     c.wgpuAdapterDrop(self.adapter);
     c.wgpuSurfaceDrop(self.surface);
@@ -196,9 +227,13 @@ pub fn getPreferredSurfaceFormat(self: *Self) c.WGPUTextureFormat {
 pub const BindGroupLayouts = struct {
     texture_sampler: c.WGPUBindGroupLayout,
     projection_matrix: c.WGPUBindGroupLayout,
-    pub fn deinit(self: BindGroupLayouts) void {
+    pub fn deinit(self: *BindGroupLayouts) void {
         c.wgpuBindGroupLayoutDrop(self.texture_sampler);
         c.wgpuBindGroupLayoutDrop(self.projection_matrix);
+
+        //Clear them to null, so a proper error gets thrown wgpu side if they are re-used
+        self.texture_sampler = null;
+        self.projection_matrix = null;
     }
 };
 
@@ -383,14 +418,22 @@ pub fn createRenderPipeline(self: *Self, layout: c.WGPUPipelineLayout, shader: c
     return pipeline orelse error.UnableToCreateRenderPipeline;
 }
 
-pub fn createSwapChain(self: *Self, format: c.WGPUTextureFormat, window: *c.SDL_Window) !c.WGPUSwapChain {
+pub fn createSwapChain(self: *Self, window: *c.SDL_Window) !c.WGPUSwapChain {
+    //If the swapchain is already set,
+    if (self.swap_chain != null) {
+        //Drop the swapchain
+        c.wgpuSwapChainDrop(self.swap_chain);
+        //Mark it null
+        self.swap_chain = null;
+    }
+
     var width: c_int = undefined;
     var height: c_int = undefined;
     c.SDL_GL_GetDrawableSize(window, &width, &height);
 
     var swap_chain = c.wgpuDeviceCreateSwapChain(self.device, self.surface, &c.WGPUSwapChainDescriptor{
         .usage = c.WGPUTextureUsage_RenderAttachment,
-        .format = format,
+        .format = self.getPreferredSurfaceFormat(),
         .presentMode = c.WGPUPresentMode_Fifo,
         .nextInChain = null,
         .width = @intCast(u32, width),
@@ -401,6 +444,10 @@ pub fn createSwapChain(self: *Self, format: c.WGPUTextureFormat, window: *c.SDL_
     std.debug.print("got swap chain 0x{x} with size {d}x{d}\n", .{ @ptrToInt(swap_chain.?), width, height });
 
     return swap_chain orelse error.UnableToCreateSwapChain;
+}
+
+pub fn getCurrentSwapChainTexture(self: *Self) !c.WGPUTextureView {
+    return c.wgpuSwapChainGetCurrentTextureView(self.swap_chain) orelse error.UnableToGetSwapChainTextureView;
 }
 
 pub fn createCommandEncoder(self: *Self, descriptor: *const c.WGPUCommandEncoderDescriptor) c.WGPUCommandEncoder {

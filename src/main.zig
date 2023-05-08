@@ -26,8 +26,8 @@ pub fn main() !void {
     defer zaudio.deinit();
 
     //Initialize our audio engine
-    const engine = try zaudio.Engine.create(null);
-    defer engine.destroy();
+    const audio_engine = try zaudio.Engine.create(null);
+    defer audio_engine.destroy();
 
     //Initialize SDL
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
@@ -47,32 +47,6 @@ pub fn main() !void {
 
     var gfx: Gfx = try Gfx.init(window);
     defer gfx.deinit();
-
-    //Setup the error callbacks
-    gfx.setErrorCallbacks();
-
-    //Create our shader module
-    var shader = try gfx.createShaderModule();
-    defer c.wgpuShaderModuleDrop(shader);
-
-    //Get the surface format
-    var preferred_surface_format = gfx.getPreferredSurfaceFormat();
-
-    //Create the bind group layouts
-    var bind_group_layouts = try gfx.createBindGroupLayouts();
-    defer bind_group_layouts.deinit();
-
-    //Create the render pipeline layout
-    var render_pipeline_layout = try gfx.createPipelineLayout(bind_group_layouts);
-    defer c.wgpuPipelineLayoutDrop(render_pipeline_layout);
-
-    //Create the render pipeline
-    var render_pipeline = try gfx.createRenderPipeline(render_pipeline_layout, shader, preferred_surface_format);
-    defer c.wgpuRenderPipelineDrop(render_pipeline);
-
-    //Create the swapchain
-    var swap_chain = try gfx.createSwapChain(preferred_surface_format, window);
-    defer c.wgpuSwapChainDrop(swap_chain);
 
     //Create the texture
     var texture = try gfx.createTexture(allocator, @embedFile("content/atlas.qoi"));
@@ -94,16 +68,14 @@ pub fn main() !void {
             }
             if (ev.type == c.SDL_WINDOWEVENT) {
                 if (ev.window.event == c.SDL_WINDOWEVENT_RESIZED) {
-                    //Delete old swapchain
-                    c.wgpuSwapChainDrop(swap_chain);
                     //Create a new swapchain
-                    swap_chain = try gfx.createSwapChain(preferred_surface_format, window);
+                    gfx.swap_chain = try gfx.createSwapChain(window);
                 }
             }
         }
 
         //Get the current texture view
-        var next_texture = c.wgpuSwapChainGetCurrentTextureView(swap_chain) orelse return error.UnableToGetSwapChainTextureView;
+        var next_texture = try gfx.getCurrentSwapChainTexture();
 
         //Create a command encoder
         var command_encoder = gfx.createCommandEncoder(&c.WGPUCommandEncoderDescriptor{
@@ -135,7 +107,7 @@ pub fn main() !void {
         }) orelse return error.UnableToBeginRenderPass;
 
         //Set the pipeline
-        c.wgpuRenderPassEncoderSetPipeline(render_pass_encoder, render_pipeline);
+        c.wgpuRenderPassEncoderSetPipeline(render_pass_encoder, gfx.render_pipeline);
 
         //TODO: draw things here
 
@@ -146,7 +118,7 @@ pub fn main() !void {
         });
         gfx.queueSubmit(&.{command_buffer});
 
-        c.wgpuSwapChainPresent(swap_chain);
+        c.wgpuSwapChainPresent(gfx.swap_chain);
         c.wgpuTextureViewDrop(next_texture);
     }
 }
