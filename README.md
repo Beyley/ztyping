@@ -5,7 +5,7 @@ A reimplementation of [UTyping](https://tosk.jp/utyping/) in Zig, using [wgpu-na
 # Platforms
 
 Active platform support
- - Linux x86_64 (x86_64-linux) ([not a cross compilation target](https://github.com/Beyley/ztyping/issues/2))
+ - Linux x86_64 (x86_64-linux)
 
 Compiles, untested
  - MacOS x86_64 (x86_64-macos)
@@ -51,7 +51,7 @@ TODO
 
 |     | Linux x86_64 | MacOS x86_64 | MacOS ARM64 | Windows x86_64 |
 | --- | --- | --- | --- | --- |
-|[Linux x86_64](https://github.com/Beyley/ztyping/issues/2)| 🚧 | ❓ | ❓ | ❓ |
+|[Linux x86_64](https://github.com/Beyley/ztyping/issues/3)| ✔️ | 🟨 | 🟨 | 🟨 |
 |MacOS x86_64| ✔️ | 🟨 | 🟨 | 🟨 |
 |MacOS arm64| ✔️ | 🟨 | 🟨 | 🟨 |
 |[Windows x86_64](https://github.com/Beyley/ztyping/issues/1)| 🚧 | ❓ | ❓ | ❓ |
@@ -59,6 +59,7 @@ TODO
 
 ### Notes
  - Native compilation *will* act differently than cross compilation, this is specifically about cross compilation, see Linux x86_64 for an example, which can compile natively on itself, but you cant cross compile to Linux from Linux
+ - You must use `-Dwgpu_from_source=true` to be able to cross compile to Linux x86_64, as dynamically linking against wgpu-native does not seem to work when cross compiling, for an unknown reason at the moment
 
 ✔️ = Tested working<br>
 🚧 = In progress<br>
