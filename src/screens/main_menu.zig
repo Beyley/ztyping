@@ -1,11 +1,37 @@
+const std = @import("std");
+
 const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");
 
-pub const MainMenu = Screen{
-    .render = renderScreen,
+const MainMenuData = struct {
+    waaa: u64 = 0,
 };
 
-pub fn renderScreen(gfx: Gfx, render_pass_encoder: Gfx.RenderPassEncoder, texture: Gfx.Texture) void {
+pub var MainMenu = Screen{
+    .render = renderScreen,
+    .init = initScreen,
+    .deinit = deinitScreen,
+    .allocator = undefined,
+    .data = undefined,
+};
+
+pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) bool {
+    self.allocator = allocator;
+    self.data = allocator.create(MainMenuData) catch {
+        std.debug.print("Failed to allocate MainMenuData!!???\n", .{});
+        return false;
+    };
+    _ = gfx;
+
+    return true;
+}
+
+pub fn deinitScreen(self: *Screen) void {
+    self.allocator.destroy(self.getData(MainMenuData));
+}
+
+pub fn renderScreen(self: *Screen, gfx: Gfx, render_pass_encoder: Gfx.RenderPassEncoder, texture: Gfx.Texture) void {
+    _ = self;
     _ = render_pass_encoder;
     _ = gfx;
     _ = texture;

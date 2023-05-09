@@ -3,6 +3,7 @@ const zaudio = @import("zaudio");
 const zmath = @import("zmath");
 const Gfx = @import("gfx.zig");
 const Screen = @import("screen.zig");
+const ScreenStack = @import("screen_stack.zig");
 
 pub const c = @cImport({
     @cInclude("fontstash.h");
@@ -56,13 +57,10 @@ pub fn main() !void {
 
     gfx.updateProjectionMatrixBuffer(window);
 
-    var screen_stack = std.ArrayList(Screen).init(allocator);
+    var screen_stack = ScreenStack.init(allocator);
     defer screen_stack.deinit();
 
-    //3 is the common deepest, main menu -> song select -> gameplay
-    try screen_stack.ensureUnusedCapacity(3);
-
-    try screen_stack.append(Screen.MainMenu);
+    try screen_stack.load(&Screen.MainMenu.MainMenu, gfx);
 
     var isRunning = true;
     while (isRunning) {
@@ -97,8 +95,8 @@ pub fn main() !void {
         render_pass_encoder.setPipeline(gfx.render_pipeline);
         render_pass_encoder.setBindGroup(0, gfx.projection_matrix_bind_group, &.{});
 
-        var screen = screen_stack.getLast();
-        screen.render(gfx, render_pass_encoder, texture);
+        var screen = screen_stack.top();
+        screen.render(screen, gfx, render_pass_encoder, texture);
 
         render_pass_encoder.end();
 
