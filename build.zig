@@ -41,7 +41,13 @@ pub fn build(b: *std.Build) !void {
     } //fontstash
 
     { //SDL
-        const sdl_pkg = try sdl.createSDL(b, target, optimize, sdl.getDefaultOptionsForTarget(target));
+        var sdl_options = sdl.getDefaultOptionsForTarget(target);
+
+        if(target.getOsTag() == .windows) {
+            sdl_options.shared = true;
+        }
+
+        const sdl_pkg = try sdl.createSDL(b, target, optimize, sdl_options);
         exe.linkLibrary(sdl_pkg);
         exe.addIncludePath("libs/SDL/include");
 
