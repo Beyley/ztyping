@@ -24,7 +24,10 @@ pub fn load(self: *ScreenStack, screen: *Screen, gfx: Gfx) !void {
 }
 
 pub fn pop(self: *ScreenStack) *Screen {
-    return self.internal.pop();
+    var screen = self.internal.pop();
+    screen.deinit(screen);
+
+    return screen;
 }
 
 pub fn top(self: *const ScreenStack) *Screen {

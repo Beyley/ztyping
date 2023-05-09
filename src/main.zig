@@ -111,4 +111,8 @@ pub fn main() !void {
 
         c.wgpuTextureViewDrop(next_texture);
     }
+
+    while (screen_stack.count() != 0) {
+        _ = screen_stack.pop();
+    }
 }
