@@ -140,12 +140,15 @@ pub const RenderPassEncoder = struct {
 pub const Texture = struct {
     tex: c.WGPUTexture,
     view: c.WGPUTextureView,
+    bind_group: c.WGPUBindGroup,
+
     pub fn deinit(self: Texture) void {
         c.wgpuTextureViewDrop(self.view);
         c.wgpuTextureDrop(self.tex);
+        c.wgpuBindGroupDrop(self.bind_group);
     }
-    pub fn createBindGroup(self: *Texture, gfx: *const Self) !c.WGPUBindGroup {
-        var bind_group = c.wgpuDeviceCreateBindGroup(gfx.device, &c.WGPUBindGroupDescriptor{
+    pub fn createBindGroup(self: *Texture, gfx: *const Self) !void {
+        self.bind_group = c.wgpuDeviceCreateBindGroup(gfx.device, &c.WGPUBindGroupDescriptor{
             .label = "Texture Bind Group",
             .nextInChain = 0,
             .entries = @as([]const c.WGPUBindGroupEntry, &.{
@@ -172,9 +175,7 @@ pub const Texture = struct {
             .layout = gfx.bind_group_layouts.texture_sampler,
         }) orelse return error.UnableToCreateBindGroupForTexture;
 
-        std.debug.print("got texture bind group 0x{x}\n", .{@ptrToInt(bind_group)});
-
-        return bind_group;
+        std.debug.print("got texture bind group 0x{x}\n", .{@ptrToInt(self.bind_group)});
     }
 };
 
@@ -711,8 +712,12 @@ pub fn createTexture(self: *Self, allocator: std.mem.Allocator, data: []const u8
         },
     );
 
-    return .{
+    var texture = Texture{
         .tex = tex,
         .view = view,
+        .bind_group = undefined,
     };
+    try texture.createBindGroup(self);
+
+    return texture;
 }
