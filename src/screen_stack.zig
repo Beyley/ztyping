@@ -23,6 +23,14 @@ pub fn load(self: *ScreenStack, screen: *Screen, gfx: Gfx) !void {
     try self.internal.append(screen);
 }
 
+pub fn pop(self: *ScreenStack) *Screen {
+    return self.internal.pop();
+}
+
 pub fn top(self: *const ScreenStack) *Screen {
     return self.internal.getLast();
+}
+
+pub fn count(self: *const ScreenStack) usize {
+    return self.internal.items.len;
 }
