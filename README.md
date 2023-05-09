@@ -60,7 +60,7 @@ TODO
 |[Windows x86](https://github.com/Beyley/ztyping/issues/1)| ❌ | ❓ | ❓ | ❓ | ❓ |
 
 ### Notes
- - Native compilation *will* act differently than cross compilation, this is specifically about cross compilation, see Linux x86_64 for an example, which can compile natively on itself, but you cant cross compile to Linux from Linux
+ - Native compilation *will* act differently than cross compilation, this is specifically about cross compilation
 
 ✔️ = Tested working<br>
 🚧 = In progress<br>
