@@ -5,11 +5,12 @@ A reimplementation of [UTyping](https://tosk.jp/utyping/) in Zig, using [wgpu-na
 # Platforms
 
 Active platform support
- - Linux x86_64 (x86_64-linux)
+ - Linux x86_64 glibc (x86_64-linux-gnu)
 
 Compiles, untested
  - MacOS x86_64 (x86_64-macos)
  - MacOS aarch64 (aarch64-macos)
+ - Linux x86_64 musl (x86_64-linux-musl)
 
 Doesnt compile
  - [Windows x86_64](https://github.com/Beyley/ztyping/issues/1) (x86_64-windows-gnu)
@@ -49,13 +50,14 @@ TODO
 
 `-Dtarget=X`    Sets the target machine of the compilation, possible options are listed [here](#platforms) in parentheses, below is a matrix of supported cross compilation targets, host on the top, target on the left
 
-|     | Linux x86_64 | MacOS x86_64 | MacOS ARM64 | Windows x86_64 |
-| --- | --- | --- | --- | --- |
-|Linux x86_64| ✔️ | 🟨 | 🟨 | 🟨 |
-|MacOS x86_64| ✔️ | 🟨 | 🟨 | 🟨 |
-|MacOS arm64| ✔️ | 🟨 | 🟨 | 🟨 |
-|[Windows x86_64](https://github.com/Beyley/ztyping/issues/1)| 🚧 | ❓ | ❓ | ❓ |
-|[Windows x86](https://github.com/Beyley/ztyping/issues/1)| ❌ | ❓ | ❓ | ❓ |
+|     | Linux x86_64 glibc | Linux x86_64 musl | MacOS x86_64 | MacOS arm64 | Windows x86_64 |
+| --- | --- | --- | --- | --- | --- |
+|Linux x86_64 glibc | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
+|Linux x86_64 musl | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
+|MacOS x86_64 | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
+|MacOS arm64 | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
+|[Windows x86_64](https://github.com/Beyley/ztyping/issues/1)| 🚧 | ❓ | ❓ | ❓ | ❓ |
+|[Windows x86](https://github.com/Beyley/ztyping/issues/1)| ❌ | ❓ | ❓ | ❓ | ❓ |
 
 ### Notes
  - Native compilation *will* act differently than cross compilation, this is specifically about cross compilation, see Linux x86_64 for an example, which can compile natively on itself, but you cant cross compile to Linux from Linux
@@ -79,10 +81,11 @@ Uses `cross` to setup a container for cross compilation of rust code, follow [th
 
 ### From/to?
 
-|     | Linux x86_64 | MacOS x86_64 | MacOS ARM64 | Windows x86_64 |
-| --- | --- | --- | --- | --- |
-|Linux x86_64| ✔️ | 🟨 | 🟨 | 🟨 |
-|MacOS x86_64| ❌ | 🟨 | 🟨 | ❓ |
-|MacOS arm64| ❌ | 🟨 | 🟨 | ❓ |
-|Windows x86_64| ✔️ | 🟨 | 🟨 | 🟨 |
-|Windows x86| ❓ | ❓ | ❓ | ❓ |
+|     | Linux x86_64 glibc | Linux x86_64 musl | MacOS x86_64 | MacOS arm64 | Windows x86_64 |
+| --- | --- | --- | --- | --- | --- |
+|Linux x86_64 glibc| ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
+|Linux x86_64 musl| ❓ | ❓ | ❓ | ❓ | ❓ |
+|MacOS x86_64| ❌ | ❌ | 🟨 | 🟨 | ❓ |
+|MacOS arm64| ❌ | ❌ | 🟨 | 🟨 | ❓ |
+|Windows x86_64| ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
+|Windows x86| ❓ | ❓ | ❓ | ❓ | ❓ |
