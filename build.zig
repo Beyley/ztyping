@@ -45,9 +45,7 @@ pub fn build(b: *std.Build) !void {
         exe.linkLibrary(sdl_pkg);
         exe.addIncludePath("libs/SDL/include");
 
-        if (target.getOsTag() == .macos) {
-            sdl.applyMacosLinkerArgs(exe);
-        }
+        try sdl.applyLinkerArgs(b.allocator, target, exe);
 
         //Add the C macros to the exe
         try exe.c_macros.appendSlice(sdl_pkg.c_macros.items);
