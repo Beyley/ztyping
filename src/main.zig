@@ -95,7 +95,9 @@ pub fn main() !void {
         render_pass_encoder.setPipeline(gfx.render_pipeline);
         render_pass_encoder.setBindGroup(0, gfx.projection_matrix_bind_group, &.{});
 
+        //Get the top screen
         var screen = screen_stack.top();
+        //Render it
         screen.render(screen, gfx, render_pass_encoder, texture);
 
         render_pass_encoder.end();
