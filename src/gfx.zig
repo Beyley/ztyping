@@ -61,8 +61,7 @@ pub fn init(window: *c.SDL_Window) !Self {
     self.swap_chain = try self.device.createSwapChainOptimal(self.adapter, self.surface, window);
 
     //Create the projection matrix buffer
-    self.projection_matrix_buffer = try self.device.createBuffer(@sizeOf(zmath.Mat), .uniform);
-    // self.projection_matrix_buffer = try self.device.createUniformBuffer(@sizeOf(zmath.Mat), "Projection Matrix Buffer");
+    self.projection_matrix_buffer = try self.device.createBuffer(zmath.Mat, 1, .uniform);
 
     //Create the projection matrix bind group
     self.projection_matrix_bind_group = .{
@@ -437,7 +436,7 @@ pub const Device = struct {
         var swap_chain = c.wgpuDeviceCreateSwapChain(self.c, surface.c, &c.WGPUSwapChainDescriptor{
             .usage = c.WGPUTextureUsage_RenderAttachment,
             .format = surface.getPreferredFormat(adapter),
-            .presentMode = if (mailbox) c.WGPUPresentMode_Mailbox else c.WGPUPresentMode_Fifo,
+            .presentMode = if (mailbox) c.WGPUPresentMode_Mailbox else c.WGPUPresentMode_Immediate,
             .nextInChain = null,
             .width = @intCast(u32, width),
             .height = @intCast(u32, height),
@@ -644,20 +643,6 @@ pub const Device = struct {
         };
     }
 
-    pub fn createUniformBuffer(self: Device, size: usize, name: [*c]const u8) !c.WGPUBuffer {
-        var buffer = c.wgpuDeviceCreateBuffer(self.c, &c.WGPUBufferDescriptor{
-            .nextInChain = null,
-            .label = name,
-            .usage = c.WGPUBufferUsage_Uniform | c.WGPUBufferUsage_CopyDst,
-            .size = @intCast(u64, size),
-            .mappedAtCreation = false,
-        });
-
-        std.debug.print("got buffer 0x{x} ({s}) with size {d}\n", .{ @ptrToInt(buffer.?), name, size });
-
-        return buffer orelse error.UnableToCreateBuffer;
-    }
-
     pub fn createTexture(self: Device, queue: Queue, allocator: std.mem.Allocator, data: []const u8) !Texture {
         var stream: img.Image.Stream = .{ .const_buffer = std.io.fixedBufferStream(data) };
 
@@ -731,7 +716,9 @@ pub const Device = struct {
         return texture;
     }
 
-    pub fn createBuffer(self: Device, size: u64, comptime buffer_type: BufferType) !Buffer {
+    pub fn createBuffer(self: Device, comptime contents_type: type, count: u64, comptime buffer_type: BufferType) !Buffer {
+        const size = @intCast(u64, @sizeOf(contents_type) * count);
+
         var buffer = c.wgpuDeviceCreateBuffer(self.c, &c.WGPUBufferDescriptor{
             .nextInChain = null,
             .size = size,

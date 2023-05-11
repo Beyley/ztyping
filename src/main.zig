@@ -10,8 +10,10 @@ pub const c = @cImport({
     @cInclude("SDL.h");
     @cInclude("SDL_syswm.h");
     @cInclude("wgpu.h");
-    // @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", "1");
-    // @cInclude("cimgui.h");
+    @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", "1");
+    @cDefine("CIMGUI_USE_SDL2", "1");
+    @cDefine("CIMGUI_USE_WGPU", "1");
+    @cInclude("cimgui.h");
 });
 
 pub var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
@@ -51,6 +53,26 @@ pub fn main() !void {
     var gfx: Gfx = try Gfx.init(window);
     defer gfx.deinit();
 
+    var imgui_context = c.igCreateContext(null);
+    defer c.igDestroyContext(imgui_context);
+
+    c.igSetCurrentContext(imgui_context);
+
+    if (!c.ImGui_ImplSDL2_InitForD3D(window)) {
+        return error.UnableToInitSDL2ImGui;
+    }
+    defer c.ImGui_ImplSDL2_Shutdown();
+
+    if (!c.ImGui_ImplWGPU_Init(gfx.device.c, 1, gfx.surface.getPreferredFormat(gfx.adapter), c.WGPUTextureFormat_Undefined)) {
+        return error.UnableToInitWGPUImGui;
+    }
+    defer c.ImGui_ImplWGPU_Shutdown();
+
+    //Create the initial WGPU ImGui device objects
+    if (!c.ImGui_ImplWGPU_CreateDeviceObjects()) {
+        return error.UnableToCreateImGuiWGPUDeviceObjects;
+    }
+
     //Create the texture
     var texture = try gfx.device.createTexture(gfx.queue, allocator, @embedFile("content/atlas.qoi"));
     defer texture.deinit();
@@ -61,15 +83,27 @@ pub fn main() !void {
     gfx.updateProjectionMatrixBuffer(gfx.queue, window);
 
     var screen_stack = ScreenStack.init(allocator);
-    defer screen_stack.deinit();
+    defer {
+        while (screen_stack.count() != 0) {
+            _ = screen_stack.pop();
+        }
+
+        screen_stack.deinit();
+    }
 
     try screen_stack.load(&Screen.MainMenu.MainMenu, gfx);
+
+    var old_width: c_int = 0;
+    var old_height: c_int = 0;
+    c.SDL_GL_GetDrawableSize(window, &old_width, &old_height);
 
     var isRunning = true;
     while (isRunning) {
         var ev: c.SDL_Event = undefined;
 
-        if (c.SDL_PollEvent(&ev) != 0) {
+        while (c.SDL_PollEvent(&ev) != 0) {
+            _ = c.ImGui_ImplSDL2_ProcessEvent(&ev);
+
             if (ev.type == c.SDL_QUIT) {
                 isRunning = false;
             }
@@ -77,14 +111,30 @@ pub fn main() !void {
                 if (ev.key.keysym.sym == c.SDLK_ESCAPE)
                     isRunning = false;
             }
-            if (ev.type == c.SDL_WINDOWEVENT) {
-                if (ev.window.event == c.SDL_WINDOWEVENT_RESIZED) {
-                    //Create a new swapchain
-                    try gfx.recreateSwapChain(window);
-                    gfx.updateProjectionMatrixBuffer(gfx.queue, window);
-                }
-            }
         }
+
+        var width: c_int = 0;
+        var height: c_int = 0;
+        c.SDL_GL_GetDrawableSize(window, &width, &height);
+
+        if (width != old_width or height != old_height) {
+            c.ImGui_ImplWGPU_InvalidateDeviceObjects();
+
+            //Create a new swapchain
+            try gfx.recreateSwapChain(window);
+            gfx.updateProjectionMatrixBuffer(gfx.queue, window);
+
+            if (!c.ImGui_ImplWGPU_CreateDeviceObjects()) {
+                return error.UnableToCreateImGuiDeviceObjects;
+            }
+
+            old_height = height;
+            old_width = width;
+        }
+
+        c.ImGui_ImplWGPU_NewFrame();
+        c.ImGui_ImplSDL2_NewFrame();
+        c.igNewFrame();
 
         //Get the current texture view for the swap chain
         var next_texture = try gfx.swap_chain.?.getCurrentSwapChainTexture();
@@ -108,6 +158,9 @@ pub fn main() !void {
         //Render it
         screen.render(screen, gfx, render_pass_encoder, texture);
 
+        c.igRender();
+        c.ImGui_ImplWGPU_RenderDrawData(c.igGetDrawData(), render_pass_encoder.c);
+
         render_pass_encoder.end();
 
         var command_buffer = try command_encoder.finish(&c.WGPUCommandBufferDescriptor{
@@ -120,9 +173,5 @@ pub fn main() !void {
         gfx.swap_chain.?.swapChainPresent();
 
         c.wgpuTextureViewDrop(next_texture);
-    }
-
-    while (screen_stack.count() != 0) {
-        _ = screen_stack.pop();
     }
 }
