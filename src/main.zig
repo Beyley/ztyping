@@ -55,6 +55,9 @@ pub fn main() !void {
     var texture = try gfx.device.createTexture(gfx.queue, allocator, @embedFile("content/atlas.qoi"));
     defer texture.deinit();
 
+    //Create the bind group for the texture
+    try texture.createBindGroup(gfx.device, gfx.sampler, gfx.bind_group_layouts);
+
     gfx.updateProjectionMatrixBuffer(gfx.queue, window);
 
     var screen_stack = ScreenStack.init(allocator);
@@ -97,6 +100,7 @@ pub fn main() !void {
         //Set the pipeline
         render_pass_encoder.setPipeline(gfx.render_pipeline);
         render_pass_encoder.setBindGroup(0, gfx.projection_matrix_bind_group, &.{});
+        render_pass_encoder.setBindGroup(1, texture.bind_group.?, &.{});
 
         //Get the top screen
         var screen = screen_stack.top();

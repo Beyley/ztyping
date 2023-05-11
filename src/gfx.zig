@@ -15,10 +15,10 @@ shader: c.WGPUShaderModule = null,
 bind_group_layouts: BindGroupLayouts = undefined,
 render_pipeline_layout: c.WGPUPipelineLayout = null,
 render_pipeline: c.WGPURenderPipeline = null,
-swap_chain: ?SwapChain = undefined,
+swap_chain: ?SwapChain = null,
 //TODO: wrap this into a `UniformBuffer` object
 projection_matrix_buffer: Buffer = undefined,
-projection_matrix_bind_group: c.WGPUBindGroup = null,
+projection_matrix_bind_group: BindGroup = undefined,
 sampler: c.WGPUSampler = null,
 
 pub fn init(window: *c.SDL_Window) !Self {
@@ -65,22 +65,24 @@ pub fn init(window: *c.SDL_Window) !Self {
     // self.projection_matrix_buffer = try self.device.createUniformBuffer(@sizeOf(zmath.Mat), "Projection Matrix Buffer");
 
     //Create the projection matrix bind group
-    self.projection_matrix_bind_group = c.wgpuDeviceCreateBindGroup(self.device.c, &c.WGPUBindGroupDescriptor{
-        .nextInChain = null,
-        .label = "Projection Matrix BindGroup",
-        .layout = self.bind_group_layouts.projection_matrix,
-        .entryCount = 1,
-        .entries = &c.WGPUBindGroupEntry{
+    self.projection_matrix_bind_group = .{
+        .c = c.wgpuDeviceCreateBindGroup(self.device.c, &c.WGPUBindGroupDescriptor{
             .nextInChain = null,
-            .binding = 0,
-            .buffer = self.projection_matrix_buffer.c,
-            .size = @sizeOf(zmath.Mat),
-            .offset = 0,
-            .sampler = null,
-            .textureView = null,
-        },
-    }) orelse return error.UnableToCreateTextureBindGroup;
-    std.debug.print("got projection matrix bind group 0x{x}\n", .{@ptrToInt(self.projection_matrix_bind_group.?)});
+            .label = "Projection Matrix BindGroup",
+            .layout = self.bind_group_layouts.projection_matrix,
+            .entryCount = 1,
+            .entries = &c.WGPUBindGroupEntry{
+                .nextInChain = null,
+                .binding = 0,
+                .buffer = self.projection_matrix_buffer.c,
+                .size = @sizeOf(zmath.Mat),
+                .offset = 0,
+                .sampler = null,
+                .textureView = null,
+            },
+        }) orelse return error.UnableToCreateTextureBindGroup,
+    };
+    std.debug.print("got projection matrix bind group 0x{x}\n", .{@ptrToInt(self.projection_matrix_bind_group.c.?)});
 
     self.sampler = c.wgpuDeviceCreateSampler(self.device.c, &c.WGPUSamplerDescriptor{
         .nextInChain = null,
@@ -106,8 +108,8 @@ pub fn deinit(self: *Self) void {
     self.bind_group_layouts.deinit();
     c.wgpuPipelineLayoutDrop(self.render_pipeline_layout);
     c.wgpuRenderPipelineDrop(self.render_pipeline);
-    if (self.swap_chain) |swap_chain| {
-        swap_chain.deinit();
+    if (self.swap_chain) |_| {
+        self.swap_chain.?.deinit();
     }
     c.wgpuShaderModuleDrop(self.shader);
     self.device.deinit();
@@ -131,52 +133,67 @@ pub const RenderPassEncoder = struct {
         c.wgpuRenderPassEncoderEnd(self.c);
     }
 
-    pub fn setBindGroup(self: *RenderPassEncoder, groupIndex: u32, group: c.WGPUBindGroup, dynamic_offsets: []const u32) void {
-        c.wgpuRenderPassEncoderSetBindGroup(self.c, groupIndex, group, @intCast(u32, dynamic_offsets.len), dynamic_offsets.ptr);
+    pub fn setBindGroup(self: *RenderPassEncoder, groupIndex: u32, bind_group: BindGroup, dynamic_offsets: []const u32) void {
+        c.wgpuRenderPassEncoderSetBindGroup(self.c, groupIndex, bind_group.c.?, @intCast(u32, dynamic_offsets.len), dynamic_offsets.ptr);
+    }
+};
+
+pub const BindGroup = struct {
+    c: c.WGPUBindGroup,
+
+    pub fn deinit(self: *BindGroup) void {
+        c.wgpuBindGroupDrop(self.c);
+
+        self.c = null;
     }
 };
 
 pub const Texture = struct {
     tex: c.WGPUTexture,
     view: c.WGPUTextureView,
-    bind_group: ?c.WGPUBindGroup,
+    bind_group: ?BindGroup = null,
 
-    pub fn deinit(self: Texture) void {
+    pub fn deinit(self: *Texture) void {
         c.wgpuTextureViewDrop(self.view);
         c.wgpuTextureDrop(self.tex);
-        if (self.bind_group) |bind_group| {
-            c.wgpuBindGroupDrop(bind_group);
+        if (self.bind_group) |_| {
+            self.bind_group.?.deinit();
         }
+
+        self.tex = null;
+        self.view = null;
     }
     pub fn createBindGroup(self: *Texture, device: Device, sampler: c.WGPUSampler, bind_group_layouts: BindGroupLayouts) !void {
-        self.bind_group = c.wgpuDeviceCreateBindGroup(device.c, &c.WGPUBindGroupDescriptor{
-            .label = "Texture Bind Group",
-            .nextInChain = 0,
-            .entries = @as([]const c.WGPUBindGroupEntry, &.{
-                c.WGPUBindGroupEntry{
-                    .nextInChain = null,
-                    .binding = 0,
-                    .textureView = self.view,
-                    .buffer = null,
-                    .offset = 0,
-                    .size = 0,
-                    .sampler = null,
-                },
-                c.WGPUBindGroupEntry{
-                    .nextInChain = null,
-                    .binding = 1,
-                    .textureView = null,
-                    .buffer = null,
-                    .offset = 0,
-                    .size = 0,
-                    .sampler = sampler,
-                },
-            }).ptr,
-            .entryCount = 2,
-            .layout = bind_group_layouts.texture_sampler,
-        }) orelse return error.UnableToCreateBindGroupForTexture;
+        self.bind_group = .{
+            .c = c.wgpuDeviceCreateBindGroup(device.c, &c.WGPUBindGroupDescriptor{
+                .label = "Texture Bind Group",
+                .nextInChain = 0,
+                .entries = @as([]const c.WGPUBindGroupEntry, &.{
+                    c.WGPUBindGroupEntry{
+                        .nextInChain = null,
+                        .binding = 0,
+                        .textureView = self.view,
+                        .buffer = null,
+                        .offset = 0,
+                        .size = 0,
+                        .sampler = null,
+                    },
+                    c.WGPUBindGroupEntry{
+                        .nextInChain = null,
+                        .binding = 1,
+                        .textureView = null,
+                        .buffer = null,
+                        .offset = 0,
+                        .size = 0,
+                        .sampler = sampler,
+                    },
+                }).ptr,
+                .entryCount = 2,
+                .layout = bind_group_layouts.texture_sampler,
+            }) orelse return error.UnableToCreateBindGroupForTexture,
+        };
 
-        std.debug.print("got texture bind group 0x{x}\n", .{@ptrToInt(self.bind_group.?)});
+        std.debug.print("got texture bind group 0x{x}\n", .{@ptrToInt(self.bind_group.?.c.?)});
     }
 };
 
@@ -230,8 +247,10 @@ pub const CommandEncoder = struct {
 pub const SwapChain = struct {
     c: c.WGPUSwapChain,
 
-    pub fn deinit(self: SwapChain) void {
+    pub fn deinit(self: *SwapChain) void {
         c.wgpuSwapChainDrop(self.c);
+
+        self.c = null;
     }
 
     pub fn swapChainPresent(self: SwapChain) void {
@@ -684,7 +703,6 @@ pub const Device = struct {
         var texture = Texture{
             .tex = tex,
             .view = view,
-            .bind_group = null,
         };
 
         return texture;
@@ -722,8 +740,10 @@ pub const Buffer = struct {
     type: BufferType,
     size: u64,
 
-    pub fn deinit(self: Buffer) void {
+    pub fn deinit(self: *Buffer) void {
         c.wgpuBufferDrop(self.c);
+
+        self.c = null;
     }
 };
 
@@ -797,8 +817,8 @@ pub fn updateProjectionMatrixBuffer(self: *Self, queue: Queue, window: *c.SDL_Wi
 }
 
 pub fn recreateSwapChain(self: *Self, window: *c.SDL_Window) !void {
-    if (self.swap_chain) |swap_chain| {
-        swap_chain.deinit();
+    if (self.swap_chain) |_| {
+        self.swap_chain.?.deinit();
     }
 
     self.swap_chain = try self.device.createSwapChainOptimal(self.adapter, self.surface, window);
