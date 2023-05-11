@@ -74,7 +74,8 @@ pub fn main() !void {
                 isRunning = false;
             }
             if (ev.type == c.SDL_KEYDOWN) {
-                isRunning = false;
+                if (ev.key.keysym.sym == c.SDLK_ESCAPE)
+                    isRunning = false;
             }
             if (ev.type == c.SDL_WINDOWEVENT) {
                 if (ev.window.event == c.SDL_WINDOWEVENT_RESIZED) {

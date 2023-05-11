@@ -153,6 +153,7 @@ pub const Texture = struct {
     view: c.WGPUTextureView,
     bind_group: ?BindGroup = null,
 
+    ///De-inits the texture, freeing its resources
     pub fn deinit(self: *Texture) void {
         c.wgpuTextureViewDrop(self.view);
         c.wgpuTextureDrop(self.tex);
@@ -163,6 +164,8 @@ pub const Texture = struct {
         self.tex = null;
         self.view = null;
     }
+
+    ///Creates the bind group for the texture, not called implicitly as textures may be used for other purposes
     pub fn createBindGroup(self: *Texture, device: Device, sampler: c.WGPUSampler, bind_group_layouts: BindGroupLayouts) !void {
         self.bind_group = .{
             .c = c.wgpuDeviceCreateBindGroup(device.c, &c.WGPUBindGroupDescriptor{
