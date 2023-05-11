@@ -14,7 +14,7 @@ queue: Queue = undefined,
 shader: c.WGPUShaderModule = null,
 bind_group_layouts: BindGroupLayouts = undefined,
 render_pipeline_layout: c.WGPUPipelineLayout = null,
-render_pipeline: c.WGPURenderPipeline = null,
+render_pipeline: RenderPipeline = undefined,
 swap_chain: ?SwapChain = null,
 //TODO: wrap this into a `UniformBuffer` object
 projection_matrix_buffer: Buffer = undefined,
@@ -69,7 +69,7 @@ pub fn init(window: *c.SDL_Window) !Self {
         .c = c.wgpuDeviceCreateBindGroup(self.device.c, &c.WGPUBindGroupDescriptor{
             .nextInChain = null,
             .label = "Projection Matrix BindGroup",
-            .layout = self.bind_group_layouts.projection_matrix,
+            .layout = self.bind_group_layouts.projection_matrix.c,
             .entryCount = 1,
             .entries = &c.WGPUBindGroupEntry{
                 .nextInChain = null,
@@ -107,7 +107,7 @@ pub fn deinit(self: *Self) void {
     self.projection_matrix_buffer.deinit();
     self.bind_group_layouts.deinit();
     c.wgpuPipelineLayoutDrop(self.render_pipeline_layout);
-    c.wgpuRenderPipelineDrop(self.render_pipeline);
+    self.render_pipeline.deinit();
     if (self.swap_chain) |_| {
         self.swap_chain.?.deinit();
     }
@@ -118,15 +118,24 @@ pub fn deinit(self: *Self) void {
     self.instance.deinit();
 
     self.shader = null;
-    self.render_pipeline = null;
     self.render_pipeline_layout = null;
 }
+
+pub const RenderPipeline = struct {
+    c: c.WGPURenderPipeline,
+
+    pub fn deinit(self: *RenderPipeline) void {
+        c.wgpuRenderPipelineDrop(self.c.?);
+
+        self.c = null;
+    }
+};
 
 pub const RenderPassEncoder = struct {
     c: c.WGPURenderPassEncoder,
 
-    pub fn setPipeline(self: RenderPassEncoder, pipeline: c.WGPURenderPipeline) void {
-        c.wgpuRenderPassEncoderSetPipeline(self.c, pipeline);
+    pub fn setPipeline(self: RenderPassEncoder, pipeline: RenderPipeline) void {
+        c.wgpuRenderPassEncoderSetPipeline(self.c, pipeline.c.?);
     }
 
     pub fn end(self: RenderPassEncoder) void {
@@ -192,7 +201,7 @@ pub const Texture = struct {
                     },
                 }).ptr,
                 .entryCount = 2,
-                .layout = bind_group_layouts.texture_sampler,
+                .layout = bind_group_layouts.texture_sampler.c,
             }) orelse return error.UnableToCreateBindGroupForTexture,
         };
 
@@ -200,16 +209,23 @@ pub const Texture = struct {
     }
 };
 
-pub const BindGroupLayouts = struct {
-    texture_sampler: c.WGPUBindGroupLayout,
-    projection_matrix: c.WGPUBindGroupLayout,
-    pub fn deinit(self: *BindGroupLayouts) void {
-        c.wgpuBindGroupLayoutDrop(self.texture_sampler);
-        c.wgpuBindGroupLayoutDrop(self.projection_matrix);
+pub const BindGroupLayout = struct {
+    c: c.WGPUBindGroupLayout,
 
-        //Clear them to null, so a proper error gets thrown wgpu side if they are re-used
-        self.texture_sampler = null;
-        self.projection_matrix = null;
+    pub fn deinit(self: *BindGroupLayout) void {
+        c.wgpuBindGroupLayoutDrop(self.c.?);
+
+        self.c = null;
+    }
+};
+
+pub const BindGroupLayouts = struct {
+    texture_sampler: BindGroupLayout,
+    projection_matrix: BindGroupLayout,
+
+    pub fn deinit(self: *BindGroupLayouts) void {
+        self.texture_sampler.deinit();
+        self.projection_matrix.deinit();
     }
 };
 
@@ -462,61 +478,65 @@ pub const Device = struct {
     pub fn createBindGroupLayouts(self: Device) !BindGroupLayouts {
         var layouts: BindGroupLayouts = undefined;
 
-        layouts.texture_sampler = c.wgpuDeviceCreateBindGroupLayout(self.c, &c.WGPUBindGroupLayoutDescriptor{
-            .nextInChain = null,
-            .label = "Texture/Sampler bind group layout",
-            .entryCount = 2,
-            .entries = @as([]const c.WGPUBindGroupLayoutEntry, &.{
-                c.WGPUBindGroupLayoutEntry{
+        layouts.texture_sampler = .{
+            .c = c.wgpuDeviceCreateBindGroupLayout(self.c, &c.WGPUBindGroupLayoutDescriptor{
+                .nextInChain = null,
+                .label = "Texture/Sampler bind group layout",
+                .entryCount = 2,
+                .entries = @as([]const c.WGPUBindGroupLayoutEntry, &.{
+                    c.WGPUBindGroupLayoutEntry{
+                        .nextInChain = null,
+                        .binding = 0,
+                        .texture = c.WGPUTextureBindingLayout{
+                            .nextInChain = null,
+                            .multisampled = false,
+                            .sampleType = c.WGPUTextureSampleType_Float,
+                            .viewDimension = c.WGPUTextureViewDimension_2D,
+                        },
+                        .buffer = undefined,
+                        .sampler = undefined,
+                        .storageTexture = undefined,
+                        .visibility = c.WGPUShaderStage_Fragment,
+                    },
+                    c.WGPUBindGroupLayoutEntry{
+                        .nextInChain = null,
+                        .binding = 1,
+                        .sampler = c.WGPUSamplerBindingLayout{
+                            .nextInChain = null,
+                            .type = c.WGPUSamplerBindingType_Filtering,
+                        },
+                        .buffer = undefined,
+                        .texture = undefined,
+                        .storageTexture = undefined,
+                        .visibility = c.WGPUShaderStage_Fragment,
+                    },
+                }).ptr,
+            }) orelse return error.UnableToCreateTextureSamplerBindGroupLayout,
+        };
+        layouts.projection_matrix = .{
+            .c = c.wgpuDeviceCreateBindGroupLayout(self.c, &c.WGPUBindGroupLayoutDescriptor{
+                .nextInChain = null,
+                .label = "Projection matrix bind group layout",
+                .entryCount = 1,
+                .entries = &c.WGPUBindGroupLayoutEntry{
                     .nextInChain = null,
                     .binding = 0,
-                    .texture = c.WGPUTextureBindingLayout{
+                    .texture = undefined,
+                    .buffer = c.WGPUBufferBindingLayout{
                         .nextInChain = null,
-                        .multisampled = false,
-                        .sampleType = c.WGPUTextureSampleType_Float,
-                        .viewDimension = c.WGPUTextureViewDimension_2D,
+                        .type = c.WGPUBufferBindingType_Uniform,
+                        .minBindingSize = @sizeOf(zmath.Mat),
+                        .hasDynamicOffset = false,
                     },
-                    .buffer = undefined,
                     .sampler = undefined,
                     .storageTexture = undefined,
-                    .visibility = c.WGPUShaderStage_Fragment,
+                    .visibility = c.WGPUShaderStage_Vertex,
                 },
-                c.WGPUBindGroupLayoutEntry{
-                    .nextInChain = null,
-                    .binding = 1,
-                    .sampler = c.WGPUSamplerBindingLayout{
-                        .nextInChain = null,
-                        .type = c.WGPUSamplerBindingType_Filtering,
-                    },
-                    .buffer = undefined,
-                    .texture = undefined,
-                    .storageTexture = undefined,
-                    .visibility = c.WGPUShaderStage_Fragment,
-                },
-            }).ptr,
-        });
-        layouts.projection_matrix = c.wgpuDeviceCreateBindGroupLayout(self.c, &c.WGPUBindGroupLayoutDescriptor{
-            .nextInChain = null,
-            .label = "Projection matrix bind group layout",
-            .entryCount = 1,
-            .entries = &c.WGPUBindGroupLayoutEntry{
-                .nextInChain = null,
-                .binding = 0,
-                .texture = undefined,
-                .buffer = c.WGPUBufferBindingLayout{
-                    .nextInChain = null,
-                    .type = c.WGPUBufferBindingType_Uniform,
-                    .minBindingSize = @sizeOf(zmath.Mat),
-                    .hasDynamicOffset = false,
-                },
-                .sampler = undefined,
-                .storageTexture = undefined,
-                .visibility = c.WGPUShaderStage_Vertex,
-            },
-        });
+            }) orelse return error.UnableToCreateProjectionMatrixBindGroupLayout,
+        };
 
-        std.debug.print("got texture/sampler bind group layout 0x{x}\n", .{@ptrToInt(layouts.texture_sampler.?)});
-        std.debug.print("got projection matrix bind group layout 0x{x}\n", .{@ptrToInt(layouts.projection_matrix.?)});
+        std.debug.print("got texture/sampler bind group layout 0x{x}\n", .{@ptrToInt(layouts.texture_sampler.c.?)});
+        std.debug.print("got projection matrix bind group layout 0x{x}\n", .{@ptrToInt(layouts.projection_matrix.c.?)});
 
         return layouts;
     }
@@ -526,8 +546,8 @@ pub const Device = struct {
             .label = "Pipeline Layout",
             .bindGroupLayoutCount = 2,
             .bindGroupLayouts = @as([]const c.WGPUBindGroupLayout, &.{
-                bind_group_layouts.texture_sampler,
-                bind_group_layouts.projection_matrix,
+                bind_group_layouts.texture_sampler.c,
+                bind_group_layouts.projection_matrix.c,
             }).ptr,
             .nextInChain = null,
         });
@@ -537,7 +557,7 @@ pub const Device = struct {
         return layout;
     }
 
-    pub fn createRenderPipeline(self: Device, layout: c.WGPUPipelineLayout, shader: c.WGPUShaderModule, surface_format: c.WGPUTextureFormat) !c.WGPURenderPipeline {
+    pub fn createRenderPipeline(self: Device, layout: c.WGPUPipelineLayout, shader: c.WGPUShaderModule, surface_format: c.WGPUTextureFormat) !RenderPipeline {
         var pipeline = c.wgpuDeviceCreateRenderPipeline(self.c, &c.WGPURenderPipelineDescriptor{
             .nextInChain = null,
             .label = "Render Pipeline",
@@ -615,7 +635,7 @@ pub const Device = struct {
 
         std.debug.print("got render pipeline 0x{x}\n", .{@ptrToInt(pipeline.?)});
 
-        return pipeline orelse error.UnableToCreateRenderPipeline;
+        return .{ .c = pipeline orelse return error.UnableToCreateRenderPipeline };
     }
 
     pub fn createCommandEncoder(self: Device, descriptor: *const c.WGPUCommandEncoderDescriptor) !CommandEncoder {
