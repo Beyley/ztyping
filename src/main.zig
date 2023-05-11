@@ -52,10 +52,10 @@ pub fn main() !void {
     defer gfx.deinit();
 
     //Create the texture
-    var texture = try gfx.createTexture(allocator, @embedFile("content/atlas.qoi"));
+    var texture = try gfx.device.createTexture(gfx.queue, allocator, @embedFile("content/atlas.qoi"));
     defer texture.deinit();
 
-    gfx.updateProjectionMatrixBuffer(window);
+    gfx.updateProjectionMatrixBuffer(gfx.queue, window);
 
     var screen_stack = ScreenStack.init(allocator);
     defer screen_stack.deinit();
@@ -70,20 +70,23 @@ pub fn main() !void {
             if (ev.type == c.SDL_QUIT) {
                 isRunning = false;
             }
+            if (ev.type == c.SDL_KEYDOWN) {
+                isRunning = false;
+            }
             if (ev.type == c.SDL_WINDOWEVENT) {
                 if (ev.window.event == c.SDL_WINDOWEVENT_RESIZED) {
                     //Create a new swapchain
-                    gfx.swap_chain = try gfx.createSwapChainOptimal(window);
-                    gfx.updateProjectionMatrixBuffer(window);
+                    try gfx.recreateSwapChain(window);
+                    gfx.updateProjectionMatrixBuffer(gfx.queue, window);
                 }
             }
         }
 
         //Get the current texture view for the swap chain
-        var next_texture = try gfx.getCurrentSwapChainTexture();
+        var next_texture = try gfx.swap_chain.?.getCurrentSwapChainTexture();
 
         //Create a command encoder
-        var command_encoder = try gfx.createCommandEncoder(&c.WGPUCommandEncoderDescriptor{
+        var command_encoder = try gfx.device.createCommandEncoder(&c.WGPUCommandEncoderDescriptor{
             .nextInChain = null,
             .label = "Command Encoder",
         });
@@ -107,9 +110,9 @@ pub fn main() !void {
             .nextInChain = null,
         });
 
-        gfx.queueSubmit(&.{command_buffer});
+        gfx.queue.submit(&.{command_buffer});
 
-        gfx.swapChainPresent();
+        gfx.swap_chain.?.swapChainPresent();
 
         c.wgpuTextureViewDrop(next_texture);
     }

@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const c = @import("../main.zig").c;
+
 const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");
 
@@ -17,10 +19,13 @@ pub var MainMenu = Screen{
 
 pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) bool {
     self.allocator = allocator;
-    self.data = allocator.create(MainMenuData) catch {
+
+    var data = allocator.create(MainMenuData) catch {
         std.debug.print("Failed to allocate MainMenuData!!???\n", .{});
         return false;
     };
+
+    self.data = data;
     _ = gfx;
 
     return true;

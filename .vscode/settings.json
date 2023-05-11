@@ -4,5 +4,6 @@
         "fontstash.h": "c",
         "keyboard-shortcuts-inhibit-unstable-v1-client-protocol.h": "c",
         "sdl_internal.h": "c"
-    }
+    },
+    "cmake.configureOnOpen": false
 }
