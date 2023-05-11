@@ -16,7 +16,6 @@ bind_group_layouts: BindGroupLayouts = undefined,
 render_pipeline_layout: c.WGPUPipelineLayout = null,
 render_pipeline: RenderPipeline = undefined,
 swap_chain: ?SwapChain = null,
-//TODO: wrap this into a `UniformBuffer` object
 projection_matrix_buffer: Buffer = undefined,
 projection_matrix_bind_group: BindGroup = undefined,
 sampler: c.WGPUSampler = null,
@@ -130,6 +129,11 @@ pub const RenderPipeline = struct {
     }
 };
 
+pub const IndexFormat = enum(c_uint) {
+    uint16 = 1,
+    uint32 = 2,
+};
+
 pub const RenderPassEncoder = struct {
     c: c.WGPURenderPassEncoder,
 
@@ -141,8 +145,20 @@ pub const RenderPassEncoder = struct {
         c.wgpuRenderPassEncoderEnd(self.c);
     }
 
-    pub fn setBindGroup(self: *RenderPassEncoder, groupIndex: u32, bind_group: BindGroup, dynamic_offsets: []const u32) void {
-        c.wgpuRenderPassEncoderSetBindGroup(self.c, groupIndex, bind_group.c.?, @intCast(u32, dynamic_offsets.len), dynamic_offsets.ptr);
+    pub fn setBindGroup(self: RenderPassEncoder, groupIndex: u32, bind_group: BindGroup, dynamic_offsets: []const u32) void {
+        c.wgpuRenderPassEncoderSetBindGroup(self.c.?, groupIndex, bind_group.c.?, @intCast(u32, dynamic_offsets.len), dynamic_offsets.ptr);
+    }
+
+    pub fn setVertexBuffer(self: RenderPassEncoder, slot: u32, buffer: Buffer, offset: u64, size: u64) void {
+        c.wgpuRenderPassEncoderSetVertexBuffer(self.c.?, slot, buffer.c, offset, size);
+    }
+
+    pub fn setIndexBuffer(self: RenderPassEncoder, buffer: Buffer, format: IndexFormat, offset: u64, size: u64) void {
+        c.wgpuRenderPassEncoderSetIndexBuffer(self.c.?, buffer.c.?, @enumToInt(format), offset, size);
+    }
+
+    pub fn drawIndexed(self: RenderPassEncoder, index_count: u32, instance_count: u32, first_index: u32, base_vertex: i32, first_instance: u32) void {
+        c.wgpuRenderPassEncoderDrawIndexed(self.c.?, index_count, instance_count, first_index, base_vertex, first_instance);
     }
 };
 
@@ -402,8 +418,8 @@ pub const Adapter = struct {
 pub const Queue = struct {
     c: c.WGPUQueue,
 
-    pub fn writeBuffer(self: Queue, buffer: Buffer, offset: u64, data: *anyopaque, size: usize) void {
-        c.wgpuQueueWriteBuffer(self.c, buffer.c, offset, data, size);
+    pub fn writeBuffer(self: Queue, buffer: Buffer, offset: u64, comptime DataType: type, data: []const DataType) void {
+        c.wgpuQueueWriteBuffer(self.c, buffer.c, offset, data.ptr, data.len * @sizeOf(DataType));
     }
 
     pub fn submit(self: Queue, buffers: []const c.WGPUCommandBuffer) void {
@@ -545,8 +561,8 @@ pub const Device = struct {
             .label = "Pipeline Layout",
             .bindGroupLayoutCount = 2,
             .bindGroupLayouts = @as([]const c.WGPUBindGroupLayout, &.{
-                bind_group_layouts.texture_sampler.c,
                 bind_group_layouts.projection_matrix.c,
+                bind_group_layouts.texture_sampler.c,
             }).ptr,
             .nextInChain = null,
         });
@@ -823,7 +839,7 @@ pub fn updateProjectionMatrixBuffer(self: *Self, queue: Queue, window: *c.SDL_Wi
 
     var mat = zmath.orthographicOffCenterLh(0, @intToFloat(f32, w), 0, @intToFloat(f32, h), 0, 1);
 
-    queue.writeBuffer(self.projection_matrix_buffer, 0, &mat, @sizeOf(zmath.Mat));
+    queue.writeBuffer(self.projection_matrix_buffer, 0, zmath.Mat, &.{mat});
 }
 
 pub fn recreateSwapChain(self: *Self, window: *c.SDL_Window) !void {

@@ -6,7 +6,7 @@ const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");
 
 const MainMenuData = struct {
-    waaa: u64 = 0,
+    open: bool = true,
 };
 
 pub var MainMenu = Screen{
@@ -36,8 +36,10 @@ pub fn deinitScreen(self: *Screen) void {
 }
 
 pub fn renderScreen(self: *Screen, gfx: Gfx, render_pass_encoder: Gfx.RenderPassEncoder, texture: Gfx.Texture) void {
-    _ = self;
     _ = render_pass_encoder;
     _ = gfx;
     _ = texture;
+
+    var data = self.getData(MainMenuData);
+    _ = data;
 }

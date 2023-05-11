@@ -14,7 +14,7 @@ struct FragmentInputs {
     @location(1) vertex_col: vec4<f32>
 }
 
-@group(1) @binding(0) var<uniform> projection_matrix: mat4x4<f32>;
+@group(0) @binding(0) var<uniform> projection_matrix: mat4x4<f32>;
 
 @vertex
 fn vs_main(
@@ -33,9 +33,9 @@ fn vs_main(
 
 //TODO: keep an eye on the spec, once we are able to support texture and sampler arrays, PLEASE USE THEM
 //The texture we're sampling
-@group(0) @binding(0) var t: texture_2d<f32>;
+@group(1) @binding(0) var t: texture_2d<f32>;
 //The sampler we're using to sample the texture
-@group(0) @binding(1) var s: sampler;
+@group(1) @binding(1) var s: sampler;
 
 @fragment
 fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {

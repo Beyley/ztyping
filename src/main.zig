@@ -4,6 +4,7 @@ const zmath = @import("zmath");
 const Gfx = @import("gfx.zig");
 const Screen = @import("screen.zig");
 const ScreenStack = @import("screen_stack.zig");
+const Renderer = @import("renderer.zig");
 
 pub const c = @cImport({
     @cInclude("fontstash.h");
@@ -82,6 +83,9 @@ pub fn main() !void {
 
     gfx.updateProjectionMatrixBuffer(gfx.queue, window);
 
+    var renderer = try Renderer.init(allocator, gfx, texture);
+    defer renderer.deinit();
+
     var screen_stack = ScreenStack.init(allocator);
     defer {
         while (screen_stack.count() != 0) {
@@ -148,15 +152,12 @@ pub fn main() !void {
         //Begin the render pass
         var render_pass_encoder = try command_encoder.beginRenderPass(next_texture);
 
-        //Set the pipeline
-        render_pass_encoder.setPipeline(gfx.render_pipeline);
-        render_pass_encoder.setBindGroup(0, gfx.projection_matrix_bind_group, &.{});
-        render_pass_encoder.setBindGroup(1, texture.bind_group.?, &.{});
-
         //Get the top screen
         var screen = screen_stack.top();
         //Render it
         screen.render(screen, gfx, render_pass_encoder, texture);
+
+        try renderer.draw(&render_pass_encoder);
 
         c.igRender();
         c.ImGui_ImplWGPU_RenderDrawData(c.igGetDrawData(), render_pass_encoder.c);
