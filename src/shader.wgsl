@@ -39,5 +39,28 @@ fn vs_main(
 
 @fragment
 fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
-    return textureSample(t, s, input.tex_coord) * input.vertex_col;
+    return toLinear(textureSample(t, s, input.tex_coord) * input.vertex_col);
+}
+
+fn toLinear(sRGB: vec4<f32>) -> vec4<f32>
+{
+    var cutoff: vec4<f32> = vec4<f32>(0.0);
+
+    if(sRGB.r < 0.04045) {
+        cutoff.r = 1.0;
+    }
+    if(sRGB.g < 0.04045) {
+        cutoff.g = 1.0;
+    }
+    if(sRGB.b < 0.04045) {
+        cutoff.b = 1.0;
+    }
+    if(sRGB.a < 0.04045) {
+        cutoff.a = 1.0;
+    }
+
+	var higher: vec4<f32> = pow((sRGB + vec4<f32>(0.055))/vec4<f32>(1.055), vec4<f32>(2.4));
+	var lower: vec4<f32> = sRGB/vec4<f32>(12.92);
+
+	return mix(higher, lower, cutoff);
 }
