@@ -5,6 +5,7 @@ const Image = struct {
     width: u32,
     height: u32,
     image: img.Image,
+    name: []const u8,
     fn pathological_multiplier(self: Image) f32 {
         return @intToFloat(f32, std.math.max(self.width, self.height)) / @intToFloat(f32, std.math.min(self.width, self.height)) * @intToFloat(f32, self.width) * @intToFloat(f32, self.height);
     }
@@ -102,12 +103,19 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
 
         var image_stream: img.Image.Stream = .{ .file = file };
 
+        var path_without_root = file_path[root_path.len..];
+
+        var path_without_content = path_without_root["content/".len..];
+
+        var name = path_without_content[0 .. path_without_content.len - 4];
+
         //Load the file
         var image = try img.png.load(&image_stream, allocator, .{ .temp_allocator = allocator });
         try images.append(.{
             .width = @intCast(u32, image.width),
             .height = @intCast(u32, image.height),
             .image = image,
+            .name = name,
         });
         // std.debug.print("found image {s} with size {d}x{d}\n", .{ file_path, image.width, image.height });
 
@@ -173,6 +181,26 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
     try img.qoi.QOI.writeImage(allocator, &output_stream, final_image, .{ .qoi = .{} });
 
     progress_node.setCompletedItems(png_files.len + 4);
+
+    var output_atlas_info = try std.fs.createFileAbsolute(root_path ++ "src/content/atlas.zig", .{});
+    defer output_atlas_info.close();
+
+    try output_atlas_info.writeAll("const Rectangle = struct {x: u32, y: u32, w: u32, h: u32};\n\n");
+
+    for (packed_images) |packed_image| {
+        var image_rect = try std.fmt.allocPrint(allocator,
+            \\{s}: Rectangle = .{{.x = {d}, .y = {d}, .w = {d}, .h = {d}}},
+        , .{
+            packed_image.image.name,
+            packed_image.pos.x,
+            packed_image.pos.y,
+            packed_image.image.width,
+            packed_image.image.height,
+        });
+
+        try output_atlas_info.writeAll(image_rect);
+        try output_atlas_info.writeAll("\n");
+    }
 
     progress_node.end();
 }
