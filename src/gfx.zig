@@ -7,6 +7,21 @@ const img = @import("zigimg");
 const Self = @This();
 
 pub const Vector2 = @Vector(2, f32);
+pub const ColorF = @Vector(4, f32);
+pub const ColorB = @Vector(4, u8);
+
+pub fn colorBToF(orig: ColorB) ColorF {
+    var f = ColorF{
+        @intToFloat(f32, orig[0]),
+        @intToFloat(f32, orig[1]),
+        @intToFloat(f32, orig[2]),
+        @intToFloat(f32, orig[3]),
+    };
+
+    f /= ColorF{ 255.0, 255.0, 255.0, 255.0 };
+
+    return f;
+}
 
 instance: Instance = undefined,
 surface: Surface = undefined,
@@ -179,6 +194,8 @@ pub const BindGroup = struct {
 pub const Texture = struct {
     tex: c.WGPUTexture,
     view: c.WGPUTextureView,
+    width: u32,
+    height: u32,
     bind_group: ?BindGroup = null,
 
     ///De-inits the texture, freeing its resources
@@ -424,6 +441,30 @@ pub const Queue = struct {
 
     pub fn writeBuffer(self: Queue, buffer: Buffer, offset: u64, comptime DataType: type, data: []const DataType) void {
         c.wgpuQueueWriteBuffer(self.c, buffer.c, offset, data.ptr, data.len * @sizeOf(DataType));
+    }
+
+    pub fn writeTexture(self: Queue, texture: Texture, comptime DataType: type, data: []const DataType, origin: c.WGPUOrigin3D, extent: c.WGPUExtent3D) void {
+        std.debug.print("writing texture at {d}x{d} with size {d}x{d}\n", .{ origin.x, origin.y, extent.width, extent.height });
+
+        c.wgpuQueueWriteTexture(
+            self.c,
+            &c.WGPUImageCopyTexture{
+                .nextInChain = null,
+                .texture = texture.tex,
+                .mipLevel = 0,
+                .origin = origin,
+                .aspect = c.WGPUTextureAspect_All,
+            },
+            data.ptr,
+            data.len * @sizeOf(DataType),
+            &c.WGPUTextureDataLayout{
+                .nextInChain = null,
+                .bytesPerRow = @intCast(u32, extent.width * @sizeOf(img.color.Rgba32)),
+                .offset = 0,
+                .rowsPerImage = @intCast(u32, extent.height),
+            },
+            &extent,
+        );
     }
 
     pub fn submit(self: Queue, buffers: []const c.WGPUCommandBuffer) void {
@@ -729,6 +770,50 @@ pub const Device = struct {
         );
 
         var texture = Texture{
+            .width = @intCast(u32, image.width),
+            .height = @intCast(u32, image.height),
+            .tex = tex,
+            .view = view,
+        };
+
+        return texture;
+    }
+
+    pub fn createBlankTexture(self: Device, width: u32, height: u32) !Texture {
+        var texFormat: c_uint = c.WGPUTextureFormat_RGBA8UnormSrgb;
+
+        var tex = c.wgpuDeviceCreateTexture(self.c, &c.WGPUTextureDescriptor{
+            .nextInChain = null,
+            .label = "Texture",
+            .usage = c.WGPUTextureUsage_CopyDst | c.WGPUTextureUsage_TextureBinding,
+            .dimension = c.WGPUTextureDimension_2D,
+            .size = c.WGPUExtent3D{
+                .width = width,
+                .height = height,
+                .depthOrArrayLayers = 1,
+            },
+            .format = texFormat,
+            .mipLevelCount = 1,
+            .sampleCount = 1,
+            .viewFormatCount = 1,
+            .viewFormats = &texFormat,
+        }) orelse return error.UnableToCreateDeviceTexture;
+
+        var view = c.wgpuTextureCreateView(tex, &c.WGPUTextureViewDescriptor{
+            .nextInChain = null,
+            .label = "Texture View",
+            .format = texFormat,
+            .dimension = c.WGPUTextureViewDimension_2D,
+            .baseMipLevel = 0,
+            .baseArrayLayer = 0,
+            .mipLevelCount = 1,
+            .arrayLayerCount = 1,
+            .aspect = c.WGPUTextureAspect_All,
+        }) orelse return error.UnableToCreateTextureView;
+
+        var texture = Texture{
+            .width = width,
+            .height = height,
             .tex = tex,
             .view = view,
         };
@@ -780,7 +865,7 @@ pub const Buffer = struct {
 pub const Vertex = extern struct {
     position: Vector2,
     tex_coord: Vector2,
-    vertex_col: @Vector(4, f32),
+    vertex_col: ColorF,
 };
 
 pub fn createInstance() !Instance {
