@@ -169,8 +169,6 @@ fn update(self_ptr: ?*anyopaque, rect: [*c]c_int, data: [*c]const u8) callconv(.
         }
     }
 
-    std.debug.print("updating texture...\n", .{});
-
     self.gfx.queue.writeTexture(
         self.texture.?,
         Gfx.ColorB,

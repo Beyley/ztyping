@@ -2,6 +2,8 @@ const std = @import("std");
 
 const c = @import("../main.zig").c;
 
+const SongSelect = @import("song_select.zig");
+
 const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");
 
@@ -68,6 +70,9 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
                 //TODO: handle unicode stuff here
                 _ = data.name.pop();
             }
+        },
+        c.SDLK_RETURN => {
+            self.screen_push = &SongSelect.SongSelect;
         },
         else => {},
     }

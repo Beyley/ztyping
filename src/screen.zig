@@ -20,6 +20,8 @@ pub const RenderState = struct {
     render_pass_encoder: *Gfx.RenderPassEncoder,
 };
 
+close_screen: bool = false,
+screen_push: ?*Self = null,
 is_running: *bool,
 render: *const fn (*Self, RenderState) void,
 char: ?*const fn (*Self, []const u8) void = null,

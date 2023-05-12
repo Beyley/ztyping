@@ -447,8 +447,6 @@ pub const Queue = struct {
     }
 
     pub fn writeTexture(self: Queue, texture: Texture, comptime DataType: type, data: []const DataType, origin: c.WGPUOrigin3D, extent: c.WGPUExtent3D) void {
-        std.debug.print("writing texture at {d}x{d} with size {d}x{d}\n", .{ origin.x, origin.y, extent.width, extent.height });
-
         c.wgpuQueueWriteTexture(
             self.c,
             &c.WGPUImageCopyTexture{

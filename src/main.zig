@@ -196,5 +196,13 @@ pub fn main() !void {
         gfx.swap_chain.?.swapChainPresent();
 
         c.wgpuTextureViewDrop(next_texture);
+
+        if (screen.close_screen) {
+            _ = screen_stack.pop();
+            screen.close_screen = false;
+        } else if (screen.screen_push) |new_screen| {
+            try screen_stack.load(new_screen, gfx, &is_running);
+            screen.screen_push = null;
+        }
     }
 }
