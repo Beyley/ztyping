@@ -112,8 +112,8 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
         //Load the file
         var image = try img.png.load(&image_stream, allocator, .{ .temp_allocator = allocator });
         try images.append(.{
-            .width = @intCast(u32, image.width),
-            .height = @intCast(u32, image.height),
+            .width = @intCast(u32, image.width) + 2,
+            .height = @intCast(u32, image.height) + 2,
             .image = image,
             .name = name,
         });
@@ -153,15 +153,15 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
     for (packed_images) |packed_image| {
         switch (packed_image.image.image.pixels) {
             .rgba32 => |pix| {
-                for (0..packed_image.image.height) |y| {
-                    std.mem.copyForwards(img.color.Rgba32, final_image.pixels.rgba32[((y + packed_image.pos.y) * final_image.width) + packed_image.pos.x ..], pix[y * packed_image.image.width .. (y + 1) * packed_image.image.width]);
+                for (0..(packed_image.image.height - 2)) |y| {
+                    std.mem.copyForwards(img.color.Rgba32, final_image.pixels.rgba32[((y + 1 + packed_image.pos.y) * final_image.width) + (packed_image.pos.x + 1) ..], pix[y * (packed_image.image.width - 2) .. (y + 1) * (packed_image.image.width - 2)]);
                 }
             },
             .rgb24 => |pix| {
-                for (0..packed_image.image.width) |x| {
-                    for (0..packed_image.image.height) |y| {
-                        var pixel = pix[y * packed_image.image.width + x];
-                        final_image.pixels.rgba32[(y + packed_image.pos.y) * final_image.width + packed_image.pos.x + x] = .{ .r = pixel.r, .g = pixel.g, .b = pixel.b, .a = 255 };
+                for (0..(packed_image.image.width - 2)) |x| {
+                    for (0..(packed_image.image.height - 2)) |y| {
+                        var pixel = pix[y * (packed_image.image.width - 2) + x];
+                        final_image.pixels.rgba32[(y + 1 + packed_image.pos.y) * final_image.width + packed_image.pos.x + 1 + x] = .{ .r = pixel.r, .g = pixel.g, .b = pixel.b, .a = 255 };
                     }
                 }
             },
@@ -194,10 +194,10 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
             \\pub const {s}: Rectangle = .{{.x = {d}, .y = {d}, .w = {d}, .h = {d}}};
         , .{
             packed_image.image.name,
-            packed_image.pos.x,
-            packed_image.pos.y,
-            packed_image.image.width,
-            packed_image.image.height,
+            packed_image.pos.x + 1,
+            packed_image.pos.y + 1,
+            packed_image.image.width - 2,
+            packed_image.image.height - 2,
         });
 
         try output_atlas_info.writeAll(image_rect);
