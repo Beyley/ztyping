@@ -5,6 +5,7 @@ const Gfx = @import("gfx.zig");
 const Screen = @import("screen.zig");
 const ScreenStack = @import("screen_stack.zig");
 const Renderer = @import("renderer.zig");
+const Fontstash = @import("fontstash.zig");
 
 pub const c = @cImport({
     @cInclude("fontstash.h");
@@ -97,6 +98,12 @@ pub fn main() !void {
 
     try screen_stack.load(&Screen.MainMenu.MainMenu, gfx);
 
+    var fontstash: *Fontstash = try allocator.create(Fontstash);
+    defer allocator.destroy(fontstash);
+
+    try fontstash.init(&gfx, allocator);
+    defer fontstash.deinit();
+
     var old_width: c_int = 0;
     var old_height: c_int = 0;
     c.SDL_GL_GetDrawableSize(window, &old_width, &old_height);
@@ -158,12 +165,22 @@ pub fn main() !void {
         screen.render(screen, gfx, render_pass_encoder, texture);
 
         try renderer.begin();
-
         try renderer.reserveTexQuad("icon", .{ 100, 100 }, .{ 0.25, 0.25 });
-
         try renderer.end();
 
         try renderer.draw(&render_pass_encoder);
+
+        try fontstash.renderer.begin();
+        fontstash.reset();
+
+        fontstash.setMincho();
+        fontstash.setSize(128);
+        fontstash.setColor(.{ 255, 255, 255, 255 });
+
+        fontstash.drawText(.{ 0, fontstash.verticalMetrics().line_height }, "ztypingZTYPINGしろ白");
+        try fontstash.renderer.end();
+
+        try fontstash.renderer.draw(&render_pass_encoder);
 
         c.igRender();
         c.ImGui_ImplWGPU_RenderDrawData(c.igGetDrawData(), render_pass_encoder.c);
