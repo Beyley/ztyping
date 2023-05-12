@@ -157,6 +157,72 @@ pub fn main() !void {
         //Render it
         screen.render(screen, gfx, render_pass_encoder, texture);
 
+        try renderer.begin();
+
+        var reserved = try renderer.reserve(4, 6);
+        reserved.copyIn(&.{
+            Gfx.Vertex{
+                .position = .{ 0, 0 },
+                .tex_coord = .{ 0, 0 },
+                .vertex_col = .{ 1, 1, 1, 1 },
+            },
+            Gfx.Vertex{
+                .position = .{ 400, 0 },
+                .tex_coord = .{ 1, 0 },
+                .vertex_col = .{ 1, 1, 1, 1 },
+            },
+            Gfx.Vertex{
+                .position = .{ 0, 400 },
+                .tex_coord = .{ 0, 1 },
+                .vertex_col = .{ 1, 1, 1, 1 },
+            },
+            Gfx.Vertex{
+                .position = .{ 400, 400 },
+                .tex_coord = .{ 1, 1 },
+                .vertex_col = .{ 1, 1, 1, 1 },
+            },
+        }, &.{
+            0 + reserved.idx_offset,
+            2 + reserved.idx_offset,
+            1 + reserved.idx_offset,
+            1 + reserved.idx_offset,
+            2 + reserved.idx_offset,
+            3 + reserved.idx_offset,
+        });
+
+        reserved = try renderer.reserve(4, 6);
+        reserved.copyIn(&.{
+            Gfx.Vertex{
+                .position = .{ 100, 0 },
+                .tex_coord = .{ 0, 0 },
+                .vertex_col = .{ 1, 1, 1, 1 },
+            },
+            Gfx.Vertex{
+                .position = .{ 500, 0 },
+                .tex_coord = .{ 1, 0 },
+                .vertex_col = .{ 1, 1, 1, 1 },
+            },
+            Gfx.Vertex{
+                .position = .{ 100, 400 },
+                .tex_coord = .{ 0, 1 },
+                .vertex_col = .{ 1, 1, 1, 1 },
+            },
+            Gfx.Vertex{
+                .position = .{ 500, 400 },
+                .tex_coord = .{ 1, 1 },
+                .vertex_col = .{ 1, 1, 1, 1 },
+            },
+        }, &.{
+            0 + reserved.idx_offset,
+            2 + reserved.idx_offset,
+            1 + reserved.idx_offset,
+            1 + reserved.idx_offset,
+            2 + reserved.idx_offset,
+            3 + reserved.idx_offset,
+        });
+
+        try renderer.end();
+
         try renderer.draw(&render_pass_encoder);
 
         c.igRender();

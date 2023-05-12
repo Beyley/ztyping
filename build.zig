@@ -43,7 +43,7 @@ pub fn build(b: *std.Build) !void {
     { //SDL
         var sdl_options = sdl.getDefaultOptionsForTarget(target);
 
-        if(target.getOsTag() == .windows) {
+        if (target.getOsTag() == .windows) {
             sdl_options.shared = true;
         }
 

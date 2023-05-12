@@ -153,7 +153,9 @@ pub const RenderPassEncoder = struct {
         c.wgpuRenderPassEncoderSetVertexBuffer(self.c.?, slot, buffer.c, offset, size);
     }
 
-    pub fn setIndexBuffer(self: RenderPassEncoder, buffer: Buffer, format: IndexFormat, offset: u64, size: u64) void {
+    pub fn setIndexBuffer(self: RenderPassEncoder, buffer: Buffer, comptime index_format: type, offset: u64, size: u64) void {
+        const format: IndexFormat = if (index_format == u16) .uint16 else if (index_format == u32) .uint32 else @compileError("Invalid index format type!");
+
         c.wgpuRenderPassEncoderSetIndexBuffer(self.c.?, buffer.c.?, @enumToInt(format), offset, size);
     }
 
