@@ -6,6 +6,8 @@ const img = @import("zigimg");
 
 const Self = @This();
 
+pub const Vector2 = @Vector(2, f32);
+
 instance: Instance = undefined,
 surface: Surface = undefined,
 adapter: Adapter = undefined,
@@ -776,8 +778,8 @@ pub const Buffer = struct {
 };
 
 pub const Vertex = extern struct {
-    position: @Vector(2, f32),
-    tex_coord: @Vector(2, f32),
+    position: Vector2,
+    tex_coord: Vector2,
     vertex_col: @Vector(4, f32),
 };
 
@@ -852,23 +854,15 @@ pub fn recreateSwapChain(self: *Self, window: *c.SDL_Window) !void {
     self.swap_chain = try self.device.createSwapChainOptimal(self.adapter, self.surface, window);
 }
 
-pub fn VectorT(comptime T: type) type {
-    return struct {
-        x: T,
-        y: T,
-    };
-}
-
 pub const UVs = struct {
-    tl: @Vector(2, f32),
-    tr: @Vector(2, f32),
-    bl: @Vector(2, f32),
-    br: @Vector(2, f32),
+    tl: Vector2,
+    tr: Vector2,
+    bl: Vector2,
+    br: Vector2,
 };
 
-pub fn getUVsFromAtlas(comptime name: []const u8) UVs {
-    const Atlas = @import("content/atlas.zig");
-
+const Atlas = @import("content/atlas.zig");
+pub fn getTexUVsFromAtlas(comptime name: []const u8) UVs {
     const info = @field(Atlas, name);
 
     return .{
@@ -889,4 +883,10 @@ pub fn getUVsFromAtlas(comptime name: []const u8) UVs {
             (info.y + info.h) / Atlas.atlas_height,
         },
     };
+}
+
+pub fn getTexSizeFromAtlas(comptime name: []const u8) Vector2 {
+    const info = @field(Atlas, name);
+
+    return .{ info.w, info.h };
 }

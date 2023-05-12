@@ -159,67 +159,7 @@ pub fn main() !void {
 
         try renderer.begin();
 
-        var reserved = try renderer.reserve(4, 6);
-        reserved.copyIn(&.{
-            Gfx.Vertex{
-                .position = .{ 0, 0 },
-                .tex_coord = Gfx.getUVsFromAtlas("note").tl,
-                .vertex_col = .{ 1, 1, 1, 1 },
-            },
-            Gfx.Vertex{
-                .position = .{ 400, 0 },
-                .tex_coord = Gfx.getUVsFromAtlas("note").tr,
-                .vertex_col = .{ 1, 1, 1, 1 },
-            },
-            Gfx.Vertex{
-                .position = .{ 0, 400 },
-                .tex_coord = Gfx.getUVsFromAtlas("note").bl,
-                .vertex_col = .{ 1, 1, 1, 1 },
-            },
-            Gfx.Vertex{
-                .position = .{ 400, 400 },
-                .tex_coord = Gfx.getUVsFromAtlas("note").br,
-                .vertex_col = .{ 1, 1, 1, 1 },
-            },
-        }, &.{
-            0 + reserved.idx_offset,
-            2 + reserved.idx_offset,
-            1 + reserved.idx_offset,
-            1 + reserved.idx_offset,
-            2 + reserved.idx_offset,
-            3 + reserved.idx_offset,
-        });
-
-        reserved = try renderer.reserve(4, 6);
-        reserved.copyIn(&.{
-            Gfx.Vertex{
-                .position = .{ 100, 0 },
-                .tex_coord = Gfx.getUVsFromAtlas("icon").tl,
-                .vertex_col = .{ 1, 1, 1, 1 },
-            },
-            Gfx.Vertex{
-                .position = .{ 500, 0 },
-                .tex_coord = Gfx.getUVsFromAtlas("icon").tr,
-                .vertex_col = .{ 1, 1, 1, 1 },
-            },
-            Gfx.Vertex{
-                .position = .{ 100, 400 },
-                .tex_coord = Gfx.getUVsFromAtlas("icon").bl,
-                .vertex_col = .{ 1, 1, 1, 1 },
-            },
-            Gfx.Vertex{
-                .position = .{ 500, 400 },
-                .tex_coord = Gfx.getUVsFromAtlas("icon").br,
-                .vertex_col = .{ 1, 1, 1, 1 },
-            },
-        }, &.{
-            0 + reserved.idx_offset,
-            2 + reserved.idx_offset,
-            1 + reserved.idx_offset,
-            1 + reserved.idx_offset,
-            2 + reserved.idx_offset,
-            3 + reserved.idx_offset,
-        });
+        try renderer.reserveTexQuad("icon", .{ 100, 100 }, .{ 0.25, 0.25 });
 
         try renderer.end();
 

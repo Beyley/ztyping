@@ -143,6 +143,42 @@ pub const ReservedData = struct {
     }
 };
 
+pub inline fn reserveTexQuad(self: *Self, comptime tex_name: []const u8, position: Gfx.Vector2, scale: Gfx.Vector2) !void {
+    const uvs = Gfx.getTexUVsFromAtlas(tex_name);
+    const size = Gfx.getTexSizeFromAtlas(tex_name);
+
+    var reserved = try self.reserve(4, 6);
+    reserved.copyIn(&.{
+        Gfx.Vertex{
+            .position = position,
+            .tex_coord = uvs.tl,
+            .vertex_col = .{ 1, 1, 1, 1 },
+        },
+        Gfx.Vertex{
+            .position = position + (Gfx.Vector2{ size[0], 0 } * scale),
+            .tex_coord = uvs.tr,
+            .vertex_col = .{ 1, 1, 1, 1 },
+        },
+        Gfx.Vertex{
+            .position = position + (Gfx.Vector2{ 0, size[1] } * scale),
+            .tex_coord = uvs.bl,
+            .vertex_col = .{ 1, 1, 1, 1 },
+        },
+        Gfx.Vertex{
+            .position = position + (size * scale),
+            .tex_coord = uvs.br,
+            .vertex_col = .{ 1, 1, 1, 1 },
+        },
+    }, &.{
+        0 + reserved.idx_offset,
+        2 + reserved.idx_offset,
+        1 + reserved.idx_offset,
+        1 + reserved.idx_offset,
+        2 + reserved.idx_offset,
+        3 + reserved.idx_offset,
+    });
+}
+
 pub fn reserve(self: *Self, vtx_count: u64, idx_count: u64) !ReservedData {
     //Assert that we arent trying to reserve more than the max buffer size
     std.debug.assert(vtx_count < vtx_per_buf);
