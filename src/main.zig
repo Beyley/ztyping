@@ -163,22 +163,22 @@ pub fn main() !void {
         reserved.copyIn(&.{
             Gfx.Vertex{
                 .position = .{ 0, 0 },
-                .tex_coord = .{ 0, 0 },
+                .tex_coord = Gfx.getUVsFromAtlas("note").tl,
                 .vertex_col = .{ 1, 1, 1, 1 },
             },
             Gfx.Vertex{
                 .position = .{ 400, 0 },
-                .tex_coord = .{ 1, 0 },
+                .tex_coord = Gfx.getUVsFromAtlas("note").tr,
                 .vertex_col = .{ 1, 1, 1, 1 },
             },
             Gfx.Vertex{
                 .position = .{ 0, 400 },
-                .tex_coord = .{ 0, 1 },
+                .tex_coord = Gfx.getUVsFromAtlas("note").bl,
                 .vertex_col = .{ 1, 1, 1, 1 },
             },
             Gfx.Vertex{
                 .position = .{ 400, 400 },
-                .tex_coord = .{ 1, 1 },
+                .tex_coord = Gfx.getUVsFromAtlas("note").br,
                 .vertex_col = .{ 1, 1, 1, 1 },
             },
         }, &.{
@@ -194,22 +194,22 @@ pub fn main() !void {
         reserved.copyIn(&.{
             Gfx.Vertex{
                 .position = .{ 100, 0 },
-                .tex_coord = .{ 0, 0 },
+                .tex_coord = Gfx.getUVsFromAtlas("icon").tl,
                 .vertex_col = .{ 1, 1, 1, 1 },
             },
             Gfx.Vertex{
                 .position = .{ 500, 0 },
-                .tex_coord = .{ 1, 0 },
+                .tex_coord = Gfx.getUVsFromAtlas("icon").tr,
                 .vertex_col = .{ 1, 1, 1, 1 },
             },
             Gfx.Vertex{
                 .position = .{ 100, 400 },
-                .tex_coord = .{ 0, 1 },
+                .tex_coord = Gfx.getUVsFromAtlas("icon").bl,
                 .vertex_col = .{ 1, 1, 1, 1 },
             },
             Gfx.Vertex{
                 .position = .{ 500, 400 },
-                .tex_coord = .{ 1, 1 },
+                .tex_coord = Gfx.getUVsFromAtlas("icon").br,
                 .vertex_col = .{ 1, 1, 1, 1 },
             },
         }, &.{

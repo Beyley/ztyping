@@ -851,3 +851,42 @@ pub fn recreateSwapChain(self: *Self, window: *c.SDL_Window) !void {
 
     self.swap_chain = try self.device.createSwapChainOptimal(self.adapter, self.surface, window);
 }
+
+pub fn VectorT(comptime T: type) type {
+    return struct {
+        x: T,
+        y: T,
+    };
+}
+
+pub const UVs = struct {
+    tl: @Vector(2, f32),
+    tr: @Vector(2, f32),
+    bl: @Vector(2, f32),
+    br: @Vector(2, f32),
+};
+
+pub fn getUVsFromAtlas(comptime name: []const u8) UVs {
+    const Atlas = @import("content/atlas.zig");
+
+    const info = @field(Atlas, name);
+
+    return .{
+        .tl = .{
+            info.x / Atlas.atlas_width,
+            info.y / Atlas.atlas_height,
+        },
+        .tr = .{
+            (info.x + info.w) / Atlas.atlas_width,
+            info.y / Atlas.atlas_height,
+        },
+        .bl = .{
+            info.x / Atlas.atlas_width,
+            (info.y + info.h) / Atlas.atlas_height,
+        },
+        .br = .{
+            (info.x + info.w) / Atlas.atlas_width,
+            (info.y + info.h) / Atlas.atlas_height,
+        },
+    };
+}

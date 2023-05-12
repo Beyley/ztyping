@@ -185,11 +185,13 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
     var output_atlas_info = try std.fs.createFileAbsolute(root_path ++ "src/content/atlas.zig", .{});
     defer output_atlas_info.close();
 
-    try output_atlas_info.writeAll("const Rectangle = struct {x: u32, y: u32, w: u32, h: u32};\n\n");
+    try output_atlas_info.writeAll("pub const Rectangle = struct {x: comptime_float, y: comptime_float, w: comptime_float, h: comptime_float};\n\n");
+
+    try output_atlas_info.writeAll(try std.fmt.allocPrint(allocator, "pub const atlas_width: comptime_float = {d};\npub const atlas_height: comptime_float = {d};\n\n", .{ bin_size, bin_size }));
 
     for (packed_images) |packed_image| {
         var image_rect = try std.fmt.allocPrint(allocator,
-            \\{s}: Rectangle = .{{.x = {d}, .y = {d}, .w = {d}, .h = {d}}},
+            \\pub const {s}: Rectangle = .{{.x = {d}, .y = {d}, .w = {d}, .h = {d}}};
         , .{
             packed_image.image.name,
             packed_image.pos.x,
