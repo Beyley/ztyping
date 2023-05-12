@@ -44,8 +44,6 @@ pub fn init(self: *Self, gfx: *Gfx, allocator: std.mem.Allocator) !void {
 
     self.mincho = c.fonsAddFontMem(self.context, "mincho", mincho_data.ptr, @intCast(c_int, mincho_data.len), 0);
     if (self.mincho == c.FONS_INVALID) return error.UnableToAddFont;
-
-    c.fonsSetAlign(self.context, c.FONS_ALIGN_BASELINE);
 }
 
 pub fn setGothic(self: *Self) void {
@@ -63,6 +61,20 @@ pub fn setSize(self: *Self, size: f32) void {
 
 pub fn setColor(self: *Self, color: Gfx.ColorB) void {
     c.fonsSetColor(self.context, @bitCast(c_uint, color));
+}
+
+pub const Alignment = enum(c_int) {
+    left = 1,
+    center = 2,
+    right = 4,
+    top = 8,
+    middle = 16,
+    bottom = 32,
+    baseline = 64,
+};
+
+pub fn setAlign(self: *Self, alignment: Alignment) void {
+    c.fonsSetAlign(self.context, @enumToInt(alignment));
 }
 
 pub fn reset(self: *Self) void {
@@ -131,6 +143,9 @@ fn resize(self_ptr: ?*anyopaque, width: c_int, height: c_int) callconv(.C) c_int
 fn update(self_ptr: ?*anyopaque, rect: [*c]c_int, data: [*c]const u8) callconv(.C) void {
     var self = toSelf(self_ptr.?);
 
+    var rect_x = @intCast(usize, rect[0]);
+    var rect_y = @intCast(usize, rect[1]);
+    _ = rect_y;
     var w = @intCast(usize, rect[2] - rect[0]);
     var h = @intCast(usize, rect[3] - rect[1]);
 
@@ -146,7 +161,7 @@ fn update(self_ptr: ?*anyopaque, rect: [*c]c_int, data: [*c]const u8) callconv(.
 
     for (0..h) |y| {
         for (0..w) |x| {
-            full[y * w + x] = .{ 255, 255, 255, data[y * self.texture.?.width + x] };
+            full[y * w + x] = .{ 255, 255, 255, data[y * self.texture.?.width + x + rect_x] };
         }
     }
 
