@@ -15,7 +15,8 @@ pub fn deinit(self: ScreenStack) void {
     self.internal.deinit();
 }
 
-pub fn load(self: *ScreenStack, screen: *Screen, gfx: Gfx) !void {
+pub fn load(self: *ScreenStack, screen: *Screen, gfx: Gfx, is_running: *bool) !void {
+    screen.is_running = is_running;
     if (!screen.init(screen, self.internal.allocator, gfx)) {
         return error.FailedToInitScreen;
     }

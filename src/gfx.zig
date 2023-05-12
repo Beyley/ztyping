@@ -103,9 +103,12 @@ pub fn init(window: *c.SDL_Window) !Self {
         .nextInChain = null,
         .label = "Sampler",
         .compare = c.WGPUCompareFunction_Undefined,
-        .mipmapFilter = c.WGPUMipmapFilterMode_Linear,
-        .magFilter = c.WGPUFilterMode_Linear,
-        .minFilter = c.WGPUFilterMode_Linear,
+        .mipmapFilter = c.WGPUMipmapFilterMode_Nearest,
+        .magFilter = c.WGPUFilterMode_Nearest,
+        .minFilter = c.WGPUFilterMode_Nearest,
+        // .mipmapFilter = c.WGPUMipmapFilterMode_Linear,
+        // .magFilter = c.WGPUFilterMode_Linear,
+        // .minFilter = c.WGPUFilterMode_Linear,
         .addressModeU = c.WGPUAddressMode_ClampToEdge,
         .addressModeV = c.WGPUAddressMode_ClampToEdge,
         .addressModeW = c.WGPUAddressMode_ClampToEdge,
@@ -283,7 +286,7 @@ pub const CommandEncoder = struct {
                     .storeOp = c.WGPUStoreOp_Store,
                     .clearValue = c.WGPUColor{
                         .r = 0,
-                        .g = 1,
+                        .g = 0,
                         .b = 0,
                         .a = 1,
                     },
@@ -925,6 +928,9 @@ pub fn updateProjectionMatrixBuffer(self: *Self, queue: Queue, window: *c.SDL_Wi
     var w: c_int = 0;
     var h: c_int = 0;
     c.SDL_GL_GetDrawableSize(window, &w, &h);
+
+    // w = 640;
+    // h = 480;
 
     var mat = zmath.orthographicOffCenterLh(0, @intToFloat(f32, w), 0, @intToFloat(f32, h), 0, 1);
 

@@ -44,7 +44,8 @@ pub fn main() !void {
     std.debug.print("Initialized SDL\n", .{});
 
     //Create the window
-    const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640, 480, c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_RESIZABLE) orelse {
+    // const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640 * 2, 480 * 2, c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_RESIZABLE) orelse {
+    const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640, 480, c.SDL_WINDOW_SHOWN) orelse {
         std.debug.print("SDL window creation failed! err:{s}\n", .{c.SDL_GetError()});
         return error.CreateWindowFailure;
     };
@@ -96,8 +97,6 @@ pub fn main() !void {
         screen_stack.deinit();
     }
 
-    try screen_stack.load(&Screen.MainMenu.MainMenu, gfx);
-
     var fontstash: *Fontstash = try allocator.create(Fontstash);
     defer allocator.destroy(fontstash);
 
@@ -108,19 +107,34 @@ pub fn main() !void {
     var old_height: c_int = 0;
     c.SDL_GL_GetDrawableSize(window, &old_width, &old_height);
 
-    var isRunning = true;
-    while (isRunning) {
+    var is_running = true;
+    try screen_stack.load(&Screen.MainMenu.MainMenu, gfx, &is_running);
+    while (is_running) {
         var ev: c.SDL_Event = undefined;
+
+        //Get the top screen
+        var screen = screen_stack.top();
 
         while (c.SDL_PollEvent(&ev) != 0) {
             _ = c.ImGui_ImplSDL2_ProcessEvent(&ev);
 
-            if (ev.type == c.SDL_QUIT) {
-                isRunning = false;
-            }
-            if (ev.type == c.SDL_KEYDOWN) {
-                if (ev.key.keysym.sym == c.SDLK_ESCAPE)
-                    isRunning = false;
+            switch (ev.type) {
+                c.SDL_QUIT => {
+                    is_running = false;
+                },
+                c.SDL_KEYDOWN => {
+                    if (screen.key_down) |keyDown| {
+                        keyDown(screen, ev.key.keysym);
+                    }
+                },
+                c.SDL_TEXTINPUT => {
+                    var end = std.mem.indexOf(u8, &ev.text.text, &.{0}).?;
+
+                    if (screen.char) |char| {
+                        char(screen, ev.text.text[0..end]);
+                    }
+                },
+                else => {},
             }
         }
 
@@ -159,28 +173,13 @@ pub fn main() !void {
         //Begin the render pass
         var render_pass_encoder = try command_encoder.beginRenderPass(next_texture);
 
-        //Get the top screen
-        var screen = screen_stack.top();
         //Render it
-        screen.render(screen, gfx, render_pass_encoder, texture);
-
-        try renderer.begin();
-        try renderer.reserveTexQuad("icon", .{ 100, 100 }, .{ 0.25, 0.25 });
-        try renderer.end();
-
-        try renderer.draw(&render_pass_encoder);
-
-        try fontstash.renderer.begin();
-        fontstash.reset();
-
-        fontstash.setMincho();
-        fontstash.setSize(128);
-        fontstash.setColor(.{ 255, 255, 255, 255 });
-
-        fontstash.drawText(.{ 0, fontstash.verticalMetrics().line_height }, "ztypingZTYPINGしろ白");
-        try fontstash.renderer.end();
-
-        try fontstash.renderer.draw(&render_pass_encoder);
+        screen.render(screen, .{
+            .gfx = &gfx,
+            .renderer = &renderer,
+            .fontstash = fontstash,
+            .render_pass_encoder = &render_pass_encoder,
+        });
 
         c.igRender();
         c.ImGui_ImplWGPU_RenderDrawData(c.igGetDrawData(), render_pass_encoder.c);

@@ -54,7 +54,11 @@ pub fn setMincho(self: *Self) void {
     c.fonsSetFont(self.context, self.mincho);
 }
 
-pub fn setSize(self: *Self, size: f32) void {
+pub fn setSizePt(self: *Self, size: f32) void {
+    self.setSizePx(size / (4.0 / 3.0));
+}
+
+pub fn setSizePx(self: *Self, size: f32) void {
     self.font_size = size;
     c.fonsSetSize(self.context, size);
 }
