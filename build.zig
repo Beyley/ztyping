@@ -5,6 +5,7 @@ const sdl = @import("libs/SDL/build.zig");
 const fontstash = @import("libs/fontstash/build.zig");
 const wgpu = @import("wgpu.zig");
 const cimgui = @import("libs/cimgui/build.zig");
+const iconv = @import("libs/iconv-zig/build.zig");
 const ImageProcessor = @import("image_processor.zig");
 
 pub fn build(b: *std.Build) !void {
@@ -100,6 +101,12 @@ pub fn build(b: *std.Build) !void {
 
         exe.addModule("zigimg", module);
     } //zigimg
+
+    { //iconv
+        var iconv_lib = iconv.createIconv(b, target, optimize);
+
+        exe.linkLibrary(iconv_lib);
+    } //iconv
 
     { //process assets
         const process_images_step = b.step("Process images", "Process image files into a QOI texture atlas");

@@ -6,6 +6,7 @@ const Screen = @import("screen.zig");
 const ScreenStack = @import("screen_stack.zig");
 const Renderer = @import("renderer.zig");
 const Fontstash = @import("fontstash.zig");
+const Music = @import("music.zig");
 
 pub const c = @cImport({
     @cInclude("fontstash.h");
@@ -106,6 +107,22 @@ pub fn main() !void {
     var old_width: c_int = 0;
     var old_height: c_int = 0;
     c.SDL_GL_GetDrawableSize(window, &old_width, &old_height);
+
+    // var test_file = try std.fs.cwd().openFile("info.txt", .{});
+    // defer test_file.close();
+
+    // var bleh = try Music.readFromFile(allocator, &test_file);
+    // defer bleh.deinit();
+
+    // std.debug.print("title {s}\n", .{bleh.title});
+    // std.debug.print("artist {s}\n", .{bleh.artist});
+    // std.debug.print("fumen author {s}\n", .{bleh.author});
+    // std.debug.print("fumen file name {s}\n", .{bleh.fumen_file_name});
+    // std.debug.print("ranking file name {s}\n", .{bleh.ranking_file_name});
+    // std.debug.print("level {d}\n", .{bleh.level});
+    // for (bleh.comment) |comment| {
+    //     std.debug.print("    {s}\n", .{comment});
+    // }
 
     var is_running = true;
     try screen_stack.load(&Screen.MainMenu.MainMenu, gfx, &is_running);
