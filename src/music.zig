@@ -1,8 +1,9 @@
 const std = @import("std");
 
-const Self = @This();
-
 const IConv = @import("iconv.zig");
+const Fumen = @import("fumen.zig");
+
+const Self = @This();
 
 title: []const u8,
 artist: []const u8,
@@ -11,6 +12,8 @@ level: u3,
 fumen_file_name: []const u8,
 ranking_file_name: []const u8,
 comment: []const []const u8,
+
+fumen: Fumen,
 
 allocator: std.mem.Allocator,
 
@@ -26,9 +29,10 @@ pub fn deinit(self: *Self) void {
     }
 
     self.allocator.free(self.comment);
+    self.fumen.deinit();
 }
 
-pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File) !Self {
+pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.fs.File) !Self {
     var self: Self = undefined;
     self.allocator = allocator;
 
@@ -72,10 +76,38 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File) !Self {
             try comments.append(try allocator.dupe(u8, line));
         }
 
+        //While i dont like this behaviour, it matches UTyping
+        if (self.level == 0) {
+            return error.MusicInvalidLevel;
+        }
+
         i += 1;
     }
 
+    //i hate the look of this so much
+    errdefer allocator.free(self.title);
+    errdefer allocator.free(self.ranking_file_name);
+    errdefer allocator.free(self.fumen_file_name);
+    errdefer allocator.free(self.author);
+    errdefer allocator.free(self.artist);
+    errdefer {
+        for (self.comment) |comment| {
+            allocator.free(comment);
+        }
+
+        allocator.free(self.comment);
+    }
+
     self.comment = try comments.toOwnedSlice();
+
+    var fumen_path = try path.realpathAlloc(allocator, self.fumen_file_name);
+    defer allocator.free(fumen_path);
+
+    var fumen_file = try std.fs.openFileAbsolute(fumen_path, .{});
+    defer fumen_file.close();
+
+    self.fumen = try Fumen.readFromFile(allocator, &fumen_file);
+    errdefer self.fumen.deinit();
 
     return self;
 }
