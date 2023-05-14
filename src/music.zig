@@ -2,6 +2,8 @@ const std = @import("std");
 
 const Self = @This();
 
+const IConv = @import("iconv.zig");
+
 title: []const u8,
 artist: []const u8,
 author: []const u8,
@@ -26,20 +28,12 @@ pub fn deinit(self: *Self) void {
     self.allocator.free(self.comment);
 }
 
-const Context = extern struct {
-    context: ?*anyopaque,
-};
-
-extern fn ziconv_open(src: [*c]const u8, dst: [*c]const u8) Context;
-extern fn ziconv_close(context: Context) void;
-extern fn ziconv_convert(context: Context, src: [*c][*c]u8, dst: [*c][*c]u8, src_len: *usize, dst_len: *usize) usize;
-
 pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File) !Self {
     var self: Self = undefined;
     self.allocator = allocator;
 
-    var iconv = ziconv_open("Shift_JIS", "UTF-8");
-    defer ziconv_close(iconv);
+    var iconv = IConv.ziconv_open("Shift_JIS", "UTF-8");
+    defer IConv.ziconv_close(iconv);
 
     var comments = std.ArrayList([]const u8).init(allocator);
     errdefer comments.deinit();
@@ -54,39 +48,8 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File) !Self {
 
         var returnless = if (orig_line[orig_line.len - 1] == '\r') orig_line[0 .. orig_line.len - 1] else orig_line;
 
-        var dest_line = try allocator.alloc(u8, returnless.len + (returnless.len / 2));
-        defer allocator.free(dest_line);
-
-        var orig_c_ptr: [*c]u8 = returnless.ptr;
-        var dst_c_ptr: [*c]u8 = dest_line.ptr;
-        var orig_bytes_left = returnless.len;
-        var dest_bytes_left = dest_line.len;
-
-        while (orig_bytes_left > 0) {
-            var ret = ziconv_convert(iconv, &orig_c_ptr, &dst_c_ptr, &orig_bytes_left, &dest_bytes_left);
-            if (ret == @bitCast(usize, @as(isize, -1))) {
-                return error.UnableToConvertShiftJISToUTF8;
-            }
-
-            //If theres still more source bytes, and the destination is full
-            if (orig_bytes_left > 0 and dest_bytes_left == 0) {
-                //Allocate a new bigger array
-                var new = try allocator.alloc(u8, dest_line.len + orig_bytes_left * 2);
-                //Copy the old data into the new array
-                @memcpy(new[0..dest_line.len], dest_line);
-
-                //Mark that we have more space now
-                dest_bytes_left += new.len - dest_line.len;
-
-                //Free the old destination array
-                allocator.free(dest_line);
-
-                //Set the old destination array to the new one
-                dest_line = new;
-            }
-        }
-
-        var line = dest_line[0 .. dest_line.len - dest_bytes_left];
+        var line = try iconv.convert(allocator, returnless);
+        defer allocator.free(line);
 
         //If the last char is \r, strip it out
         if (line.len > 0 and line[line.len - 1] == '\r') {
