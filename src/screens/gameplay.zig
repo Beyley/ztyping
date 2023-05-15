@@ -7,9 +7,21 @@ const Gfx = @import("../gfx.zig");
 
 const RenderState = Screen.RenderState;
 
+const Phase = enum {
+    ///Waiting on the player to start the game
+    ready,
+    ///While the game is playing
+    main,
+    fade_out,
+    ///The results of the play
+    result,
+    finished,
+    exit,
+};
+
 const SongSelectData = struct {
     // name: std.ArrayList(u8),
-    a: u8,
+    phase: Phase = .ready,
 };
 
 pub var Gameplay = Screen{
