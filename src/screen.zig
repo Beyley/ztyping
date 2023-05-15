@@ -5,6 +5,7 @@ const c = @import("main.zig").c;
 const Renderer = @import("renderer.zig");
 const Gfx = @import("gfx.zig");
 const Fontstash = @import("fontstash.zig");
+const GameState = @import("game_state.zig");
 
 const Self = @This();
 
@@ -22,7 +23,7 @@ pub const RenderState = struct {
 
 close_screen: bool = false,
 screen_push: ?*Self = null,
-is_running: *bool,
+state: *GameState,
 render: *const fn (*Self, RenderState) void,
 char: ?*const fn (*Self, []const u8) void = null,
 key_down: ?*const fn (*Self, c.SDL_Keysym) void = null,

@@ -7,6 +7,7 @@ const ScreenStack = @import("screen_stack.zig");
 const Renderer = @import("renderer.zig");
 const Fontstash = @import("fontstash.zig");
 const Music = @import("music.zig");
+const GameState = @import("game_state.zig");
 
 pub const c = @cImport({
     @cInclude("fontstash.h");
@@ -62,6 +63,17 @@ pub fn main() !void {
 
     c.igSetCurrentContext(imgui_context);
 
+    var imgui_io = c.igGetIO();
+
+    //Create a font config
+    var font_config = c.ImFontConfig_ImFontConfig();
+    //Mark that the atlas does *not* own the font data
+    font_config.*.FontDataOwnedByAtlas = false;
+
+    var mincho_data = @embedFile("fonts/mincho.ttf");
+    //Create the font from the mincho ttf
+    var mincho = c.ImFontAtlas_AddFontFromMemoryTTF(imgui_io.*.Fonts, @constCast(mincho_data.ptr), mincho_data.len, 15, font_config, c.ImFontAtlas_GetGlyphRangesJapanese(imgui_io.*.Fonts));
+
     if (!c.ImGui_ImplSDL2_InitForD3D(window)) {
         return error.UnableToInitSDL2ImGui;
     }
@@ -76,6 +88,8 @@ pub fn main() !void {
     if (!c.ImGui_ImplWGPU_CreateDeviceObjects()) {
         return error.UnableToCreateImGuiWGPUDeviceObjects;
     }
+
+    c.igSetCurrentFont(mincho);
 
     //Create the texture
     var texture = try gfx.device.createTexture(gfx.queue, allocator, @embedFile("content/atlas.qoi"));
@@ -111,22 +125,14 @@ pub fn main() !void {
     // var test_file = try std.fs.cwd().openFile("info.txt", .{});
     // defer test_file.close();
 
-    // var bleh = try Music.readFromFile(allocator, &test_file);
+    // var bleh = try Music.readFromFile(allocator, std.fs.cwd(), &test_file);
     // defer bleh.deinit();
 
-    // std.debug.print("title {s}\n", .{bleh.title});
-    // std.debug.print("artist {s}\n", .{bleh.artist});
-    // std.debug.print("fumen author {s}\n", .{bleh.author});
-    // std.debug.print("fumen file name {s}\n", .{bleh.fumen_file_name});
-    // std.debug.print("ranking file name {s}\n", .{bleh.ranking_file_name});
-    // std.debug.print("level {d}\n", .{bleh.level});
-    // for (bleh.comment) |comment| {
-    //     std.debug.print("    {s}\n", .{comment});
-    // }
-
-    var is_running = true;
-    try screen_stack.load(&Screen.MainMenu.MainMenu, gfx, &is_running);
-    while (is_running) {
+    var state: GameState = GameState{
+        .is_running = true,
+    };
+    try screen_stack.load(&Screen.MainMenu.MainMenu, gfx, &state);
+    while (state.is_running) {
         var ev: c.SDL_Event = undefined;
 
         //Get the top screen
@@ -137,7 +143,7 @@ pub fn main() !void {
 
             switch (ev.type) {
                 c.SDL_QUIT => {
-                    is_running = false;
+                    state.is_running = false;
                 },
                 c.SDL_KEYDOWN => {
                     if (screen.key_down) |keyDown| {
@@ -198,6 +204,56 @@ pub fn main() !void {
             .render_pass_encoder = &render_pass_encoder,
         });
 
+        // var open = true;
+        // _ = c.igBegin("Map", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+        // var titleZ = try allocator.dupeZ(u8, bleh.title);
+        // defer allocator.free(titleZ);
+        // c.igText("Title: %s", titleZ.ptr);
+        // var artistZ = try allocator.dupeZ(u8, bleh.artist);
+        // defer allocator.free(artistZ);
+        // c.igText("Artist: %s", artistZ.ptr);
+        // var authorZ = try allocator.dupeZ(u8, bleh.author);
+        // defer allocator.free(authorZ);
+        // c.igText("Author: %s", authorZ.ptr);
+        // c.igText("Level: %d", @intCast(c_int, bleh.level));
+        // c.igText("Comment:");
+        // for (bleh.comment) |comment| {
+        //     var commentZ = try allocator.dupeZ(u8, comment);
+        //     defer allocator.free(commentZ);
+        //     c.igText("\t%s", commentZ.ptr);
+        // }
+
+        // var fumen_audio_fileZ = try allocator.dupeZ(u8, bleh.fumen.audio_url);
+        // defer allocator.free(fumen_audio_fileZ);
+        // c.igText("Fumen audio file: %s", fumen_audio_fileZ.ptr);
+
+        // c.igText("Lyrics:");
+
+        // for (bleh.fumen.lyrics) |lyric| {
+        //     var textZ = try allocator.dupeZ(u8, lyric.text);
+        //     defer allocator.free(textZ);
+        //     c.igText("\t%f \"%s\"", lyric.time, textZ.ptr);
+        // }
+
+        // c.igText("Kanji Lyrics:");
+
+        // for (bleh.fumen.lyrics_kanji) |lyric| {
+        //     var textZ = try allocator.dupeZ(u8, lyric.text);
+        //     defer allocator.free(textZ);
+        //     c.igText("\t%f-%f \"%s\"", lyric.time, lyric.time_end, textZ.ptr);
+        // }
+
+        // c.igText("Beat Lines:");
+
+        // for (bleh.fumen.beat_lines) |beat_line| {
+        //     var typeZ = try allocator.dupeZ(u8, @tagName(beat_line.type));
+        //     defer allocator.free(typeZ);
+        //     c.igText("\t%f \"%s\"", beat_line.time, typeZ.ptr);
+        // }
+
+        // c.igEnd();
+
         c.igRender();
         c.ImGui_ImplWGPU_RenderDrawData(c.igGetDrawData(), render_pass_encoder.c);
 
@@ -218,7 +274,7 @@ pub fn main() !void {
             _ = screen_stack.pop();
             screen.close_screen = false;
         } else if (screen.screen_push) |new_screen| {
-            try screen_stack.load(new_screen, gfx, &is_running);
+            try screen_stack.load(new_screen, gfx, &state);
             screen.screen_push = null;
         }
     }

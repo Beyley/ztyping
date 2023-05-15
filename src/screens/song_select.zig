@@ -20,7 +20,7 @@ pub var SongSelect = Screen{
     // .char = char,
     .key_down = keyDown,
     .data = undefined,
-    .is_running = undefined,
+    .state = undefined,
 };
 
 pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) bool {

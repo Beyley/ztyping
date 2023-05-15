@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const GameState = @import("game_state.zig");
 const Gfx = @import("gfx.zig");
 const Screen = @import("screen.zig");
 
@@ -15,8 +16,8 @@ pub fn deinit(self: ScreenStack) void {
     self.internal.deinit();
 }
 
-pub fn load(self: *ScreenStack, screen: *Screen, gfx: Gfx, is_running: *bool) !void {
-    screen.is_running = is_running;
+pub fn load(self: *ScreenStack, screen: *Screen, gfx: Gfx, state: *GameState) !void {
+    screen.state = state;
     if (!screen.init(screen, self.internal.allocator, gfx)) {
         return error.FailedToInitScreen;
     }

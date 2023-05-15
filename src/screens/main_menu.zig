@@ -21,7 +21,7 @@ pub var MainMenu = Screen{
     .char = char,
     .key_down = keyDown,
     .data = undefined,
-    .is_running = undefined,
+    .state = undefined,
 };
 
 pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) bool {
@@ -60,7 +60,7 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
     switch (key.sym) {
         c.SDLK_ESCAPE => {
             if (data.name.items.len == 0) {
-                self.is_running.* = false;
+                self.state.is_running = false;
             } else {
                 data.name.clearRetainingCapacity();
             }
