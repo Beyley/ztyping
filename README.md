@@ -7,10 +7,12 @@ A reimplementation of [UTyping](https://tosk.jp/utyping/) in Zig, using [wgpu-na
 Active platform support
  - Linux x86_64 glibc (x86_64-linux-gnu)
 
+Compiles, ran at one point
+ - Linux x86_64 musl (x86_64-linux-musl)
+
 Compiles, untested
  - MacOS x86_64 (x86_64-macos)
  - MacOS aarch64 (aarch64-macos)
- - Linux x86_64 musl (x86_64-linux-musl)
 
 Doesnt compile
  - [Windows x86_64](https://github.com/Beyley/ztyping/issues/1) (x86_64-windows-gnu)
