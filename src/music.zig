@@ -40,10 +40,27 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
     defer IConv.ziconv_close(iconv);
 
     var comments = std.ArrayList([]const u8).init(allocator);
-    errdefer comments.deinit();
+    errdefer {
+        for (comments.items) |comment| {
+            allocator.free(comment);
+        }
+        comments.deinit();
+    }
 
     //Set to 12 to match COMMENT_N_LINES in UTyping.cpp
     try comments.ensureTotalCapacity(12);
+
+    var title: ?[]const u8 = null;
+    var artist: ?[]const u8 = null;
+    var author: ?[]const u8 = null;
+    var fumen_file_name: ?[]const u8 = null;
+    var ranking_file_name: ?[]const u8 = null;
+
+    errdefer if (title) |title_ptr| allocator.free(title_ptr);
+    errdefer if (artist) |artist_ptr| allocator.free(artist_ptr);
+    errdefer if (author) |author_ptr| allocator.free(author_ptr);
+    errdefer if (fumen_file_name) |fumen_file_name_ptr| allocator.free(fumen_file_name_ptr);
+    errdefer if (ranking_file_name) |ranking_file_name_ptr| allocator.free(ranking_file_name_ptr);
 
     var i: usize = 0;
     while (true) {
@@ -61,17 +78,17 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
         }
 
         if (i == 0) {
-            self.title = try allocator.dupe(u8, line);
+            title = try allocator.dupe(u8, line);
         } else if (i == 1) {
-            self.artist = try allocator.dupe(u8, line);
+            artist = try allocator.dupe(u8, line);
         } else if (i == 2) {
-            self.author = try allocator.dupe(u8, line);
+            author = try allocator.dupe(u8, line);
         } else if (i == 3) {
             self.level = try std.fmt.parseUnsigned(u3, line, 0);
         } else if (i == 4) {
-            self.fumen_file_name = try allocator.dupe(u8, line);
+            fumen_file_name = try allocator.dupe(u8, line);
         } else if (i == 5) {
-            self.ranking_file_name = try allocator.dupe(u8, line);
+            ranking_file_name = try allocator.dupe(u8, line);
         } else {
             try comments.append(try allocator.dupe(u8, line));
         }
@@ -83,6 +100,12 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
 
         i += 1;
     }
+
+    self.title = title.?;
+    self.artist = artist.?;
+    self.author = author.?;
+    self.fumen_file_name = fumen_file_name.?;
+    self.ranking_file_name = ranking_file_name.?;
 
     //i hate the look of this so much
     errdefer allocator.free(self.title);
@@ -110,4 +133,40 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
     errdefer self.fumen.deinit();
 
     return self;
+}
+
+pub fn readUTypingList(allocator: std.mem.Allocator) ![]Self {
+    var list_file = try std.fs.cwd().openFile("UTyping_list.txt", .{});
+    defer list_file.close();
+
+    var reader = list_file.reader();
+
+    var music_list = std.ArrayList(Self).init(allocator);
+    errdefer {
+        for (0..music_list.items.len) |i| {
+            music_list.items[i].deinit();
+        }
+        music_list.deinit();
+    }
+
+    while (true) {
+        var line = try reader.readUntilDelimiterOrEofAlloc(allocator, '\n', 100) orelse break;
+        defer allocator.free(line);
+
+        //Normalize, aka remove \r and change `\` to `/`
+        var normalized = try std.mem.replaceOwned(u8, allocator, if (line[line.len - 1] == '\r') line[0 .. line.len - 1] else line, &.{'\\'}, &.{'/'});
+        defer allocator.free(normalized);
+
+        var music_file = try std.fs.cwd().openFile(normalized, .{});
+        defer music_file.close();
+
+        var music_dir = try std.fs.cwd().openDir(std.fs.path.dirname(normalized) orelse "", .{});
+        defer music_dir.close();
+
+        var music = try readFromFile(allocator, music_dir, &music_file);
+
+        try music_list.append(music);
+    }
+
+    return try music_list.toOwnedSlice();
 }

@@ -130,7 +130,22 @@ pub fn main() !void {
 
     var state: GameState = GameState{
         .is_running = true,
+        .audio_tracker = .{
+            .engine = audio_engine,
+        },
+        .map_list = try Music.readUTypingList(allocator),
     };
+
+    defer {
+        for (0..state.map_list.len) |i| {
+            state.map_list[i].deinit();
+        }
+
+        allocator.free(state.map_list);
+    }
+
+    std.debug.print("parsed {d} maps!\n", .{state.map_list.len});
+
     try screen_stack.load(&Screen.MainMenu.MainMenu, gfx, &state);
     while (state.is_running) {
         var ev: c.SDL_Event = undefined;

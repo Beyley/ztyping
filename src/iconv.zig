@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const Context = extern struct {
     context: ?*anyopaque,
@@ -18,7 +19,12 @@ const Context = extern struct {
             //Convert as much of the data as we can
             var ret = ziconv_convert(self, &orig_c_ptr, &dst_c_ptr, &orig_bytes_left, &dest_bytes_left);
             if (ret == @bitCast(usize, @as(isize, -1))) {
-                return error.UnableToConvertShiftJISToUTF8;
+                var errno = std.c._errno().*;
+
+                //errno 7 = E2BIG
+                if (errno != 7) {
+                    return error.UnableToConvertShiftJISToUTF8;
+                }
             }
 
             //If theres still more source bytes, and the destination is full
