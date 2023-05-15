@@ -4,7 +4,6 @@ const c = @import("../main.zig").c;
 
 const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");
-const Gameplay = @import("gameplay.zig");
 
 const RenderState = Screen.RenderState;
 
@@ -13,12 +12,12 @@ const SongSelectData = struct {
     a: u8,
 };
 
-pub var SongSelect = Screen{
+pub var Gameplay = Screen{
     .render = renderScreen,
     .init = initScreen,
     .deinit = deinitScreen,
     .allocator = undefined,
-    // .char = char,
+    .char = char,
     .key_down = keyDown,
     .data = undefined,
     .state = undefined,
@@ -44,11 +43,11 @@ pub fn deinitScreen(self: *Screen) void {
     self.allocator.destroy(data);
 }
 
-// pub fn char(self: *Screen, typed_char: []const u8) void {
-//     _ = typed_char;
-//     var data = self.getData(SongSelectData);
-//     _ = data;
-// }
+pub fn char(self: *Screen, typed_char: []const u8) void {
+    _ = typed_char;
+    var data = self.getData(SongSelectData);
+    _ = data;
+}
 
 pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
     var data = self.getData(SongSelectData);
@@ -65,20 +64,6 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
 pub fn renderScreen(self: *Screen, render_state: RenderState) void {
     var data = self.getData(SongSelectData);
     _ = data;
-
-    var open = true;
-    _ = c.igBegin("Maps", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
-
-    for (self.state.map_list) |map| {
-        var titleZ = self.allocator.dupeZ(u8, map.title) catch @panic("OOM");
-        defer self.allocator.free(titleZ);
-        if (c.igButton(titleZ, .{ .x = 0, .y = 0 })) {
-            self.state.current_map = map;
-            self.screen_push = &Gameplay.Gameplay;
-        }
-    }
-
-    c.igEnd();
 
     render_state.fontstash.renderer.begin() catch @panic("Cant begin font renderer");
     render_state.fontstash.reset();

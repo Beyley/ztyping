@@ -9,3 +9,4 @@ const Self = @This();
 is_running: bool,
 audio_tracker: AudioTracker,
 map_list: []Music,
+current_map: ?Music,

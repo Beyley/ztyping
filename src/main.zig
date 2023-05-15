@@ -134,6 +134,7 @@ pub fn main() !void {
             .engine = audio_engine,
         },
         .map_list = try Music.readUTypingList(allocator),
+        .current_map = null,
     };
 
     defer {
