@@ -484,13 +484,22 @@ pub const Device = struct {
 
     pub fn createSwapChainOptimal(self: Device, adapter: Adapter, surface: Surface, window: *c.SDL_Window) !SwapChain {
         //Try to create a swapchain with mailbox
-        return self.createSwapChain(adapter, surface, window, true) catch {
+        return self.createSwapChain(adapter, surface, window, .mailbox) catch {
             //If that fails, try to create one with standard VSync
-            return try self.createSwapChain(adapter, surface, window, false);
+            return self.createSwapChain(adapter, surface, window, .immediate) catch {
+                //If even that fails, fall back to FIFO
+                return self.createSwapChain(adapter, surface, window, .fifo);
+            };
         };
     }
 
-    pub fn createSwapChain(self: Device, adapter: Adapter, surface: Surface, window: *c.SDL_Window, mailbox: bool) !SwapChain {
+    const PresentMode = enum(c_uint) {
+        immediate = 0,
+        mailbox = 1,
+        fifo = 2,
+    };
+
+    pub fn createSwapChain(self: Device, adapter: Adapter, surface: Surface, window: *c.SDL_Window, present_mode: PresentMode) !SwapChain {
         var width: c_int = undefined;
         var height: c_int = undefined;
         c.SDL_GL_GetDrawableSize(window, &width, &height);
@@ -498,14 +507,16 @@ pub const Device = struct {
         var swap_chain = c.wgpuDeviceCreateSwapChain(self.c, surface.c, &c.WGPUSwapChainDescriptor{
             .usage = c.WGPUTextureUsage_RenderAttachment,
             .format = surface.getPreferredFormat(adapter),
-            .presentMode = if (mailbox) c.WGPUPresentMode_Mailbox else c.WGPUPresentMode_Immediate,
+            .presentMode = @enumToInt(present_mode),
             .nextInChain = null,
             .width = @intCast(u32, width),
             .height = @intCast(u32, height),
             .label = "Swapchain",
         });
 
-        std.debug.print("got swap chain 0x{x} with size {d}x{d}\n", .{ @ptrToInt(swap_chain.?), width, height });
+        if (swap_chain != null) {
+            std.debug.print("got swap chain 0x{x} with size {d}x{d}\n", .{ @ptrToInt(swap_chain.?), width, height });
+        }
 
         return .{ .c = swap_chain orelse return error.UnableToCreateSwapChain };
     }
@@ -890,7 +901,7 @@ fn uncapturedError(error_type: c.WGPUErrorType, message: [*c]const u8, user_data
     _ = user_data;
 
     std.debug.print("Got uncaptured error {d} with message {s}\n", .{ error_type, std.mem.span(message) });
-    @panic("uncaptured wgpu error");
+    // @panic("uncaptured wgpu error");
 }
 
 fn deviceLost(reason: c.WGPUDeviceLostReason, message: [*c]const u8, user_data: ?*anyopaque) callconv(.C) void {
