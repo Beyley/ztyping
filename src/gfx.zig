@@ -358,7 +358,7 @@ pub const Instance = struct {
         };
         if (info.subsystem == c.SDL_SYSWM_X11) {
             if (@hasDecl(c, "SDL_VIDEO_DRIVER_X11")) {
-                descriptor.nextInChain = @ptrCast([*c]c.WGPUChainedStruct, &c.WGPUSurfaceDescriptorFromXlibWindow{
+                descriptor.nextInChain = @ptrCast([*c]const c.WGPUChainedStruct, &c.WGPUSurfaceDescriptorFromXlibWindow{
                     .chain = .{
                         .sType = c.WGPUSType_SurfaceDescriptorFromXlibWindow,
                         .next = null,
@@ -371,7 +371,7 @@ pub const Instance = struct {
             }
         } else if (info.subsystem == c.SDL_SYSWM_WAYLAND) {
             if (@hasDecl(c, "SDL_VIDEO_DRIVER_WAYLAND")) {
-                descriptor.nextInChain = @ptrCast([*c]c.WGPUChainedStruct, &c.WGPUSurfaceDescriptorFromWaylandSurface{
+                descriptor.nextInChain = @ptrCast([*c]const c.WGPUChainedStruct, &c.WGPUSurfaceDescriptorFromWaylandSurface{
                     .chain = .{
                         .sType = c.WGPUSType_SurfaceDescriptorFromWaylandSurface,
                         .next = null,
