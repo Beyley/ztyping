@@ -106,6 +106,10 @@ pub fn build(b: *std.Build) !void {
         var iconv_lib = iconv.createIconv(b, target, optimize);
 
         exe.linkLibrary(iconv_lib);
+
+        if (target.getOsTag() == .macos) {
+            exe.linkSystemLibrary("iconv");
+        }
     } //iconv
 
     { //process assets
