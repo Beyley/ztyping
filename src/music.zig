@@ -129,7 +129,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
     var fumen_file = try std.fs.openFileAbsolute(fumen_path, .{});
     defer fumen_file.close();
 
-    self.fumen = try Fumen.readFromFile(allocator, &fumen_file);
+    self.fumen = try Fumen.readFromFile(allocator, &fumen_file, path);
     errdefer self.fumen.deinit();
 
     return self;

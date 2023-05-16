@@ -240,7 +240,7 @@ pub fn main() !void {
         //     c.igText("\t%s", commentZ.ptr);
         // }
 
-        // var fumen_audio_fileZ = try allocator.dupeZ(u8, bleh.fumen.audio_url);
+        // var fumen_audio_fileZ = try allocator.dupeZ(u8, bleh.fumen.audio_path);
         // defer allocator.free(fumen_audio_fileZ);
         // c.igText("Fumen audio file: %s", fumen_audio_fileZ.ptr);
 

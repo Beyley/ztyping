@@ -20,10 +20,11 @@ const BeatLine = struct {
     type: Type,
 };
 
-audio_url: []const u8,
+audio_path: []const u8,
 lyrics: []const Lyric,
 lyrics_kanji: []const LyricKanji,
 beat_lines: []const BeatLine,
+fumen_folder: []const u8,
 
 allocator: std.mem.Allocator,
 
@@ -38,19 +39,21 @@ pub fn deinit(self: Self) void {
         self.allocator.free(lyric_kanji.text);
     }
 
-    self.allocator.free(self.audio_url);
+    self.allocator.free(self.audio_path);
     self.allocator.free(self.lyrics);
     self.allocator.free(self.lyrics_kanji);
     self.allocator.free(self.beat_lines);
+    self.allocator.free(self.fumen_folder);
 }
 
-pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File) !Self {
+pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.fs.Dir) !Self {
     var self: Self = .{
         .allocator = allocator,
-        .audio_url = &.{},
+        .audio_path = &.{},
         .lyrics = &.{},
         .lyrics_kanji = &.{},
         .beat_lines = &.{},
+        .fumen_folder = &.{},
     };
 
     var iconv = IConv.ziconv_open("Shift_JIS", "UTF-8");
@@ -78,7 +81,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File) !Self {
 
         switch (converted[0]) {
             '@' => {
-                self.audio_url = try allocator.dupe(u8, without_identifier);
+                self.audio_path = try allocator.dupe(u8, without_identifier);
             },
             '+' => {
                 var space_idx = std.mem.indexOf(u8, without_identifier, &.{' '}).?;
@@ -127,6 +130,8 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File) !Self {
     self.lyrics = try lyrics.toOwnedSlice();
     self.lyrics_kanji = try lyrics_kanji.toOwnedSlice();
     self.beat_lines = try beat_lines.toOwnedSlice();
+
+    self.fumen_folder = try dir.realpathAlloc(allocator, ".");
 
     return self;
 }
