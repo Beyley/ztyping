@@ -20,8 +20,9 @@ const Phase = enum {
 };
 
 const SongSelectData = struct {
-    // name: std.ArrayList(u8),
     phase: Phase = .ready,
+    beat_line_left: usize,
+    beat_line_right: usize,
 };
 
 pub var Gameplay = Screen{
@@ -43,6 +44,8 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) bool {
         std.debug.print("Failed to allocate SongSelectData!!???\n", .{});
         return false;
     };
+
+    data.* = .{};
 
     self.data = data;
 
@@ -75,10 +78,20 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
 
 pub fn renderScreen(self: *Screen, render_state: RenderState) void {
     var data = self.getData(SongSelectData);
-    _ = data;
 
     render_state.fontstash.renderer.begin() catch @panic("Cant begin font renderer");
     render_state.fontstash.reset();
+
+    if (data.phase == .ready) {
+        render_state.fontstash.setMincho();
+        render_state.fontstash.setSizePt(36);
+        render_state.fontstash.setAlign(.baseline);
+
+        render_state.fontstash.drawText(
+            .{ 50, 370 - render_state.fontstash.verticalMetrics().line_height },
+            "Press any key to start.",
+        );
+    }
 
     render_state.fontstash.renderer.end() catch @panic("Cant end font renderer");
 
