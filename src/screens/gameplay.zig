@@ -171,6 +171,18 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
         }
     }
 
+    for (0..fumen.lyrics.len) |i| {
+        var lyric = fumen.lyrics[i];
+        var time_diff = time - lyric.time;
+
+        var posX = getDrawPosX(time_diff);
+        var posY = getDrawPosY(posX);
+        _ = posY;
+
+        if (posX < 0) continue;
+        if (posX > 640) break;
+    }
+
     render_state.renderer.end() catch @panic("Unable to end render");
     render_state.renderer.draw(render_state.render_pass_encoder) catch @panic("cant draaw");
 

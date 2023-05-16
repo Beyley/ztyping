@@ -143,7 +143,25 @@ pub const ReservedData = struct {
     }
 };
 
-pub inline fn reserveTexQuad(self: *Self, comptime tex_name: []const u8, position: Gfx.Vector2, scale: Gfx.Vector2, col: Gfx.ColorF) !void {
+pub inline fn reserveTexQuadPxSize(
+    self: *Self,
+    comptime tex_name: []const u8,
+    position: Gfx.Vector2,
+    size: Gfx.Vector2,
+    col: Gfx.ColorF,
+) !void {
+    const tex_size = Gfx.getTexSizeFromAtlas(tex_name);
+
+    self.reserveTexQuad(tex_name, position, size / tex_size, col);
+}
+
+pub inline fn reserveTexQuad(
+    self: *Self,
+    comptime tex_name: []const u8,
+    position: Gfx.Vector2,
+    scale: Gfx.Vector2,
+    col: Gfx.ColorF,
+) !void {
     const uvs = Gfx.getTexUVsFromAtlas(tex_name);
     const size = Gfx.getTexSizeFromAtlas(tex_name);
 
