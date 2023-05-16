@@ -93,8 +93,16 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
     }
 }
 
-var circle_x = 100;
-var circle_speed = 250;
+const circle_x = 100;
+const circle_y = 180;
+const circle_r = 30;
+
+const y0_bar = circle_y - 60;
+const y1_bar = circle_y + 50;
+const y0_beat = circle_y - 45;
+const y1_beat = circle_y + 40;
+
+const circle_speed = 250;
 
 // https://github.com/toslunar/UTyping/blob/1b2eff072bda776ae4d7091f39d0c440f45d2727/UTyping.cpp#L2768
 fn getDrawPosX(time_diff: f64) f32 {
@@ -104,7 +112,9 @@ fn getDrawPosX(time_diff: f64) f32 {
 
 // https://github.com/toslunar/UTyping/blob/1b2eff072bda776ae4d7091f39d0c440f45d2727/UTyping.cpp#L2773
 fn getDrawPosY(x: f32) f32 {
-    x -= circle_x;
+    var workingX = x;
+
+    workingX -= circle_x;
     var y: f32 = 0;
     // if(m_challenge.test(CHALLENGE_SIN)){
     // 	y += sin(x / SCALE_FUNCTION) * SCALE_FUNCTION;
@@ -124,8 +134,9 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
     render_state.fontstash.renderer.begin() catch @panic("Cant begin font renderer");
     render_state.fontstash.reset();
 
-    var time: f64 = 0;
-    _ = time;
+    render_state.renderer.begin() catch @panic("Unable to start render");
+
+    var time: f64 = self.state.audio_tracker.music.?.getCursorInSeconds() catch @panic("unable to get music time");
 
     if (data.phase == .ready) {
         render_state.fontstash.setMincho();
@@ -141,8 +152,27 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
     var fumen = self.state.current_map.?.fumen;
 
     for (0..fumen.beat_lines.len) |i| {
-        _ = i;
+        var beat_line = fumen.beat_lines[i];
+
+        var time_diff = time - beat_line.time;
+        var posX = getDrawPosX(time_diff);
+        var posY = getDrawPosY(posX);
+
+        if (posX < 0) continue;
+        if (posX > 640) break;
+
+        switch (beat_line.type) {
+            .bar => {
+                render_state.renderer.reserveTexQuad("white", .{ posX, posY + y0_bar }, .{ 1, y1_bar - y0_bar }, Gfx.WhiteF) catch @panic("Unable to draw");
+            },
+            .beat => {
+                render_state.renderer.reserveTexQuad("white", .{ posX, posY + y0_beat }, .{ 1, y1_beat - y0_beat }, Gfx.WhiteF) catch @panic("Unable to draw");
+            },
+        }
     }
+
+    render_state.renderer.end() catch @panic("Unable to end render");
+    render_state.renderer.draw(render_state.render_pass_encoder) catch @panic("cant draaw");
 
     render_state.fontstash.renderer.end() catch @panic("Cant end font renderer");
 

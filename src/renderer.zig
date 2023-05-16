@@ -143,7 +143,7 @@ pub const ReservedData = struct {
     }
 };
 
-pub inline fn reserveTexQuad(self: *Self, comptime tex_name: []const u8, position: Gfx.Vector2, scale: Gfx.Vector2) !void {
+pub inline fn reserveTexQuad(self: *Self, comptime tex_name: []const u8, position: Gfx.Vector2, scale: Gfx.Vector2, col: Gfx.ColorF) !void {
     const uvs = Gfx.getTexUVsFromAtlas(tex_name);
     const size = Gfx.getTexSizeFromAtlas(tex_name);
 
@@ -152,22 +152,22 @@ pub inline fn reserveTexQuad(self: *Self, comptime tex_name: []const u8, positio
         Gfx.Vertex{
             .position = position,
             .tex_coord = uvs.tl,
-            .vertex_col = .{ 1, 1, 1, 1 },
+            .vertex_col = col,
         },
         Gfx.Vertex{
             .position = position + (Gfx.Vector2{ size[0], 0 } * scale),
             .tex_coord = uvs.tr,
-            .vertex_col = .{ 1, 1, 1, 1 },
+            .vertex_col = col,
         },
         Gfx.Vertex{
             .position = position + (Gfx.Vector2{ 0, size[1] } * scale),
             .tex_coord = uvs.bl,
-            .vertex_col = .{ 1, 1, 1, 1 },
+            .vertex_col = col,
         },
         Gfx.Vertex{
             .position = position + (size * scale),
             .tex_coord = uvs.br,
-            .vertex_col = .{ 1, 1, 1, 1 },
+            .vertex_col = col,
         },
     }, &.{
         0 + reserved.idx_offset,

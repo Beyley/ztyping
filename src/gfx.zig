@@ -10,6 +10,8 @@ pub const Vector2 = @Vector(2, f32);
 pub const ColorF = @Vector(4, f32);
 pub const ColorB = @Vector(4, u8);
 
+pub const WhiteF = ColorF{ 1, 1, 1, 1 };
+
 pub fn colorBToF(orig: ColorB) ColorF {
     var f = ColorF{
         @intToFloat(f32, orig[0]),
