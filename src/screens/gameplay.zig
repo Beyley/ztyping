@@ -21,8 +21,8 @@ const Phase = enum {
 
 const SongSelectData = struct {
     phase: Phase = .ready,
-    beat_line_left: usize,
-    beat_line_right: usize,
+    beat_line_left: usize = 0,
+    beat_line_right: usize = std.math.maxInt(usize),
 };
 
 pub var Gameplay = Screen{
