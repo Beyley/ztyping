@@ -83,6 +83,13 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
         c.SDLK_ESCAPE => {
             self.close_screen = true;
         },
+        c.SDLK_SPACE => {
+            if (self.state.audio_tracker.music.?.isPlaying()) {
+                self.state.audio_tracker.music.?.stop() catch @panic("cant stop");
+            } else {
+                self.state.audio_tracker.music.?.start() catch @panic("cant start");
+            }
+        },
         else => {
             if (data.phase == .ready) {
                 data.phase = .main;
