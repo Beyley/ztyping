@@ -104,6 +104,21 @@ pub fn drawText(self: *Self, position: Gfx.Vector2, text: [:0]const u8) void {
     _ = c.fonsDrawText(self.context, position[0], position[1], text.ptr, null);
 }
 
+const Bounds = struct {
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+};
+
+pub fn textBounds(self: *Self, text: [:0]const u8) Bounds {
+    var bounds: Bounds = undefined;
+
+    _ = c.fonsTextBounds(self.context, 0, 0, text.ptr, null, @ptrCast([*c]f32, &bounds));
+
+    return bounds;
+}
+
 pub fn deinit(self: *Self) void {
     c.fonsDeleteInternal(self.context);
 }

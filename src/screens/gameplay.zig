@@ -185,9 +185,27 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
 
         render_state.renderer.reserveTexQuadPxSize("note", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.RedF) catch @panic("UNABLE TO DRAW WAAA");
 
+        var size: f32 = 50;
+
         render_state.fontstash.setMincho();
-        render_state.fontstash.setSizePt(28);
+        render_state.fontstash.setSizePt(size);
         render_state.fontstash.setAlign(.center);
+
+        //If the font size is too big and it goes outside of the notes,
+        var bounds = render_state.fontstash.textBounds(lyric.text);
+        while (bounds.x2 > circle_r) {
+            //Shrink the font size
+            size -= 5;
+            render_state.fontstash.setSizePt(size);
+
+            bounds = render_state.fontstash.textBounds(lyric.text);
+        }
+
+        //Draw the text inside of the notes
+        render_state.fontstash.drawText(.{ posX, posY + circle_y + render_state.fontstash.verticalMetrics().line_height }, lyric.text);
+
+        //Draw the text below the notes
+        render_state.fontstash.setSizePt(28);
         render_state.fontstash.drawText(.{ posX, lyrics_y }, lyric.text);
     }
 
