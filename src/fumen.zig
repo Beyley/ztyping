@@ -2,11 +2,11 @@ const std = @import("std");
 const IConv = @import("iconv.zig");
 
 const Lyric = struct {
-    text: []const u8,
+    text: [:0]const u8,
     time: f64,
 };
 const LyricKanji = struct {
-    text: []const u8,
+    text: [:0]const u8,
     time: f64,
     time_end: f64,
 };
@@ -88,7 +88,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
 
                 var lyric = Lyric{
                     .time = try std.fmt.parseFloat(f64, without_identifier[0..space_idx]),
-                    .text = try allocator.dupe(u8, without_identifier[(space_idx + 1)..]),
+                    .text = try allocator.dupeZ(u8, without_identifier[(space_idx + 1)..]),
                 };
 
                 try lyrics.append(lyric);
@@ -99,7 +99,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
                 var lyric = LyricKanji{
                     .time = try std.fmt.parseFloat(f64, without_identifier[0..space_idx]),
                     .time_end = std.math.inf(f64),
-                    .text = try allocator.dupe(u8, without_identifier[(space_idx + 1)..]),
+                    .text = try allocator.dupeZ(u8, without_identifier[(space_idx + 1)..]),
                 };
 
                 try lyrics_kanji.append(lyric);

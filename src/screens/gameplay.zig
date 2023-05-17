@@ -97,6 +97,8 @@ const circle_x = 100;
 const circle_y = 180;
 const circle_r = 30;
 
+const lyrics_y = circle_y + circle_r + 40;
+
 const y0_bar = circle_y - 60;
 const y1_bar = circle_y + 50;
 const y0_beat = circle_y - 45;
@@ -180,7 +182,13 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
 
         if (posX < 0 - circle_r) continue;
         if (posX > 640 + circle_r) break;
+
         render_state.renderer.reserveTexQuadPxSize("note", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.RedF) catch @panic("UNABLE TO DRAW WAAA");
+
+        render_state.fontstash.setMincho();
+        render_state.fontstash.setSizePt(28);
+        render_state.fontstash.setAlign(.center);
+        render_state.fontstash.drawText(.{ posX, lyrics_y }, lyric.text);
     }
 
     render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF) catch @panic("UNABLE TO DRAW JUDGEMEENT AA");
