@@ -131,10 +131,10 @@ inline fn getDrawPosY(x: f32) f32 {
     // y += std.math.sin(workingX / scale_function) * scale_function;
     // }
     // if(m_challenge.test(CHALLENGE_COS)){
-    // 	y += cos(x / SCALE_FUNCTION) * SCALE_FUNCTION;
+    // y += std.math.cos(workingX / scale_function) * scale_function;
     // }
     // if(m_challenge.test(CHALLENGE_TAN)){
-    // 	y += tan(x / SCALE_FUNCTION) * SCALE_FUNCTION;
+    // y += std.math.tan(workingX / scale_function) * scale_function;
     // }
     return -y; // スクリーン座標は上下が逆
 }
@@ -162,6 +162,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
 
     var fumen = self.state.current_map.?.fumen;
 
+    //Draw all the beat lines
     for (0..fumen.beat_lines.len) |i| {
         var beat_line = fumen.beat_lines[i];
 
@@ -182,6 +183,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
         }
     }
 
+    //Draw all the lyrics
     for (0..fumen.lyrics.len) |i| {
         var lyric = fumen.lyrics[i];
         var time_diff = time - lyric.time;
@@ -192,10 +194,12 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
         if (posX < 0 - circle_r) continue;
         if (posX > 640 + circle_r) break;
 
+        //Draw the note object
         render_state.renderer.reserveTexQuadPxSize("note", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.RedF) catch @panic("UNABLE TO DRAW WAAA");
 
         var size: f32 = 50;
 
+        //Set the initial font settings
         render_state.fontstash.setMincho();
         render_state.fontstash.setSizePt(size);
         render_state.fontstash.setAlign(.center);
@@ -211,9 +215,10 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
         }
 
         //Draw the text inside of the notes
-        render_state.fontstash.drawText(.{ posX, posY + circle_y + render_state.fontstash.verticalMetrics().line_height }, lyric.text);
+        render_state.fontstash.drawText(.{ posX, posY + circle_y + render_state.fontstash.verticalMetrics().line_height - 3 }, lyric.text);
 
         //Draw the text below the notes
+        render_state.fontstash.setGothic();
         render_state.fontstash.setSizePt(28);
         render_state.fontstash.drawText(.{ posX, lyrics_y + posY }, lyric.text);
     }
