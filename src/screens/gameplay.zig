@@ -105,13 +105,13 @@ const y1_beat = circle_y + 40;
 const circle_speed = 250;
 
 // https://github.com/toslunar/UTyping/blob/1b2eff072bda776ae4d7091f39d0c440f45d2727/UTyping.cpp#L2768
-fn getDrawPosX(time_diff: f64) f32 {
+inline fn getDrawPosX(time_diff: f64) f32 {
     //return X_CIRCLE + (int)(-timeDiff * (CIRCLE_SPEED * m_challenge.speed()));
     return @floatCast(f32, circle_x + (-time_diff * (circle_speed * 1.0)));
 }
 
 // https://github.com/toslunar/UTyping/blob/1b2eff072bda776ae4d7091f39d0c440f45d2727/UTyping.cpp#L2773
-fn getDrawPosY(x: f32) f32 {
+inline fn getDrawPosY(x: f32) f32 {
     var workingX = x;
 
     workingX -= circle_x;
@@ -178,8 +178,8 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
         var posX = getDrawPosX(time_diff);
         var posY = getDrawPosY(posX);
 
-        if (posX < 0) continue;
-        if (posX > 640) break;
+        if (posX < 0 - circle_r) continue;
+        if (posX > 640 + circle_r) break;
         render_state.renderer.reserveTexQuadPxSize("note", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.RedF) catch @panic("UNABLE TO DRAW WAAA");
     }
 
