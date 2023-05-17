@@ -164,7 +164,6 @@ fn update(self_ptr: ?*anyopaque, rect: [*c]c_int, data: [*c]const u8) callconv(.
 
     var rect_x = @intCast(usize, rect[0]);
     var rect_y = @intCast(usize, rect[1]);
-    _ = rect_y;
     var w = @intCast(usize, rect[2] - rect[0]);
     var h = @intCast(usize, rect[3] - rect[1]);
 
@@ -180,7 +179,7 @@ fn update(self_ptr: ?*anyopaque, rect: [*c]c_int, data: [*c]const u8) callconv(.
 
     for (0..h) |y| {
         for (0..w) |x| {
-            full[y * w + x] = .{ 255, 255, 255, data[y * self.texture.?.width + x + rect_x] };
+            full[y * w + x] = .{ 255, 255, 255, data[(rect_y + y) * self.texture.?.width + x + rect_x] };
         }
     }
 
