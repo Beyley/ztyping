@@ -112,6 +112,8 @@ inline fn getDrawPosX(time_diff: f64) f32 {
     return @floatCast(f32, circle_x + (-time_diff * (circle_speed * 1.0)));
 }
 
+const scale_function = 60;
+
 // https://github.com/toslunar/UTyping/blob/1b2eff072bda776ae4d7091f39d0c440f45d2727/UTyping.cpp#L2773
 inline fn getDrawPosY(x: f32) f32 {
     var workingX = x;
@@ -119,7 +121,7 @@ inline fn getDrawPosY(x: f32) f32 {
     workingX -= circle_x;
     var y: f32 = 0;
     // if(m_challenge.test(CHALLENGE_SIN)){
-    // 	y += sin(x / SCALE_FUNCTION) * SCALE_FUNCTION;
+    // y += std.math.sin(workingX / scale_function) * scale_function;
     // }
     // if(m_challenge.test(CHALLENGE_COS)){
     // 	y += cos(x / SCALE_FUNCTION) * SCALE_FUNCTION;
@@ -206,7 +208,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
 
         //Draw the text below the notes
         render_state.fontstash.setSizePt(28);
-        render_state.fontstash.drawText(.{ posX, lyrics_y }, lyric.text);
+        render_state.fontstash.drawText(.{ posX, lyrics_y + posY }, lyric.text);
     }
 
     render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF) catch @panic("UNABLE TO DRAW JUDGEMEENT AA");
