@@ -166,7 +166,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
                 render_state.renderer.reserveTexQuad("white", .{ posX, posY + y0_bar }, .{ 1, y1_bar - y0_bar }, Gfx.WhiteF) catch @panic("Unable to draw");
             },
             .beat => {
-                render_state.renderer.reserveTexQuad("white", .{ posX, posY + y0_beat }, .{ 1, y1_beat - y0_beat }, Gfx.WhiteF) catch @panic("Unable to draw");
+                render_state.renderer.reserveTexQuad("white", .{ posX, posY + y0_beat }, .{ 1, y1_beat - y0_beat }, .{ 0.5, 0.5, 0.5, 1 }) catch @panic("Unable to draw");
             },
         }
     }
@@ -177,11 +177,13 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
 
         var posX = getDrawPosX(time_diff);
         var posY = getDrawPosY(posX);
-        _ = posY;
 
         if (posX < 0) continue;
         if (posX > 640) break;
+        render_state.renderer.reserveTexQuadPxSize("note", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.RedF) catch @panic("UNABLE TO DRAW WAAA");
     }
+
+    render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF) catch @panic("UNABLE TO DRAW JUDGEMEENT AA");
 
     render_state.renderer.end() catch @panic("Unable to end render");
     render_state.renderer.draw(render_state.render_pass_encoder) catch @panic("cant draaw");

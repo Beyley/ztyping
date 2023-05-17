@@ -152,7 +152,7 @@ pub inline fn reserveTexQuadPxSize(
 ) !void {
     const tex_size = Gfx.getTexSizeFromAtlas(tex_name);
 
-    self.reserveTexQuad(tex_name, position, size / tex_size, col);
+    try self.reserveTexQuad(tex_name, position, size / tex_size, col);
 }
 
 pub inline fn reserveTexQuad(

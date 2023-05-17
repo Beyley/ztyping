@@ -122,12 +122,6 @@ pub fn main() !void {
     var old_height: c_int = 0;
     c.SDL_GL_GetDrawableSize(window, &old_width, &old_height);
 
-    // var test_file = try std.fs.cwd().openFile("info.txt", .{});
-    // defer test_file.close();
-
-    // var bleh = try Music.readFromFile(allocator, std.fs.cwd(), &test_file);
-    // defer bleh.deinit();
-
     var state: GameState = GameState{
         .is_running = true,
         .audio_tracker = .{
