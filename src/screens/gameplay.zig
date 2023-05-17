@@ -56,6 +56,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) bool {
     //Create a sentinel-ending array for the path
     var audio_pathZ = allocator.dupeZ(u8, full_audio_path) catch @panic("OOM");
     defer allocator.free(audio_pathZ);
+    std.debug.print("Loading song file {s}\n", .{audio_pathZ});
     //Load the audio file
     self.state.audio_tracker.music = self.state.audio_tracker.engine.createSoundFromFile(audio_pathZ, .{ .flags = .{ .stream = true } }) catch @panic("cant load song...");
 
