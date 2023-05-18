@@ -185,15 +185,17 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
     }
 
     //Draw all the lyrics
-    for (0..fumen.lyrics.len) |i| {
+    for (0..fumen.lyrics.len) |j| {
+        var i = fumen.lyrics.len - 1 - j;
+
         var lyric = fumen.lyrics[i];
         var time_diff = time - lyric.time;
 
         var posX = getDrawPosX(time_diff);
         var posY = getDrawPosY(posX);
 
-        if (posX < 0 - circle_r) continue;
-        if (posX > 640 + circle_r) break;
+        if (posX < 0 - circle_r) break;
+        if (posX > 640 + circle_r) continue;
 
         //Draw the note circle itself
         render_state.renderer.reserveTexQuadPxSize("note", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.RedF) catch @panic("UNABLE TO DRAW WAAA");
