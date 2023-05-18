@@ -195,7 +195,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
         if (posX < 0 - circle_r) continue;
         if (posX > 640 + circle_r) break;
 
-        //Draw the note object
+        //Draw the note circle itself
         render_state.renderer.reserveTexQuadPxSize("note", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.RedF) catch @panic("UNABLE TO DRAW WAAA");
 
         var size: f32 = 50;

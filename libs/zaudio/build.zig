@@ -27,6 +27,7 @@ pub fn package(
     });
 
     zaudio_c_cpp.addIncludePath(thisDir() ++ "/libs/miniaudio");
+    zaudio_c_cpp.addIncludePath(thisDir() ++ "/libs/stb_vorbis");
     zaudio_c_cpp.linkLibC();
 
     const host = (std.zig.system.NativeTargetInfo.detect(zaudio_c_cpp.target) catch unreachable).target;
