@@ -114,6 +114,9 @@ const y1_beat = circle_y + 40;
 
 const circle_speed = 250;
 
+const x_score = 640 - 25;
+const y_score = 70;
+
 // https://github.com/toslunar/UTyping/blob/1b2eff072bda776ae4d7091f39d0c440f45d2727/UTyping.cpp#L2768
 inline fn getDrawPosX(time_diff: f64) f32 {
     //return X_CIRCLE + (int)(-timeDiff * (CIRCLE_SPEED * m_challenge.speed()));
@@ -225,6 +228,12 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
         render_state.fontstash.setSizePt(28);
         render_state.fontstash.drawText(.{ posX, lyrics_y + posY }, lyric.text);
     }
+
+    //Draw the score
+    render_state.fontstash.setMincho();
+    render_state.fontstash.setSizePt(36);
+    render_state.fontstash.setAlign(.right);
+    render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, "12345678");
 
     render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF) catch @panic("UNABLE TO DRAW JUDGEMEENT AA");
 
