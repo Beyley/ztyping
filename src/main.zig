@@ -24,6 +24,9 @@ pub var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
 pub var allocator: std.mem.Allocator = undefined;
 
 pub fn main() !void {
+    //The scale of the window
+    const scale = 1.5;
+
     //Create the allocator to be used in the lifetime of the app
     gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer if (gpa.deinit() == .leak) @panic("Memory leak!");
@@ -47,7 +50,7 @@ pub fn main() !void {
 
     //Create the window
     // const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640 * 2, 480 * 2, c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_RESIZABLE) orelse {
-    const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640, 480, c.SDL_WINDOW_SHOWN) orelse {
+    const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640 * scale, 480 * scale, c.SDL_WINDOW_SHOWN) orelse {
         std.debug.print("SDL window creation failed! err:{s}\n", .{c.SDL_GetError()});
         return error.CreateWindowFailure;
     };
@@ -55,7 +58,7 @@ pub fn main() !void {
     std.debug.print("Created SDL window\n", .{});
 
     //Initialize our graphics
-    var gfx: Gfx = try Gfx.init(window);
+    var gfx: Gfx = try Gfx.init(window, scale);
     defer gfx.deinit();
 
     var imgui_context = c.igCreateContext(null);
@@ -100,7 +103,7 @@ pub fn main() !void {
 
     gfx.updateProjectionMatrixBuffer(gfx.queue, window);
 
-    var renderer = try Renderer.init(allocator, gfx, texture);
+    var renderer = try Renderer.init(allocator, &gfx, texture);
     defer renderer.deinit();
 
     var screen_stack = ScreenStack.init(allocator);

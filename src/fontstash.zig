@@ -34,7 +34,7 @@ pub fn init(self: *Self, gfx: *Gfx, allocator: std.mem.Allocator) !void {
 
     self.context = c.fonsCreateInternal(&params) orelse return error.UnableToCreateFontStashContext;
 
-    self.renderer = try Renderer.init(allocator, gfx.*, self.texture.?);
+    self.renderer = try Renderer.init(allocator, gfx, self.texture.?);
 
     var gothic_data = @embedFile("fonts/gothic.ttf");
     var mincho_data = @embedFile("fonts/mincho.ttf");
@@ -60,7 +60,8 @@ pub fn setSizePt(self: *Self, size: f32) void {
 
 pub fn setSizePx(self: *Self, size: f32) void {
     self.font_size = size;
-    c.fonsSetSize(self.context, size);
+    //We multiply by scale here so that FSS works in scaled space, this is undone during rendering
+    c.fonsSetSize(self.context, size * self.gfx.scale);
 }
 
 pub fn setColor(self: *Self, color: Gfx.ColorB) void {
@@ -92,16 +93,23 @@ pub fn verticalMetrics(self: *Self) struct { ascender: f32, descender: f32, line
     c.fonsVertMetrics(self.context, &ascender, &descender, &line_height);
 
     return .{
-        .ascender = ascender,
-        .descender = descender,
+        .ascender = ascender / self.gfx.scale,
+        .descender = descender / self.gfx.scale,
         //NOTE: fontstash seems to give us double the line height that is correct,
         //      so lets just divide by 2 to get an actually useful number...
-        .line_height = line_height / 2,
+        .line_height = line_height / 2 / self.gfx.scale,
     };
 }
 
 pub fn drawText(self: *Self, position: Gfx.Vector2, text: [:0]const u8) void {
-    _ = c.fonsDrawText(self.context, position[0], position[1], text.ptr, null);
+    _ = c.fonsDrawText(
+        self.context,
+        //We multiply by gfx scale so that FSS stays in scaled space, this gets undone during rendering
+        position[0] * self.gfx.scale,
+        position[1] * self.gfx.scale,
+        text.ptr,
+        null,
+    );
 }
 
 const Bounds = struct {
@@ -209,7 +217,11 @@ fn draw(self_ptr: ?*anyopaque, verts: [*c]const f32, tcoords: [*c]const f32, col
 
     for (0..@intCast(usize, nverts)) |i| {
         reserved.vtx[i] = Gfx.Vertex{
-            .position = .{ verts[i * 2], verts[i * 2 + 1] },
+            .position = .{
+                //We divide by scale to move it back to proper screenspace
+                verts[i * 2] / self.gfx.scale,
+                verts[i * 2 + 1] / self.gfx.scale,
+            },
             .tex_coord = .{ tcoords[i * 2], tcoords[i * 2 + 1] },
             .vertex_col = Gfx.colorBToF(@bitCast(Gfx.ColorB, colors[i])),
         };

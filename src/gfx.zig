@@ -12,6 +12,8 @@ pub const ColorB = @Vector(4, u8);
 
 pub const WhiteF = ColorF{ 1, 1, 1, 1 };
 pub const RedF = ColorF{ 1, 0, 0, 1 };
+pub const GreenF = ColorF{ 0, 1, 0, 1 };
+pub const BlueF = ColorF{ 0, 0, 1, 1 };
 
 pub fn colorBToF(orig: ColorB) ColorF {
     var f = ColorF{
@@ -39,9 +41,12 @@ swap_chain: ?SwapChain = null,
 projection_matrix_buffer: Buffer = undefined,
 projection_matrix_bind_group: BindGroup = undefined,
 sampler: c.WGPUSampler = null,
+scale: f32 = 1.0,
 
-pub fn init(window: *c.SDL_Window) !Self {
-    var self: Self = Self{};
+pub fn init(window: *c.SDL_Window, scale: f32) !Self {
+    var self: Self = Self{
+        .scale = scale,
+    };
 
     //Create the webgpu instance
     self.instance = try createInstance();
@@ -106,12 +111,12 @@ pub fn init(window: *c.SDL_Window) !Self {
         .nextInChain = null,
         .label = "Sampler",
         .compare = c.WGPUCompareFunction_Undefined,
-        .mipmapFilter = c.WGPUMipmapFilterMode_Nearest,
-        .magFilter = c.WGPUFilterMode_Nearest,
-        .minFilter = c.WGPUFilterMode_Nearest,
-        // .mipmapFilter = c.WGPUMipmapFilterMode_Linear,
-        // .magFilter = c.WGPUFilterMode_Linear,
-        // .minFilter = c.WGPUFilterMode_Linear,
+        // .mipmapFilter = c.WGPUMipmapFilterMode_Nearest,
+        // .magFilter = c.WGPUFilterMode_Nearest,
+        // .minFilter = c.WGPUFilterMode_Nearest,
+        .mipmapFilter = c.WGPUMipmapFilterMode_Linear,
+        .magFilter = c.WGPUFilterMode_Linear,
+        .minFilter = c.WGPUFilterMode_Linear,
         .addressModeU = c.WGPUAddressMode_ClampToEdge,
         .addressModeV = c.WGPUAddressMode_ClampToEdge,
         .addressModeW = c.WGPUAddressMode_ClampToEdge,
@@ -937,12 +942,14 @@ pub fn handleAdapterCallback(status: c.WGPURequestAdapterStatus, adapter: c.WGPU
 }
 
 pub fn updateProjectionMatrixBuffer(self: *Self, queue: Queue, window: *c.SDL_Window) void {
+    _ = window;
     var w: c_int = 0;
     var h: c_int = 0;
-    c.SDL_GL_GetDrawableSize(window, &w, &h);
+    // c.SDL_GL_GetDrawableSize(window, &w, &h);
 
-    // w = 640;
-    // h = 480;
+    //Force 640x480, so that the actual pixel space is the same no matter the resolution
+    w = 640;
+    h = 480;
 
     var mat = zmath.orthographicOffCenterLh(0, @intToFloat(f32, w), 0, @intToFloat(f32, h), 0, 1);
 

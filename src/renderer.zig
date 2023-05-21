@@ -15,7 +15,7 @@ const RenderBuffer = struct {
     recording_periods_since_used: usize = 0,
 };
 
-gfx: Gfx,
+gfx: *Gfx,
 arena_allocator: std.heap.ArenaAllocator,
 allocator: std.mem.Allocator,
 ///The main texture of the renderer, aka the atlas
@@ -28,7 +28,7 @@ recording_buffer: ?RenderBuffer = null,
 cpu_vtx: []Gfx.Vertex,
 cpu_idx: []IndexType,
 
-pub fn init(allocator: std.mem.Allocator, gfx: Gfx, texture: Gfx.Texture) !Self {
+pub fn init(allocator: std.mem.Allocator, gfx: *Gfx, texture: Gfx.Texture) !Self {
     var self: Self = Self{
         .gfx = gfx,
         .started = false,
