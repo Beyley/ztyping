@@ -23,6 +23,13 @@ pub fn build(b: *std.Build) !void {
     exe.linkLibC();
     exe.linkLibCpp();
 
+    if (target.isDarwin()) {
+        exe.addIncludePath(root_path ++ "src/");
+        exe.addCSourceFile(root_path ++ "src/osx_helper.mm", &.{"-fobjc-arc"});
+        exe.linkFramework("Metal");
+        exe.linkFramework("QuartzCore");
+    }
+
     { //zaudio
         const zaudio_pkg = zaudio.package(b, target, optimize, .{});
         zaudio_pkg.link(exe);

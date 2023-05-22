@@ -401,7 +401,19 @@ pub const Instance = struct {
                     .hwnd = info.info.win.window,
                 });
             } else {
-                return error.MissingSDLWayland;
+                return error.MissingSDLWindows;
+            }
+        } else if (info.subsystem == c.SDL_SYSWM_COCOA) {
+            if (@hasDecl(c, "SDL_VIDEO_DRIVER_COCOA")) {
+                descriptor.nextInChain = @ptrCast([*c]const c.WGPUChainedStruct, &c.WGPUSurfaceDescriptorFromMetalLayer{
+                    .chain = .{
+                        .sType = c.WGPUSType_SurfaceDescriptorFromWindowsHWND,
+                        .next = null,
+                    },
+                    .layer = c.createMetalLayer(info.info.cocoa.window),
+                });
+            } else {
+                return error.MissingSDLCocoa;
             }
         } else {
             return error.UnknownWindowSubsystem;

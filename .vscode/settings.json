@@ -3,7 +3,8 @@
         "soloud_c.h": "c",
         "fontstash.h": "c",
         "keyboard-shortcuts-inhibit-unstable-v1-client-protocol.h": "c",
-        "sdl_internal.h": "c"
+        "sdl_internal.h": "c",
+        "glfw3.h": "c"
     },
     "cmake.configureOnOpen": false
 }

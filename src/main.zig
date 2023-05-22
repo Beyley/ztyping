@@ -18,6 +18,7 @@ pub const c = @cImport({
     @cDefine("CIMGUI_USE_SDL2", "1");
     @cDefine("CIMGUI_USE_WGPU", "1");
     @cInclude("cimgui.h");
+    @cInclude("osx_helper.h");
 });
 
 pub var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
