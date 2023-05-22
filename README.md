@@ -9,14 +9,12 @@ Active platform support
 
 Compiles, ran at one point
  - Linux x86_64 musl (x86_64-linux-musl)
+ - [Windows x86_64](https://github.com/Beyley/ztyping/issues/1) (x86_64-windows-gnu)
+ - [Windows i686](https://github.com/Beyley/ztyping/issues/1) (x86-windows-gnu)
 
 Compiles, untested
  - MacOS x86_64 (x86_64-macos)
  - MacOS aarch64 (aarch64-macos)
-
-Doesnt compile
- - [Windows x86_64](https://github.com/Beyley/ztyping/issues/1) (x86_64-windows-gnu)
- - [Windows i686](https://github.com/Beyley/ztyping/issues/1) (x86-windows-gnu)
 
 # Compilation
 
@@ -58,11 +56,11 @@ TODO
 |Linux x86_64 musl | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
 |MacOS x86_64 | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
 |MacOS arm64 | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
-|[Windows x86_64](https://github.com/Beyley/ztyping/issues/1)| 🚧 | ❓ | ❓ | ❓ | ❓ |
+|[Windows x86_64](https://github.com/Beyley/ztyping/issues/1)| ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
 |[Windows x86](https://github.com/Beyley/ztyping/issues/1)| ❌ | ❓ | ❓ | ❓ | ❓ |
 
 ### Notes
- - Native compilation *will* act differently than cross compilation, this is specifically about cross compilation
+ - Native compilation *will* act differently than cross compilation, this table is specifically referencing cross compilation
 
 ✔️ = Tested working<br>
 🚧 = In progress<br>
