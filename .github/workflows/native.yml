@@ -21,13 +21,16 @@ jobs:
     name: ${{ matrix.env.name }} Build
     runs-on: ${{ matrix.env.os }}
     steps:
-      - name: Disable git protectNTFS
-        if: matrix.env.os == 'windows-latest'
-        run: |
-          git config --global core.protectNTFS false
-          git config --system core.longpaths true
+      #on windows, clone non-recursively
       - uses: actions/checkout@v2
       - name: Checkout submodules, configure git
+        if: matrix.env.os == 'windows-latest'
+        run: |
+          git submodule update --init --depth 0 
+      #on non-windows, clone recursively
+      - uses: actions/checkout@v2
+      - name: Checkout submodules, configure git
+        if: matrix.env.os != 'windows-latest'
         run: |
           git submodule update --init --recursive --depth 0 
       - name: Extra prerequisites
