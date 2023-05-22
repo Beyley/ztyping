@@ -390,6 +390,19 @@ pub const Instance = struct {
             } else {
                 return error.MissingSDLWayland;
             }
+        } else if (info.subsystem == c.SDL_SYSWM_WINDOWS) {
+            if (@hasDecl(c, "SDL_VIDEO_DRIVER_WINDOWS")) {
+                descriptor.nextInChain = @ptrCast([*c]const c.WGPUChainedStruct, &c.WGPUSurfaceDescriptorFromWindowsHWND{
+                    .chain = .{
+                        .sType = c.WGPUSType_SurfaceDescriptorFromWindowsHWND,
+                        .next = null,
+                    },
+                    .hinstance = info.info.win.hinstance,
+                    .hwnd = info.info.win.window,
+                });
+            } else {
+                return error.MissingSDLWayland;
+            }
         } else {
             return error.UnknownWindowSubsystem;
         }
@@ -947,7 +960,6 @@ pub fn updateProjectionMatrixBuffer(self: *Self, queue: Queue, window: *c.SDL_Wi
     var h: c_int = 0;
     // c.SDL_GL_GetDrawableSize(window, &w, &h);
 
-    //Force 640x480, so that the actual pixel space is the same no matter the resolution
     w = 640;
     h = 480;
 

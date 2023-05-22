@@ -44,10 +44,6 @@ pub fn build(b: *std.Build) !void {
     { //SDL
         var sdl_options = sdl.getDefaultOptionsForTarget(target);
 
-        if (target.getOsTag() == .windows) {
-            sdl_options.shared = true;
-        }
-
         const sdl_pkg = try sdl.createSDL(b, target, optimize, sdl_options);
         exe.linkLibrary(sdl_pkg);
         exe.addIncludePath("libs/SDL/include");
@@ -62,7 +58,13 @@ pub fn build(b: *std.Build) !void {
         var wgpu_from_source = b.option(bool, "wgpu_from_source", "Compile WGPU from source") orelse false;
 
         if (wgpu_from_source) {
-            exe.addObjectFile(try wgpu.create_wgpu(b, target, optimize));
+            var wgpu_lib = try wgpu.create_wgpu(b, target, optimize);
+
+            if (target.getOsTag() == .windows) {
+                @panic("TODO"); //we need to force dynamic linking here.
+            } else {
+                exe.addObjectFile(wgpu_lib);
+            }
         } else {
             var wgpu_bin_path = std.ArrayList(u8).init(b.allocator);
 
@@ -72,8 +74,14 @@ pub fn build(b: *std.Build) !void {
             try wgpu_bin_path.append('-');
             try wgpu_bin_path.appendSlice(@tagName(target.getCpuArch()));
 
-            exe.addLibraryPath(try wgpu_bin_path.toOwnedSlice());
+            var wgpu_bin_path_slice = try wgpu_bin_path.toOwnedSlice();
+
+            exe.addLibraryPath(wgpu_bin_path_slice);
             exe.linkSystemLibrary("wgpu_native");
+
+            if (target.isWindows()) {
+                b.installFile(try std.mem.concat(b.allocator, u8, &.{ wgpu_bin_path_slice, "/wgpu_native.dll" }), "bin/wgpu_native.dll");
+            }
         }
 
         if (target.getOsTag() == .windows) {
