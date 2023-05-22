@@ -25,6 +25,7 @@ jobs:
         if: matrix.env.os == 'windows-latest'
         run: |
           git config --global core.protectNTFS false
+          git config --system core.longpaths true
       - uses: actions/checkout@v2
       - name: Checkout submodules, configure git
         run: |
