@@ -14,7 +14,10 @@ jobs:
               sudo apt-get install -y xorg-dev build-essential libudev-dev
           - os: macos-latest
             name: MacOS
-            extras: "echo no extras needed?"
+            extras: "echo no extras needed"
+          - os: windows-latest
+            name: Windows
+            extras: "echo no extras needed"
     name: ${{ matrix.env.name }} Build
     runs-on: ${{ matrix.env.os }}
     steps:
