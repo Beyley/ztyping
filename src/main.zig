@@ -1,6 +1,7 @@
 const std = @import("std");
 const zaudio = @import("zaudio");
 const zmath = @import("zmath");
+const builtin = @import("builtin");
 const Gfx = @import("gfx.zig");
 const Screen = @import("screen.zig");
 const ScreenStack = @import("screen_stack.zig");
@@ -18,7 +19,9 @@ pub const c = @cImport({
     @cDefine("CIMGUI_USE_SDL2", "1");
     @cDefine("CIMGUI_USE_WGPU", "1");
     @cInclude("cimgui.h");
-    @cInclude("osx_helper.h");
+    if (builtin.target.isDarwin()) {
+        @cInclude("osx_helper.h");
+    }
 });
 
 pub var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
