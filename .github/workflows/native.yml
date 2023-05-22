@@ -21,6 +21,10 @@ jobs:
     name: ${{ matrix.env.name }} Build
     runs-on: ${{ matrix.env.os }}
     steps:
+      - name: Disable git protectNTFS
+        if: matrix.env.os == 'windows-latest'
+        run: |
+          git config --global core.protectNTFS false
       - uses: actions/checkout@v2
       - name: Checkout submodules, configure git
         run: |
