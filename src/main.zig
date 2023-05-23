@@ -9,6 +9,7 @@ const Renderer = @import("renderer.zig");
 const Fontstash = @import("fontstash.zig");
 const Music = @import("music.zig");
 const GameState = @import("game_state.zig");
+const Convert = @import("convert.zig");
 
 pub const c = @cImport({
     @cInclude("fontstash.h");
@@ -136,6 +137,7 @@ pub fn main() !void {
         },
         .map_list = try Music.readUTypingList(allocator),
         .current_map = null,
+        .convert = try Convert.readUTypingConversions(allocator),
     };
 
     defer {
@@ -144,7 +146,17 @@ pub fn main() !void {
         }
 
         allocator.free(state.map_list);
+
+        for (state.convert.conversions) |conversion| {
+            conversion.deinit();
+        }
+
+        state.convert.deinit();
     }
+
+    // for (state.convert.conversions) |conversion| {
+    //     std.debug.print("read conversion: \"{s}\" / \"{s}\" / \"{s}\" / \"{d}\"\n", .{ conversion.romaji, conversion.hiragana, conversion.romaji[0..conversion.length], conversion.length });
+    // }
 
     std.debug.print("parsed {d} maps!\n", .{state.map_list.len});
 
@@ -220,56 +232,6 @@ pub fn main() !void {
             .fontstash = fontstash,
             .render_pass_encoder = &render_pass_encoder,
         });
-
-        // var open = true;
-        // _ = c.igBegin("Map", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
-
-        // var titleZ = try allocator.dupeZ(u8, bleh.title);
-        // defer allocator.free(titleZ);
-        // c.igText("Title: %s", titleZ.ptr);
-        // var artistZ = try allocator.dupeZ(u8, bleh.artist);
-        // defer allocator.free(artistZ);
-        // c.igText("Artist: %s", artistZ.ptr);
-        // var authorZ = try allocator.dupeZ(u8, bleh.author);
-        // defer allocator.free(authorZ);
-        // c.igText("Author: %s", authorZ.ptr);
-        // c.igText("Level: %d", @intCast(c_int, bleh.level));
-        // c.igText("Comment:");
-        // for (bleh.comment) |comment| {
-        //     var commentZ = try allocator.dupeZ(u8, comment);
-        //     defer allocator.free(commentZ);
-        //     c.igText("\t%s", commentZ.ptr);
-        // }
-
-        // var fumen_audio_fileZ = try allocator.dupeZ(u8, bleh.fumen.audio_path);
-        // defer allocator.free(fumen_audio_fileZ);
-        // c.igText("Fumen audio file: %s", fumen_audio_fileZ.ptr);
-
-        // c.igText("Lyrics:");
-
-        // for (bleh.fumen.lyrics) |lyric| {
-        //     var textZ = try allocator.dupeZ(u8, lyric.text);
-        //     defer allocator.free(textZ);
-        //     c.igText("\t%f \"%s\"", lyric.time, textZ.ptr);
-        // }
-
-        // c.igText("Kanji Lyrics:");
-
-        // for (bleh.fumen.lyrics_kanji) |lyric| {
-        //     var textZ = try allocator.dupeZ(u8, lyric.text);
-        //     defer allocator.free(textZ);
-        //     c.igText("\t%f-%f \"%s\"", lyric.time, lyric.time_end, textZ.ptr);
-        // }
-
-        // c.igText("Beat Lines:");
-
-        // for (bleh.fumen.beat_lines) |beat_line| {
-        //     var typeZ = try allocator.dupeZ(u8, @tagName(beat_line.type));
-        //     defer allocator.free(typeZ);
-        //     c.igText("\t%f \"%s\"", beat_line.time, typeZ.ptr);
-        // }
-
-        // c.igEnd();
 
         c.igRender();
         c.ImGui_ImplWGPU_RenderDrawData(c.igGetDrawData(), render_pass_encoder.c);
