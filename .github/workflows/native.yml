@@ -1,4 +1,4 @@
-name: Native Compilation
+name: Compilation
 on:
   push:
 jobs:
@@ -44,5 +44,15 @@ jobs:
           ${{ matrix.env.extras }}
       - name: Install Zig
         uses: goto-bus-stop/setup-zig@v2
-      - name: Build ztyping
+      - name: Build native
         run: zig build
+      - name: Cross compile to Linux x86_64 glibc
+        run: zig build -Dtarget=x86_64-linux-gnu
+      - name: Cross compile to Linux x86_64 musl
+        run: zig build -Dtarget=x86_64-linux-musl
+      - name: Cross compile to Windows x86_64 GNU
+        run: zig build -Dtarget=x86_64-windows-gnu
+      - name: Cross compile to MacOS x86_64
+        run: zig build -Dtarget=x86_64-macos
+      - name: Cross Compile to MacOS ARM64
+        run: zig build -Dtarget=aarch64-macos
