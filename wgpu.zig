@@ -5,7 +5,7 @@ pub fn create_wgpu(b: *std.Build, target: std.zig.CrossTarget, optimize: std.bui
     const wgpu_native_path = root_path ++ "libs/wgpu-native/";
 
     //Get the users name
-    var username = std.os.getenv("USER") orelse return error.UserVariableNotSet;
+    var username = try std.process.getEnvVarOwned(b.allocator, "USER");
 
     //TODO: install the proper toolchains
 
