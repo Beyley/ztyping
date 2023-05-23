@@ -52,12 +52,12 @@ TODO
 
 |     | Linux x86_64 glibc | Linux x86_64 musl | MacOS x86_64 | MacOS arm64 | Windows x86_64 | Windows arm64 |
 | --- | --- | --- | --- | --- | --- | --- |
-|Linux x86_64 glibc | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 | ✔️ |
-|Linux x86_64 musl | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 | ✔️ |
-|MacOS x86_64 | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 | ✔️ |
-|MacOS arm64 | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 | ✔️ |
-|[Windows x86_64](https://github.com/Beyley/ztyping/issues/1)| ✔️ | 🟨 | 🟨 | 🟨 | 🟨 | ✔️ |
-|Windows arm64| ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+|Linux x86_64 glibc | ✔️ | 🟨 | [❌](https://github.com/Beyley/ztyping/issues/4) | ❓ | ✔️ | ✔️ |
+|Linux x86_64 musl | ✔️ | 🟨 | [❌](https://github.com/Beyley/ztyping/issues/4) | ❓ | ✔️ | ✔️ |
+|MacOS x86_64 | ✔️ | 🟨 | ✔️ | 🟨 | ✔️ | ✔️ |
+|MacOS arm64 | ✔️ | 🟨 | ✔️ | 🟨 | ✔️ | ✔️ |
+|[Windows x86_64](https://github.com/Beyley/ztyping/issues/1)| ✔️ | 🟨 | ✔️ | 🟨 | ✔️ | ✔️ |
+|Windows arm64| ❌ | ❓ | ❓ | ❓ | ❓ | ❌ |
 |[Windows x86](https://github.com/Beyley/ztyping/issues/1)| ❌ | ❓ | ❓ | ❓ | ❓ | ❓ |
 
 ### Notes
@@ -68,9 +68,6 @@ TODO
 ❌ = Broken<br>
 ❓ = Untested, but likely broken<br>
 🟨 = Untested, but likely functional<br>
-
-### Compilation Notes 
- - Native compilation of Linux 86_64 works
 
 ## Compiling wgpu-native from source
 
