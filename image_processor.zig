@@ -76,7 +76,8 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
         //Get a hex escaped version of the hash
         var hash_hex = std.ArrayList(u8).init(allocator);
         try std.fmt.format(hash_hex.writer(), "{s}\n", .{std.fmt.fmtSliceHexLower(&hash)});
-        hashes[i] = try hash_hex.toOwnedSlice();
+        //Store the first 8 chars of the hash (too long and windows gets pissy)
+        hashes[i] = (try hash_hex.toOwnedSlice())[0..8];
 
         //Try to open the file which may contain the hash
         var cache_file = cache_dir.openFile(hashes[i], .{});
