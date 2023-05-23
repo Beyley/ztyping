@@ -70,6 +70,8 @@ pub fn readUTypingConversions(allocator: std.mem.Allocator) !Self {
         });
     }
 
+    std.debug.print("parsed {d} hiragana/romaji conversions\n", .{conversions.items.len});
+
     return .{
         .allocator = allocator,
         .conversions = try conversions.toOwnedSlice(),
