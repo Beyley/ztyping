@@ -50,14 +50,15 @@ TODO
 
 `-Dtarget=X`    Sets the target machine of the compilation, possible options are listed [here](#platforms) in parentheses, below is a matrix of supported cross compilation targets, host on the top, target on the left
 
-|     | Linux x86_64 glibc | Linux x86_64 musl | MacOS x86_64 | MacOS arm64 | Windows x86_64 |
-| --- | --- | --- | --- | --- | --- |
-|Linux x86_64 glibc | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
-|Linux x86_64 musl | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
-|MacOS x86_64 | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
-|MacOS arm64 | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
-|[Windows x86_64](https://github.com/Beyley/ztyping/issues/1)| ✔️ | 🟨 | 🟨 | 🟨 | 🟨 |
-|[Windows x86](https://github.com/Beyley/ztyping/issues/1)| ❌ | ❓ | ❓ | ❓ | ❓ |
+|     | Linux x86_64 glibc | Linux x86_64 musl | MacOS x86_64 | MacOS arm64 | Windows x86_64 | Windows arm64 |
+| --- | --- | --- | --- | --- | --- | --- |
+|Linux x86_64 glibc | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 | ✔️ |
+|Linux x86_64 musl | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 | ✔️ |
+|MacOS x86_64 | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 | ✔️ |
+|MacOS arm64 | ✔️ | 🟨 | 🟨 | 🟨 | 🟨 | ✔️ |
+|[Windows x86_64](https://github.com/Beyley/ztyping/issues/1)| ✔️ | 🟨 | 🟨 | 🟨 | 🟨 | ✔️ |
+|Windows arm64| ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+|[Windows x86](https://github.com/Beyley/ztyping/issues/1)| ❌ | ❓ | ❓ | ❓ | ❓ | ❓ |
 
 ### Notes
  - Native compilation *will* act differently than cross compilation, this table is specifically referencing cross compilation
