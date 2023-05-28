@@ -60,7 +60,12 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
     defer IConv.ziconv_close(iconv);
 
     var lyrics = std.ArrayList(Lyric).init(allocator);
-    errdefer lyrics.deinit();
+    errdefer {
+        for (lyrics.items) |lyric| {
+            allocator.free(lyric.text);
+        }
+        lyrics.deinit();
+    }
 
     var lyrics_kanji = std.ArrayList(LyricKanji).init(allocator);
     errdefer lyrics_kanji.deinit();

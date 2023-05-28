@@ -135,18 +135,22 @@ pub fn main() !void {
         .audio_tracker = .{
             .engine = audio_engine,
         },
-        .map_list = try Music.readUTypingList(allocator),
+        .map_list = undefined,
+        .convert = undefined,
         .current_map = null,
-        .convert = try Convert.readUTypingConversions(allocator),
     };
 
+    state.map_list = try Music.readUTypingList(allocator);
     defer {
         for (0..state.map_list.len) |i| {
             state.map_list[i].deinit();
         }
 
         allocator.free(state.map_list);
+    }
 
+    state.convert = try Convert.readUTypingConversions(allocator);
+    defer {
         for (state.convert.conversions) |conversion| {
             conversion.deinit();
         }
