@@ -127,7 +127,7 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
         progress_node.setCompletedItems(i + 1);
     }
 
-    std.sort.sort(Image, images.items, {}, Image.sorting_func);
+    std.sort.block(Image, images.items, {}, Image.sorting_func);
 
     progress_node.setCompletedItems(png_files.len + 1);
 
