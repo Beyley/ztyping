@@ -407,7 +407,7 @@ pub const Instance = struct {
             if (@hasDecl(c, "SDL_VIDEO_DRIVER_COCOA")) {
                 descriptor.nextInChain = @ptrCast([*c]const c.WGPUChainedStruct, &c.WGPUSurfaceDescriptorFromMetalLayer{
                     .chain = .{
-                        .sType = c.WGPUSType_SurfaceDescriptorFromWindowsHWND,
+                        .sType = c.WGPUSType_SurfaceDescriptorFromMetalLayer,
                         .next = null,
                     },
                     .layer = c.createMetalLayer(info.info.cocoa.window),
