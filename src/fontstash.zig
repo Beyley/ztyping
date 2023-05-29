@@ -112,7 +112,7 @@ pub fn drawText(self: *Self, position: Gfx.Vector2, text: [:0]const u8) void {
     );
 }
 
-const Bounds = struct {
+const Bounds = extern struct {
     x1: f32,
     y1: f32,
     x2: f32,
