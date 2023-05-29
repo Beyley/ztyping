@@ -11,9 +11,9 @@ Compiles, ran at one point
  - Linux x86_64 musl (x86_64-linux-musl)
  - [Windows x86_64](https://github.com/Beyley/ztyping/issues/1) (x86_64-windows-gnu)
  - [Windows i686](https://github.com/Beyley/ztyping/issues/1) (x86-windows-gnu)
+ - MacOS x86_64 (x86_64-macos)
 
 Compiles, untested
- - MacOS x86_64 (x86_64-macos)
  - MacOS aarch64 (aarch64-macos)
 
 # Compilation
