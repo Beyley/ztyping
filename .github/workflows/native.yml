@@ -11,7 +11,7 @@ jobs:
             name: Linux
             extras: |
               sudo apt-get update 
-              sudo apt-get install -y xorg-dev build-essential libudev-dev
+              sudo apt-get install -y xorg-dev build-essential libudev-dev libasound2
           - os: macos-latest
             name: MacOS
             extras: "echo no extras needed"
@@ -32,6 +32,12 @@ jobs:
           git submodule update --init --recursive --depth 0 libs/iconv-zig/
           git submodule update --init --recursive --depth 0 libs/wgpu-native/
           git submodule update --init --recursive --depth 0 libs/zigimg/
+
+          cd libs/SDL/
+          git submodule update --init --depth 0 submodules/jack2/
+          git submodule update --init --depth 0 submodules/pipewire/
+          git submodule update --init --depth 0 submodules/pulseaudio/
+          cd ../..
       #on non-windows, clone recursively
       - uses: actions/checkout@v2
       - name: Checkout submodules, configure git
