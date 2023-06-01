@@ -55,7 +55,7 @@ pub fn build(b: *std.Build) !void {
         exe.linkLibrary(sdl_pkg);
         exe.addIncludePath("libs/SDL/include");
 
-        try sdl.applyLinkerArgs(b.allocator, target, exe);
+        try sdl.applyLinkerArgs(b.allocator, target, exe, sdl_options);
 
         //Add the C macros to the exe
         try exe.c_macros.appendSlice(sdl_pkg.c_macros.items);
