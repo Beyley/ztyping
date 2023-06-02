@@ -28,6 +28,35 @@ pub fn colorBToF(orig: ColorB) ColorF {
     return f;
 }
 
+pub const Error = error{
+    UnableToCreateTextureBindGroup,
+    UnableToCreateSampler,
+    UnableToCreateBindGroupForTexture,
+    UnableToFinishCommandEncoder,
+    UnableToBeginRenderPass,
+    UnableToGetSwapChainTextureView,
+    UnableToRetrieveWindowWMInfo,
+    MissingSDLX11,
+    MissingSDLWayland,
+    MissingSDLWindows,
+    MissingSDLCocoa,
+    UnknownWindowSubsystem,
+    SurfaceCreationError,
+    UnableToRequestAdapter,
+    UnableToRequestDevice,
+    UnableToCreateSwapChain,
+    UnableToGetDeviceQueue,
+    UnableToCreateShaderModule,
+    UnableToCreateTextureSamplerBindGroupLayout,
+    UnableToCreateProjectionMatrixBindGroupLayout,
+    UnableToCreateRenderPipeline,
+    UnableToCreateCommandEncoder,
+    UnableToCreateDeviceTexture,
+    UnableToCreateTextureView,
+    UnableToCreateBuffer,
+    InstanceCreationError,
+};
+
 instance: Instance = undefined,
 surface: Surface = undefined,
 adapter: Adapter = undefined,
@@ -103,7 +132,7 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
                 .sampler = null,
                 .textureView = null,
             },
-        }) orelse return error.UnableToCreateTextureBindGroup,
+        }) orelse return Error.UnableToCreateTextureBindGroup,
     };
     std.debug.print("got projection matrix bind group 0x{x}\n", .{@ptrToInt(self.projection_matrix_bind_group.c.?)});
 
@@ -123,7 +152,7 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
         .lodMaxClamp = 0,
         .lodMinClamp = 0,
         .maxAnisotropy = 1,
-    }) orelse return error.UnableToCreateSampler;
+    }) orelse return Error.UnableToCreateSampler;
     std.debug.print("got sampler 0x{x}\n", .{@ptrToInt(self.sampler.?)});
 
     return self;
@@ -249,7 +278,7 @@ pub const Texture = struct {
                 }).ptr,
                 .entryCount = 2,
                 .layout = bind_group_layouts.texture_sampler.c,
-            }) orelse return error.UnableToCreateBindGroupForTexture,
+            }) orelse return Error.UnableToCreateBindGroupForTexture,
         };
 
         std.debug.print("got texture bind group 0x{x}\n", .{@ptrToInt(self.bind_group.?.c.?)});
@@ -280,7 +309,7 @@ pub const CommandEncoder = struct {
     c: c.WGPUCommandEncoder,
 
     pub fn finish(self: CommandEncoder, descriptor: *const c.WGPUCommandBufferDescriptor) !c.WGPUCommandBuffer {
-        return c.wgpuCommandEncoderFinish(self.c, descriptor) orelse error.UnableToFinishCommandEncoder;
+        return c.wgpuCommandEncoderFinish(self.c, descriptor) orelse Error.UnableToFinishCommandEncoder;
     }
 
     pub fn beginRenderPass(self: *CommandEncoder, color_attachment: c.WGPUTextureView) !RenderPassEncoder {
@@ -305,7 +334,7 @@ pub const CommandEncoder = struct {
                 .timestampWriteCount = 0,
                 .timestampWrites = null,
                 .nextInChain = null,
-            }) orelse return error.UnableToBeginRenderPass,
+            }) orelse return Error.UnableToBeginRenderPass,
         };
     }
 };
@@ -324,7 +353,7 @@ pub const SwapChain = struct {
     }
 
     pub fn getCurrentSwapChainTexture(self: SwapChain) !c.WGPUTextureView {
-        return c.wgpuSwapChainGetCurrentTextureView(self.c) orelse error.UnableToGetSwapChainTextureView;
+        return c.wgpuSwapChainGetCurrentTextureView(self.c) orelse Error.UnableToGetSwapChainTextureView;
     }
 };
 
@@ -357,7 +386,7 @@ pub const Instance = struct {
         var result = c.SDL_GetWindowWMInfo(window, &info);
 
         if (result == c.SDL_FALSE) {
-            return error.UnableToRetrieveWindowWMInfo;
+            return Error.UnableToRetrieveWindowWMInfo;
         }
 
         var descriptor: c.WGPUSurfaceDescriptor = .{
@@ -375,7 +404,7 @@ pub const Instance = struct {
                     .window = @intCast(u32, info.info.x11.window),
                 });
             } else {
-                return error.MissingSDLX11;
+                return Error.MissingSDLX11;
             }
         } else if (info.subsystem == c.SDL_SYSWM_WAYLAND) {
             if (@hasDecl(c, "SDL_VIDEO_DRIVER_WAYLAND")) {
@@ -388,7 +417,7 @@ pub const Instance = struct {
                     .surface = info.info.wayland.surface,
                 });
             } else {
-                return error.MissingSDLWayland;
+                return Error.MissingSDLWayland;
             }
         } else if (info.subsystem == c.SDL_SYSWM_WINDOWS) {
             if (@hasDecl(c, "SDL_VIDEO_DRIVER_WINDOWS")) {
@@ -401,7 +430,7 @@ pub const Instance = struct {
                     .hwnd = info.info.win.window,
                 });
             } else {
-                return error.MissingSDLWindows;
+                return Error.MissingSDLWindows;
             }
         } else if (info.subsystem == c.SDL_SYSWM_COCOA) {
             if (@hasDecl(c, "SDL_VIDEO_DRIVER_COCOA")) {
@@ -413,17 +442,17 @@ pub const Instance = struct {
                     .layer = c.createMetalLayer(info.info.cocoa.window),
                 });
             } else {
-                return error.MissingSDLCocoa;
+                return Error.MissingSDLCocoa;
             }
         } else {
-            return error.UnknownWindowSubsystem;
+            return Error.UnknownWindowSubsystem;
         }
 
         var surface = c.wgpuInstanceCreateSurface(self.c, &descriptor);
 
         std.debug.print("got surface 0x{x}\n", .{@ptrToInt(surface.?)});
 
-        return .{ .c = surface orelse return error.SurfaceCreationError };
+        return .{ .c = surface orelse return Error.SurfaceCreationError };
     }
 
     pub fn requestAdapter(self: Instance, surface: Surface) !Adapter {
@@ -438,7 +467,7 @@ pub const Instance = struct {
 
         std.debug.print("got adapter 0x{x}\n", .{@ptrToInt(adapter.?)});
 
-        return .{ .c = adapter orelse return error.UnableToRequestAdapter };
+        return .{ .c = adapter orelse return Error.UnableToRequestAdapter };
     }
 };
 
@@ -468,7 +497,7 @@ pub const Adapter = struct {
 
         std.debug.print("got device 0x{x}\n", .{@ptrToInt(device.?)});
 
-        return .{ .c = device orelse return error.UnableToRequestDevice };
+        return .{ .c = device orelse return Error.UnableToRequestDevice };
     }
 };
 
@@ -553,11 +582,11 @@ pub const Device = struct {
             std.debug.print("got swap chain 0x{x} with size {d}x{d}\n", .{ @ptrToInt(swap_chain.?), width, height });
         }
 
-        return .{ .c = swap_chain orelse return error.UnableToCreateSwapChain };
+        return .{ .c = swap_chain orelse return Error.UnableToCreateSwapChain };
     }
 
     pub fn getQueue(self: Device) !Queue {
-        return .{ .c = c.wgpuDeviceGetQueue(self.c) orelse return error.UnableToGetDeviceQueue };
+        return .{ .c = c.wgpuDeviceGetQueue(self.c) orelse return Error.UnableToGetDeviceQueue };
     }
 
     pub fn createShaderModule(self: Device) !c.WGPUShaderModule {
@@ -579,7 +608,7 @@ pub const Device = struct {
 
         std.debug.print("got shader module 0x{x}\n", .{@ptrToInt(module.?)});
 
-        return module orelse error.UnableToCreateShaderModule;
+        return module orelse Error.UnableToCreateShaderModule;
     }
 
     pub fn createBindGroupLayouts(self: Device) !BindGroupLayouts {
@@ -618,7 +647,7 @@ pub const Device = struct {
                         .visibility = c.WGPUShaderStage_Fragment,
                     },
                 }).ptr,
-            }) orelse return error.UnableToCreateTextureSamplerBindGroupLayout,
+            }) orelse return Error.UnableToCreateTextureSamplerBindGroupLayout,
         };
         layouts.projection_matrix = .{
             .c = c.wgpuDeviceCreateBindGroupLayout(self.c, &c.WGPUBindGroupLayoutDescriptor{
@@ -639,7 +668,7 @@ pub const Device = struct {
                     .storageTexture = undefined,
                     .visibility = c.WGPUShaderStage_Vertex,
                 },
-            }) orelse return error.UnableToCreateProjectionMatrixBindGroupLayout,
+            }) orelse return Error.UnableToCreateProjectionMatrixBindGroupLayout,
         };
 
         std.debug.print("got texture/sampler bind group layout 0x{x}\n", .{@ptrToInt(layouts.texture_sampler.c.?)});
@@ -742,12 +771,12 @@ pub const Device = struct {
 
         std.debug.print("got render pipeline 0x{x}\n", .{@ptrToInt(pipeline.?)});
 
-        return .{ .c = pipeline orelse return error.UnableToCreateRenderPipeline };
+        return .{ .c = pipeline orelse return Error.UnableToCreateRenderPipeline };
     }
 
     pub fn createCommandEncoder(self: Device, descriptor: *const c.WGPUCommandEncoderDescriptor) !CommandEncoder {
         return .{
-            .c = c.wgpuDeviceCreateCommandEncoder(self.c, descriptor) orelse return error.UnableToCreateCommandEncoder,
+            .c = c.wgpuDeviceCreateCommandEncoder(self.c, descriptor) orelse return Error.UnableToCreateCommandEncoder,
         };
     }
 
@@ -774,7 +803,7 @@ pub const Device = struct {
             .sampleCount = 1,
             .viewFormatCount = 1,
             .viewFormats = &texFormat,
-        }) orelse return error.UnableToCreateDeviceTexture;
+        }) orelse return Error.UnableToCreateDeviceTexture;
 
         var view = c.wgpuTextureCreateView(tex, &c.WGPUTextureViewDescriptor{
             .nextInChain = null,
@@ -786,7 +815,7 @@ pub const Device = struct {
             .mipLevelCount = 1,
             .arrayLayerCount = 1,
             .aspect = c.WGPUTextureAspect_All,
-        }) orelse return error.UnableToCreateTextureView;
+        }) orelse return Error.UnableToCreateTextureView;
 
         c.wgpuQueueWriteTexture(
             queue.c,
@@ -844,7 +873,7 @@ pub const Device = struct {
             .sampleCount = 1,
             .viewFormatCount = 1,
             .viewFormats = &texFormat,
-        }) orelse return error.UnableToCreateDeviceTexture;
+        }) orelse return Error.UnableToCreateDeviceTexture;
 
         var view = c.wgpuTextureCreateView(tex, &c.WGPUTextureViewDescriptor{
             .nextInChain = null,
@@ -856,7 +885,7 @@ pub const Device = struct {
             .mipLevelCount = 1,
             .arrayLayerCount = 1,
             .aspect = c.WGPUTextureAspect_All,
-        }) orelse return error.UnableToCreateTextureView;
+        }) orelse return Error.UnableToCreateTextureView;
 
         var texture = Texture{
             .width = width,
@@ -882,7 +911,7 @@ pub const Device = struct {
         std.debug.print("got buffer 0x{x}\n", .{@ptrToInt(buffer.?)});
 
         return .{
-            .c = buffer orelse return error.UnableToCreateBuffer,
+            .c = buffer orelse return Error.UnableToCreateBuffer,
             .type = buffer_type,
             .size = size,
         };
@@ -922,7 +951,7 @@ pub fn createInstance() !Instance {
 
     std.debug.print("got instance 0x{x}\n", .{@ptrToInt(instance.?)});
 
-    return .{ .c = instance orelse return error.InstanceCreationError };
+    return .{ .c = instance orelse return Error.InstanceCreationError };
 }
 
 pub fn setErrorCallbacks(self: *Self) void {

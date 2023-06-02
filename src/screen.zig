@@ -3,7 +3,7 @@ const zaudio = @import("zaudio");
 
 const c = @import("main.zig").c;
 
-pub const ScreenError = zaudio.Error;
+pub const ScreenError = zaudio.Error || std.mem.Allocator.Error || std.fs.File.OpenError || std.fs.Dir.OpenError || Gfx.Error || std.time.Timer.Error;
 
 const Renderer = @import("renderer.zig");
 const Gfx = @import("gfx.zig");
@@ -28,9 +28,9 @@ close_screen: bool = false,
 screen_push: ?*Self = null,
 state: *GameState,
 render: *const fn (*Self, RenderState) ScreenError!void,
-char: ?*const fn (*Self, []const u8) void = null,
-key_down: ?*const fn (*Self, c.SDL_Keysym) void = null,
-init: *const fn (*Self, std.mem.Allocator, Gfx) bool,
+char: ?*const fn (*Self, []const u8) ScreenError!void = null,
+key_down: ?*const fn (*Self, c.SDL_Keysym) ScreenError!void = null,
+init: *const fn (*Self, std.mem.Allocator, Gfx) ScreenError!void,
 deinit: *const fn (*Self) void,
 data: *anyopaque,
 allocator: std.mem.Allocator,

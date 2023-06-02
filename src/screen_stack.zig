@@ -18,9 +18,7 @@ pub fn deinit(self: ScreenStack) void {
 
 pub fn load(self: *ScreenStack, screen: *Screen, gfx: Gfx, state: *GameState) !void {
     screen.state = state;
-    if (!screen.init(screen, self.internal.allocator, gfx)) {
-        return error.FailedToInitScreen;
-    }
+    try screen.init(screen, self.internal.allocator, gfx);
 
     try self.internal.append(screen);
 }

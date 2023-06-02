@@ -40,31 +40,29 @@ pub var Gameplay = Screen{
     .state = undefined,
 };
 
-pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) bool {
+pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) Screen.ScreenError!void {
     _ = gfx;
     self.allocator = allocator;
 
-    var data = allocator.create(SongSelectData) catch @panic("OOM");
+    var data = try allocator.create(SongSelectData);
 
     data.* = .{};
 
     self.data = data;
 
     //Open the dir of the fumen folder
-    var dir = std.fs.openDirAbsolute(self.state.current_map.?.fumen.fumen_folder, .{}) catch @panic("Unable to open fumen folder");
+    var dir = try std.fs.openDirAbsolute(self.state.current_map.?.fumen.fumen_folder, .{});
     defer dir.close();
     //Get the real path of the audio file
-    var full_audio_path = dir.realpathAlloc(allocator, self.state.current_map.?.fumen.audio_path) catch @panic("OOM");
+    var full_audio_path = dir.realpathAlloc(allocator, self.state.current_map.?.fumen.audio_path) catch @panic(":(");
     defer allocator.free(full_audio_path);
 
     //Create a sentinel-ending array for the path
-    var audio_pathZ = allocator.dupeZ(u8, full_audio_path) catch @panic("OOM");
+    var audio_pathZ = try allocator.dupeZ(u8, full_audio_path);
     defer allocator.free(audio_pathZ);
     std.debug.print("Loading song file {s}\n", .{audio_pathZ});
     //Load the audio file
-    self.state.audio_tracker.music = self.state.audio_tracker.engine.createSoundFromFile(audio_pathZ, .{ .flags = .{ .stream = true } }) catch @panic("cant load song...");
-
-    return true;
+    self.state.audio_tracker.music = try self.state.audio_tracker.engine.createSoundFromFile(audio_pathZ, .{ .flags = .{ .stream = true } });
 }
 
 pub fn deinitScreen(self: *Screen) void {
@@ -75,13 +73,13 @@ pub fn deinitScreen(self: *Screen) void {
     self.allocator.destroy(data);
 }
 
-pub fn char(self: *Screen, typed_char: []const u8) void {
+pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
     _ = typed_char;
     var data = self.getData(SongSelectData);
     _ = data;
 }
 
-pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
+pub fn keyDown(self: *Screen, key: c.SDL_Keysym) Screen.ScreenError!void {
     var data = self.getData(SongSelectData);
 
     switch (key.sym) {
@@ -90,16 +88,16 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
         },
         c.SDLK_p => {
             if (self.state.audio_tracker.music.?.isPlaying()) {
-                self.state.audio_tracker.music.?.stop() catch @panic("cant stop");
+                try self.state.audio_tracker.music.?.stop();
             } else {
-                self.state.audio_tracker.music.?.start() catch @panic("cant start");
+                try self.state.audio_tracker.music.?.start();
             }
         },
         else => {
             if (data.phase == .ready) {
                 data.phase = .main;
 
-                self.state.audio_tracker.music.?.start() catch @panic("Unable to play song");
+                try self.state.audio_tracker.music.?.start();
             }
         },
     }
@@ -182,10 +180,10 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         }
     }
 
-    render_state.fontstash.renderer.begin() catch @panic("Cant begin font renderer");
+    try render_state.fontstash.renderer.begin();
     render_state.fontstash.reset();
 
-    render_state.renderer.begin() catch @panic("Unable to start render");
+    try render_state.renderer.begin();
 
     var time: f64 = try self.state.audio_tracker.music.?.getCursorInSeconds();
 
@@ -215,10 +213,10 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
         switch (beat_line.type) {
             .bar => {
-                render_state.renderer.reserveTexQuad("white", .{ posX, posY + y0_bar }, .{ 1, y1_bar - y0_bar }, Gfx.WhiteF) catch @panic("Unable to draw");
+                try render_state.renderer.reserveTexQuad("white", .{ posX, posY + y0_bar }, .{ 1, y1_bar - y0_bar }, Gfx.WhiteF);
             },
             .beat => {
-                render_state.renderer.reserveTexQuad("white", .{ posX, posY + y0_beat }, .{ 1, y1_beat - y0_beat }, .{ 0.5, 0.5, 0.5, 1 }) catch @panic("Unable to draw");
+                try render_state.renderer.reserveTexQuad("white", .{ posX, posY + y0_beat }, .{ 1, y1_beat - y0_beat }, .{ 0.5, 0.5, 0.5, 1 });
             },
         }
     }
@@ -237,7 +235,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         if (posX > 640 + circle_r) continue;
 
         //Draw the note circle itself
-        render_state.renderer.reserveTexQuadPxSize("typing_cutoff", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF) catch @panic("UNABLE TO DRAW WAAA");
+        try render_state.renderer.reserveTexQuadPxSize("typing_cutoff", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
     }
 
     //Draw all the lyrics
@@ -254,7 +252,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         if (posX > 640 + circle_r) continue;
 
         //Draw the note circle itself
-        render_state.renderer.reserveTexQuadPxSize("note", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.RedF) catch @panic("UNABLE TO DRAW WAAA");
+        try render_state.renderer.reserveTexQuadPxSize("note", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.RedF);
 
         var size: f32 = 50;
 
@@ -288,12 +286,12 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
     render_state.fontstash.setAlign(.right);
     render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, "12345678");
 
-    render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF) catch @panic("UNABLE TO DRAW JUDGEMEENT AA");
+    try render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
 
-    render_state.renderer.end() catch @panic("Unable to end render");
-    render_state.renderer.draw(render_state.render_pass_encoder) catch @panic("cant draaw");
+    try render_state.renderer.end();
+    try render_state.renderer.draw(render_state.render_pass_encoder);
 
-    render_state.fontstash.renderer.end() catch @panic("Cant end font renderer");
+    try render_state.fontstash.renderer.end();
 
-    render_state.fontstash.renderer.draw(render_state.render_pass_encoder) catch @panic("Cant draw....");
+    try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
 }

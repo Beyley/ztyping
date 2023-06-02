@@ -24,18 +24,13 @@ pub var SongSelect = Screen{
     .state = undefined,
 };
 
-pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) bool {
+pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) Screen.ScreenError!void {
     _ = gfx;
     self.allocator = allocator;
 
-    var data = allocator.create(SongSelectData) catch {
-        std.debug.print("Failed to allocate SongSelectData!!???\n", .{});
-        return false;
-    };
+    var data = try allocator.create(SongSelectData);
 
     self.data = data;
-
-    return true;
 }
 
 pub fn deinitScreen(self: *Screen) void {
@@ -50,7 +45,7 @@ pub fn deinitScreen(self: *Screen) void {
 //     _ = data;
 // }
 
-pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
+pub fn keyDown(self: *Screen, key: c.SDL_Keysym) Screen.ScreenError!void {
     var data = self.getData(SongSelectData);
     _ = data;
 
@@ -70,7 +65,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
     _ = c.igBegin("Maps", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
     for (self.state.map_list) |map| {
-        var titleZ = self.allocator.dupeZ(u8, map.title) catch @panic("OOM");
+        var titleZ = try self.allocator.dupeZ(u8, map.title);
         defer self.allocator.free(titleZ);
         if (c.igButton(titleZ, .{ .x = 0, .y = 0 })) {
             self.state.current_map = map;
@@ -80,10 +75,10 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
     c.igEnd();
 
-    render_state.fontstash.renderer.begin() catch @panic("Cant begin font renderer");
+    try render_state.fontstash.renderer.begin();
     render_state.fontstash.reset();
 
-    render_state.fontstash.renderer.end() catch @panic("Cant end font renderer");
+    try render_state.fontstash.renderer.end();
 
-    render_state.fontstash.renderer.draw(render_state.render_pass_encoder) catch @panic("Cant draw....");
+    try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
 }

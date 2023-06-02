@@ -180,14 +180,14 @@ pub fn main() !void {
                 },
                 c.SDL_KEYDOWN => {
                     if (screen.key_down) |keyDown| {
-                        keyDown(screen, ev.key.keysym);
+                        try keyDown(screen, ev.key.keysym);
                     }
                 },
                 c.SDL_TEXTINPUT => {
                     var end = std.mem.indexOf(u8, &ev.text.text, &.{0}).?;
 
                     if (screen.char) |char| {
-                        char(screen, ev.text.text[0..end]);
+                        try char(screen, ev.text.text[0..end]);
                     }
                 },
                 c.SDL_MOUSEMOTION => {},

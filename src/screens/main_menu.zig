@@ -24,20 +24,15 @@ pub var MainMenu = Screen{
     .state = undefined,
 };
 
-pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) bool {
+pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) Screen.ScreenError!void {
     _ = gfx;
     self.allocator = allocator;
 
-    var data = allocator.create(MainMenuData) catch {
-        std.debug.print("Failed to allocate MainMenuData!!???\n", .{});
-        return false;
-    };
+    var data = try allocator.create(MainMenuData);
 
     self.data = data;
 
     data.name = std.ArrayList(u8).init(allocator);
-
-    return true;
 }
 
 pub fn deinitScreen(self: *Screen) void {
@@ -48,13 +43,13 @@ pub fn deinitScreen(self: *Screen) void {
     self.allocator.destroy(data);
 }
 
-pub fn char(self: *Screen, typed_char: []const u8) void {
+pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
     var data = self.getData(MainMenuData);
 
-    data.name.appendSlice(typed_char) catch @panic("OOM");
+    try data.name.appendSlice(typed_char);
 }
 
-pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
+pub fn keyDown(self: *Screen, key: c.SDL_Keysym) Screen.ScreenError!void {
     var data = self.getData(MainMenuData);
 
     switch (key.sym) {
@@ -81,9 +76,7 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
 pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError!void {
     var data = self.getData(MainMenuData);
 
-    render_state.fontstash.renderer.begin() catch {
-        @panic("Cant begin font renderer");
-    };
+    try render_state.fontstash.renderer.begin();
     render_state.fontstash.reset();
 
     render_state.fontstash.setMincho();
@@ -122,9 +115,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         render_state.fontstash.setAlign(.baseline);
 
         metrics = render_state.fontstash.verticalMetrics();
-        data.name.append(0) catch {
-            @panic("OOM");
-        };
+        try data.name.append(0);
         render_state.fontstash.drawText(.{ 60, 400 + metrics.line_height * 2 }, data.name.items[0..(data.name.items.len - 1) :0]);
         _ = data.name.pop();
     } else {
@@ -137,11 +128,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         render_state.fontstash.drawText(.{ 60, 400 + metrics.line_height * 2 }, "（未設定）");
     }
 
-    render_state.fontstash.renderer.end() catch {
-        @panic("Cant end font renderer");
-    };
+    try render_state.fontstash.renderer.end();
 
-    render_state.fontstash.renderer.draw(render_state.render_pass_encoder) catch {
-        @panic("Cant draw....");
-    };
+    try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
 }
