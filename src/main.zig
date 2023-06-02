@@ -190,6 +190,7 @@ pub fn main() !void {
                         char(screen, ev.text.text[0..end]);
                     }
                 },
+                c.SDL_MOUSEMOTION => {},
                 else => {},
             }
         }
@@ -230,7 +231,7 @@ pub fn main() !void {
         var render_pass_encoder = try command_encoder.beginRenderPass(next_texture);
 
         //Render it
-        screen.render(screen, .{
+        try screen.render(screen, .{
             .gfx = &gfx,
             .renderer = &renderer,
             .fontstash = fontstash,
