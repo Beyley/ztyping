@@ -16,3 +16,6 @@
 [submodule "libs/iconv-zig"]
 	path = libs/iconv-zig
 	url = https://github.com/Beyley/iconv-zig
+[submodule "libs/zaudio/libs/miniaudio"]
+	path = libs/zaudio/libs/miniaudio
+	url = https://github.com/mackron/miniaudio

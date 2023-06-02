@@ -649,6 +649,7 @@ pub const AudioBuffer = opaque {
         extern fn zaudioAudioBufferConfigInit(
             format: Format,
             channels: u32,
+            sample_rate: u32,
             size_in_frames: u64,
             data: ?*const anyopaque,
             out_config: *Config,
@@ -657,11 +658,12 @@ pub const AudioBuffer = opaque {
         pub fn init(
             format: Format,
             channels: u32,
+            sample_rate: u32,
             size_in_frames: u64,
             data: ?*const anyopaque,
         ) Config {
             var config: Config = undefined;
-            zaudioAudioBufferConfigInit(format, channels, size_in_frames, data, &config);
+            zaudioAudioBufferConfigInit(format, channels, sample_rate, size_in_frames, data, &config);
             return config;
         }
     };
@@ -1715,10 +1717,10 @@ pub const Engine = opaque {
         args: struct {
             flags: Sound.Flags = .{},
             sgroup: ?*SoundGroup = null,
-            done_fence: ?*Fence = null,
+            sound_notifications: ?*SoundNotifications = null,
         },
     ) Error!*Sound {
-        return Sound.createFromFile(engine, file_path, args.flags, args.sgroup, args.done_fence);
+        return Sound.createFromFile(engine, file_path, args.flags, args.sgroup, args.sound_notifications);
     }
 
     pub fn createSoundFromDataSource(
@@ -1903,6 +1905,7 @@ pub const Engine = opaque {
         node_input_bus_index: u32,
     ) Result;
 };
+pub const SoundNotifications = opaque {};
 //--------------------------------------------------------------------------------------------------
 //
 // Sound (-> Node)
@@ -1916,10 +1919,10 @@ pub const Sound = opaque {
         file_path: [:0]const u8,
         flags: Flags,
         sgroup: ?*SoundGroup,
-        done_fence: ?*Fence,
+        sound_notifications: ?*SoundNotifications,
     ) Error!*Sound {
         var handle: ?*Sound = null;
-        try maybeError(zaudioSoundCreateFromFile(engine, file_path.ptr, flags, sgroup, done_fence, &handle));
+        try maybeError(zaudioSoundCreateFromFile(engine, file_path.ptr, flags, sgroup, sound_notifications, &handle));
         return handle.?;
     }
     extern fn zaudioSoundCreateFromFile(
@@ -1927,7 +1930,7 @@ pub const Sound = opaque {
         file_path: [*:0]const u8,
         flags: Flags,
         sgroup: ?*SoundGroup,
-        done_fence: ?*Fence,
+        sound_notifications: ?*SoundNotifications,
         out_handle: ?*?*Sound,
     ) Result;
 
@@ -1935,10 +1938,11 @@ pub const Sound = opaque {
         engine: *Engine,
         data_source: *DataSource,
         flags: Flags,
+        sound_notifications: ?*SoundNotifications,
         sgroup: ?*SoundGroup,
     ) Error!*Sound {
         var handle: ?*Sound = null;
-        try maybeError(zaudioSoundCreateFromDataSource(engine, data_source, flags, sgroup, &handle));
+        try maybeError(zaudioSoundCreateFromDataSource(engine, data_source, flags, sgroup, sound_notifications, &handle));
         return handle.?;
     }
     extern fn zaudioSoundCreateFromDataSource(
@@ -1946,12 +1950,19 @@ pub const Sound = opaque {
         data_source: *DataSource,
         flags: Flags,
         sgroup: ?*SoundGroup,
+        sound_notifications: ?*SoundNotifications,
         out_handle: ?*?*Sound,
     ) Result;
 
-    fn createCopy(engine: *Engine, existing_sound: *Sound, flags: Flags, sgroup: ?*SoundGroup) Error!*Sound {
+    fn createCopy(
+        engine: *Engine,
+        existing_sound: *Sound,
+        flags: Flags,
+        sound_notifications: ?*SoundNotifications,
+        sgroup: ?*SoundGroup,
+    ) Error!*Sound {
         var handle: ?*Sound = null;
-        try maybeError(zaudioSoundCreateCopy(engine, existing_sound, flags, sgroup, &handle));
+        try maybeError(zaudioSoundCreateCopy(engine, existing_sound, flags, sgroup, sound_notifications, &handle));
         return handle.?;
     }
     extern fn zaudioSoundCreateCopy(
@@ -1959,6 +1970,7 @@ pub const Sound = opaque {
         existing_sound: *Sound,
         flags: Flags,
         sgroup: ?*SoundGroup,
+        sound_notifications: ?*SoundNotifications,
         out_handle: ?*?*Sound,
     ) Result;
 
@@ -2280,12 +2292,12 @@ pub const Sound = opaque {
         is_looping: Bool32,
         done_fence: ?*Fence,
 
-        pub fn init() Config {
+        pub fn init(engine: *Engine) Config {
             var config: Config = undefined;
-            zaudioSoundConfigInit(&config);
+            zaudioSoundConfigInit(&config, engine);
             return config;
         }
-        extern fn zaudioSoundConfigInit(out_config: *Config) void;
+        extern fn zaudioSoundConfigInit(out_config: *Config, engine: ?*Engine) void;
     };
 };
 //--------------------------------------------------------------------------------------------------

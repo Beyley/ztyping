@@ -47,7 +47,7 @@ pub fn package(
     }
 
     zaudio_c_cpp.addCSourceFile(thisDir() ++ "/src/zaudio.c", &.{"-std=c99"});
-    zaudio_c_cpp.addCSourceFile(thisDir() ++ "/libs/miniaudio/miniaudio.c", &.{
+    zaudio_c_cpp.addCSourceFile(thisDir() ++ "/src/miniaudio.c", &.{
         "-DMA_NO_WEBAUDIO",
         "-DMA_NO_ENCODING",
         "-DMA_NO_NULL",
