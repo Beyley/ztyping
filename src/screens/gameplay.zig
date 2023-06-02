@@ -1,4 +1,6 @@
 const std = @import("std");
+const zaudio = @import("zaudio");
+const builtin = @import("builtin");
 
 const c = @import("../main.zig").c;
 
@@ -23,6 +25,8 @@ const SongSelectData = struct {
     phase: Phase = .ready,
     beat_line_left: usize = 0,
     beat_line_right: usize = std.math.maxInt(usize),
+    last_x: f32 = 0,
+    scrub_frame_counter: usize = 0,
 };
 
 pub var Gameplay = Screen{
@@ -84,7 +88,7 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
         c.SDLK_ESCAPE => {
             self.close_screen = true;
         },
-        c.SDLK_SPACE => {
+        c.SDLK_p => {
             if (self.state.audio_tracker.music.?.isPlaying()) {
                 self.state.audio_tracker.music.?.stop() catch @panic("cant stop");
             } else {
@@ -143,15 +147,47 @@ inline fn getDrawPosY(x: f32) f32 {
     return -y; // スクリーン座標は上下が逆
 }
 
-pub fn renderScreen(self: *Screen, render_state: RenderState) void {
+pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError!void {
     var data = self.getData(SongSelectData);
+
+    //In debug mode, allow the user to scrub through the song
+    if (builtin.mode == .Debug) {
+        data.scrub_frame_counter += 1;
+
+        if (data.scrub_frame_counter > 20) {
+            var mouse_x_i: c_int = 0;
+            var mouse_y: c_int = 0;
+            var mouse_buttons = c.SDL_GetMouseState(&mouse_x_i, &mouse_y);
+            var mouse_x = @intToFloat(f32, mouse_x_i);
+
+            var max_x = render_state.gfx.scale * 640.0;
+
+            if (mouse_x < 0) {
+                mouse_x = 0;
+            }
+
+            if (mouse_x > max_x) {
+                mouse_x = max_x;
+            }
+
+            if ((mouse_buttons & c.SDL_BUTTON(3)) != 0 and mouse_x != data.last_x) {
+                var frame = @floatToInt(u64, @intToFloat(f64, try self.state.audio_tracker.music.?.getLengthInPcmFrames()) * (mouse_x / max_x));
+
+                try self.state.audio_tracker.music.?.seekToPcmFrame(frame);
+            }
+
+            data.last_x = mouse_x;
+
+            data.scrub_frame_counter = 0;
+        }
+    }
 
     render_state.fontstash.renderer.begin() catch @panic("Cant begin font renderer");
     render_state.fontstash.reset();
 
     render_state.renderer.begin() catch @panic("Unable to start render");
 
-    var time: f64 = self.state.audio_tracker.music.?.getCursorInSeconds() catch @panic("unable to get music time");
+    var time: f64 = try self.state.audio_tracker.music.?.getCursorInSeconds();
 
     if (data.phase == .ready) {
         render_state.fontstash.setMincho();

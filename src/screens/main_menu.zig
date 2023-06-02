@@ -78,7 +78,7 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) void {
     }
 }
 
-pub fn renderScreen(self: *Screen, render_state: RenderState) void {
+pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError!void {
     var data = self.getData(MainMenuData);
 
     render_state.fontstash.renderer.begin() catch {
