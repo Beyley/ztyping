@@ -1905,7 +1905,13 @@ pub const Engine = opaque {
         node_input_bus_index: u32,
     ) Result;
 };
-pub const SoundNotifications = opaque {};
+pub const SoundNotifications = extern struct {
+    loaded_fence: ?*Fence, //ma_fence* pLoadedFence
+    on_loaded: ?*fn (user_data: ?*anyopaque, sound: ?*Sound) void, //void (* onLoaded )(void* pUserData, ma_sound* pSuond)
+    on_at_end: ?*fn (user_data: ?*anyopaque, sound: ?*Sound) void, //void (* onAtEnd  )(void* pUserData, ma_sound* pSound)
+    on_process: ?*fn (user_data: ?*anyopaque, sound: ?*Sound, frames: ?*f32, frame_count: u32) void, //void (* onProcess)(void* pUserData, ma_sound* pSound, float* pFrames, ma_uint32 frameCount)
+    user_data: ?*anyopaque,
+};
 //--------------------------------------------------------------------------------------------------
 //
 // Sound (-> Node)
@@ -2290,7 +2296,7 @@ pub const Sound = opaque {
         loop_point_beg_in_pcm_frames: u64,
         loop_point_end_in_pcm_frames: u64,
         is_looping: Bool32,
-        done_fence: ?*Fence,
+        sound_notifications: ?*SoundNotifications,
 
         pub fn init(engine: *Engine) Config {
             var config: Config = undefined;
