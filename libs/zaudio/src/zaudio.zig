@@ -1717,7 +1717,7 @@ pub const Engine = opaque {
         args: struct {
             flags: Sound.Flags = .{},
             sgroup: ?*SoundGroup = null,
-            sound_notifications: ?*SoundNotifications = null,
+            sound_notifications: ?*const SoundNotifications = null,
         },
     ) Error!*Sound {
         return Sound.createFromFile(engine, file_path, args.flags, args.sgroup, args.sound_notifications);
@@ -1907,9 +1907,9 @@ pub const Engine = opaque {
 };
 pub const SoundNotifications = extern struct {
     loaded_fence: ?*Fence, //ma_fence* pLoadedFence
-    on_loaded: ?*fn (user_data: ?*anyopaque, sound: ?*Sound) void, //void (* onLoaded )(void* pUserData, ma_sound* pSuond)
-    on_at_end: ?*fn (user_data: ?*anyopaque, sound: ?*Sound) void, //void (* onAtEnd  )(void* pUserData, ma_sound* pSound)
-    on_process: ?*fn (user_data: ?*anyopaque, sound: ?*Sound, frames: ?*f32, frame_count: u32) void, //void (* onProcess)(void* pUserData, ma_sound* pSound, float* pFrames, ma_uint32 frameCount)
+    on_loaded: ?*const fn (user_data: ?*anyopaque, sound: ?*Sound) void, //void (* onLoaded )(void* pUserData, ma_sound* pSuond)
+    on_at_end: ?*const fn (user_data: ?*anyopaque, sound: ?*Sound) void, //void (* onAtEnd  )(void* pUserData, ma_sound* pSound)
+    on_process: ?*const fn (user_data: ?*anyopaque, sound: ?*Sound, frames: ?*f32, frame_count: u32) void, //void (* onProcess)(void* pUserData, ma_sound* pSound, float* pFrames, ma_uint32 frameCount)
     user_data: ?*anyopaque,
 };
 //--------------------------------------------------------------------------------------------------
@@ -1925,7 +1925,7 @@ pub const Sound = opaque {
         file_path: [:0]const u8,
         flags: Flags,
         sgroup: ?*SoundGroup,
-        sound_notifications: ?*SoundNotifications,
+        sound_notifications: ?*const SoundNotifications,
     ) Error!*Sound {
         var handle: ?*Sound = null;
         try maybeError(zaudioSoundCreateFromFile(engine, file_path.ptr, flags, sgroup, sound_notifications, &handle));
@@ -1936,7 +1936,7 @@ pub const Sound = opaque {
         file_path: [*:0]const u8,
         flags: Flags,
         sgroup: ?*SoundGroup,
-        sound_notifications: ?*SoundNotifications,
+        sound_notifications: ?*const SoundNotifications,
         out_handle: ?*?*Sound,
     ) Result;
 
@@ -1944,7 +1944,7 @@ pub const Sound = opaque {
         engine: *Engine,
         data_source: *DataSource,
         flags: Flags,
-        sound_notifications: ?*SoundNotifications,
+        sound_notifications: ?*const SoundNotifications,
         sgroup: ?*SoundGroup,
     ) Error!*Sound {
         var handle: ?*Sound = null;
@@ -1956,7 +1956,7 @@ pub const Sound = opaque {
         data_source: *DataSource,
         flags: Flags,
         sgroup: ?*SoundGroup,
-        sound_notifications: ?*SoundNotifications,
+        sound_notifications: ?*const SoundNotifications,
         out_handle: ?*?*Sound,
     ) Result;
 
@@ -1964,7 +1964,7 @@ pub const Sound = opaque {
         engine: *Engine,
         existing_sound: *Sound,
         flags: Flags,
-        sound_notifications: ?*SoundNotifications,
+        sound_notifications: ?*const SoundNotifications,
         sgroup: ?*SoundGroup,
     ) Error!*Sound {
         var handle: ?*Sound = null;
@@ -1976,7 +1976,7 @@ pub const Sound = opaque {
         existing_sound: *Sound,
         flags: Flags,
         sgroup: ?*SoundGroup,
-        sound_notifications: ?*SoundNotifications,
+        sound_notifications: ?*const SoundNotifications,
         out_handle: ?*?*Sound,
     ) Result;
 
