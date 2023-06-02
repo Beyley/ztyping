@@ -5,6 +5,9 @@ const Lyric = struct {
     text: [:0]const u8,
     time: f64,
 };
+const LyricCutoff = struct {
+    time: f64,
+};
 const LyricKanji = struct {
     text: [:0]const u8,
     time: f64,
@@ -22,6 +25,7 @@ const BeatLine = struct {
 
 audio_path: []const u8,
 lyrics: []const Lyric,
+lyric_cutoffs: []const LyricCutoff,
 lyrics_kanji: []const LyricKanji,
 beat_lines: []const BeatLine,
 fumen_folder: []const u8,
@@ -41,6 +45,7 @@ pub fn deinit(self: Self) void {
 
     self.allocator.free(self.audio_path);
     self.allocator.free(self.lyrics);
+    self.allocator.free(self.lyric_cutoffs);
     self.allocator.free(self.lyrics_kanji);
     self.allocator.free(self.beat_lines);
     self.allocator.free(self.fumen_folder);
@@ -54,6 +59,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
         .lyrics_kanji = &.{},
         .beat_lines = &.{},
         .fumen_folder = &.{},
+        .lyric_cutoffs = &.{},
     };
 
     var iconv = IConv.ziconv_open("Shift_JIS", "UTF-8");
@@ -69,6 +75,9 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
 
     var lyrics_kanji = std.ArrayList(LyricKanji).init(allocator);
     errdefer lyrics_kanji.deinit();
+
+    var lyric_cutoffs = std.ArrayList(LyricCutoff).init(allocator);
+    errdefer lyric_cutoffs.deinit();
 
     var beat_lines = std.ArrayList(BeatLine).init(allocator);
     errdefer beat_lines.deinit();
@@ -122,9 +131,13 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
                 });
             },
             '/' => {
+                var time = try std.fmt.parseFloat(f64, without_identifier);
+
                 if (lyrics_kanji.items.len > 0) {
-                    lyrics_kanji.items[lyrics_kanji.items.len - 1].time_end = try std.fmt.parseFloat(f64, without_identifier);
+                    lyrics_kanji.items[lyrics_kanji.items.len - 1].time_end = time;
                 }
+
+                try lyric_cutoffs.append(.{ .time = time });
             },
             else => {
                 return error.UnexpectedCharacterWhileParsingFumen;
@@ -133,6 +146,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
     }
 
     self.lyrics = try lyrics.toOwnedSlice();
+    self.lyric_cutoffs = try lyric_cutoffs.toOwnedSlice();
     self.lyrics_kanji = try lyrics_kanji.toOwnedSlice();
     self.beat_lines = try beat_lines.toOwnedSlice();
 

@@ -187,6 +187,23 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) void {
         }
     }
 
+    //Draw all the typing cutoffs
+    for (0..fumen.lyric_cutoffs) |j| {
+        var i = fumen.lyric_cutoffs.len - 1 - j;
+
+        var lyric_cutoff = fumen.lyric_cutoffs[i];
+        var time_diff = time - lyric_cutoff.time;
+
+        var posX = getDrawPosX(time_diff);
+        var posY = getDrawPosY(posX);
+
+        if (posX < 0 - circle_r) break;
+        if (posX > 640 + circle_r) continue;
+
+        //Draw the note circle itself
+        render_state.renderer.reserveTexQuadPxSize("typing_cutoff", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF) catch @panic("UNABLE TO DRAW WAAA");
+    }
+
     //Draw all the lyrics
     for (0..fumen.lyrics.len) |j| {
         var i = fumen.lyrics.len - 1 - j;
