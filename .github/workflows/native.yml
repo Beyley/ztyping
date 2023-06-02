@@ -36,7 +36,6 @@ jobs:
           cd libs/SDL/
           git submodule update --init --depth 0 submodules/jack2/
           git submodule update --init --depth 0 submodules/pipewire/
-          git submodule update --init --depth 0 submodules/pulseaudio/
           cd ../..
       #on non-windows, clone recursively
       - uses: actions/checkout@v2
