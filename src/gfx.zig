@@ -518,8 +518,10 @@ pub const Device = struct {
     pub fn createSwapChainOptimal(self: Device, adapter: Adapter, surface: Surface, window: *c.SDL_Window) !SwapChain {
         //Try to create a swapchain with mailbox
         return self.createSwapChain(adapter, surface, window, .mailbox) catch {
+            std.debug.print("mailbox failed... trying immediate\n", .{});
             //If that fails, try to create one with standard VSync
             return self.createSwapChain(adapter, surface, window, .immediate) catch {
+                std.debug.print("immediate failed... trying fifo\n", .{});
                 //If even that fails, fall back to FIFO
                 return self.createSwapChain(adapter, surface, window, .fifo);
             };
