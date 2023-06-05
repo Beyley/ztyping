@@ -5,13 +5,13 @@ const Fumen = @import("fumen.zig");
 
 const Self = @This();
 
-title: []const u8,
-artist: []const u8,
-author: []const u8,
+title: [:0]const u8,
+artist: [:0]const u8,
+author: [:0]const u8,
 level: u3,
-fumen_file_name: []const u8,
-ranking_file_name: []const u8,
-comment: []const []const u8,
+fumen_file_name: [:0]const u8,
+ranking_file_name: [:0]const u8,
+comment: []const [:0]const u8,
 
 fumen: Fumen,
 
@@ -39,7 +39,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
     var iconv = IConv.ziconv_open("Shift_JIS", "UTF-8");
     defer IConv.ziconv_close(iconv);
 
-    var comments = std.ArrayList([]const u8).init(allocator);
+    var comments = std.ArrayList([:0]const u8).init(allocator);
     errdefer {
         for (comments.items) |comment| {
             allocator.free(comment);
@@ -50,11 +50,11 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
     //Set to 12 to match COMMENT_N_LINES in UTyping.cpp
     try comments.ensureTotalCapacity(12);
 
-    var title: ?[]const u8 = null;
-    var artist: ?[]const u8 = null;
-    var author: ?[]const u8 = null;
-    var fumen_file_name: ?[]const u8 = null;
-    var ranking_file_name: ?[]const u8 = null;
+    var title: ?[:0]const u8 = null;
+    var artist: ?[:0]const u8 = null;
+    var author: ?[:0]const u8 = null;
+    var fumen_file_name: ?[:0]const u8 = null;
+    var ranking_file_name: ?[:0]const u8 = null;
 
     errdefer if (title) |title_ptr| allocator.free(title_ptr);
     errdefer if (artist) |artist_ptr| allocator.free(artist_ptr);
@@ -78,19 +78,19 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
         }
 
         if (i == 0) {
-            title = try allocator.dupe(u8, line);
+            title = try allocator.dupeZ(u8, line);
         } else if (i == 1) {
-            artist = try allocator.dupe(u8, line);
+            artist = try allocator.dupeZ(u8, line);
         } else if (i == 2) {
-            author = try allocator.dupe(u8, line);
+            author = try allocator.dupeZ(u8, line);
         } else if (i == 3) {
             self.level = try std.fmt.parseUnsigned(u3, line, 0);
         } else if (i == 4) {
-            fumen_file_name = try allocator.dupe(u8, line);
+            fumen_file_name = try allocator.dupeZ(u8, line);
         } else if (i == 5) {
-            ranking_file_name = try allocator.dupe(u8, line);
+            ranking_file_name = try allocator.dupeZ(u8, line);
         } else {
-            try comments.append(try allocator.dupe(u8, line));
+            try comments.append(try allocator.dupeZ(u8, line));
         }
 
         //While i dont like this behaviour, it matches UTyping

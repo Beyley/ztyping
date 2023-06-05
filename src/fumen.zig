@@ -23,7 +23,7 @@ const BeatLine = struct {
     type: Type,
 };
 
-audio_path: []const u8,
+audio_path: [:0]const u8,
 lyrics: []const Lyric,
 lyric_cutoffs: []const LyricCutoff,
 lyrics_kanji: []const LyricKanji,
@@ -95,7 +95,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
 
         switch (converted[0]) {
             '@' => {
-                self.audio_path = try allocator.dupe(u8, without_identifier);
+                self.audio_path = try allocator.dupeZ(u8, without_identifier);
             },
             '+' => {
                 var space_idx = std.mem.indexOf(u8, without_identifier, &.{' '}).?;

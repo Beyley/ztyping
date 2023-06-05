@@ -65,9 +65,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
     _ = c.igBegin("Maps", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
     for (self.state.map_list) |map| {
-        var titleZ = try self.allocator.dupeZ(u8, map.title);
-        defer self.allocator.free(titleZ);
-        if (c.igButton(titleZ, .{ .x = 0, .y = 0 })) {
+        if (c.igButton(map.title, .{ .x = 0, .y = 0 })) {
             self.state.current_map = map;
             self.screen_push = &Gameplay.Gameplay;
         }
