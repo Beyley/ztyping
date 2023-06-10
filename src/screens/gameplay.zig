@@ -31,6 +31,9 @@ const GameplayData = struct {
     last_mouse_x: f32 = 0,
     scrub_frame_counter: usize = 0,
 
+    ///The current kanji lyric on display
+    current_lyric_kanji: ?usize = null,
+
     //things Actually Relavent to the gameplay
 
     ///The current note the user is on
@@ -129,6 +132,10 @@ const circle_y = 180;
 const circle_r = 30;
 
 const lyrics_y = circle_y + circle_r + 40;
+
+const lyrics_kanji_x = 100;
+const lyrics_kanji_y = lyrics_y + 35;
+const lyrics_kanji_next_y = lyrics_y + 70;
 
 const y0_bar = circle_y - 60;
 const y1_bar = circle_y + 50;
@@ -323,6 +330,48 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         render_state.fontstash.setGothic();
         render_state.fontstash.setSizePt(28);
         render_state.fontstash.drawText(.{ posX, lyrics_y + posY }, lyric.text);
+    }
+
+    const next_string = "Next: ";
+
+    render_state.fontstash.setAlign(.left);
+    render_state.fontstash.setGothic();
+    render_state.fontstash.setSizePt(16);
+
+    var bounds = render_state.fontstash.textBounds(next_string);
+    var next_string_width = bounds.x2 - bounds.x1;
+
+    render_state.fontstash.drawText(.{ lyrics_kanji_x - next_string_width, lyrics_kanji_next_y }, next_string);
+
+    //Move the current lyric forward by 1, if applicable
+    while (data.current_lyric_kanji != null and fumen.lyrics_kanji[data.current_lyric_kanji.?].time_end < data.current_time) {
+        data.current_lyric_kanji.? += 1;
+    }
+
+    //If we havent reached a lyric yet, check if we have reached it
+    if (data.current_lyric_kanji == null and fumen.lyrics_kanji[0].time < data.current_time) {
+        data.current_lyric_kanji = 0;
+    }
+
+    //If the current lyric has started,
+    if (data.current_lyric_kanji != null and fumen.lyrics_kanji[data.current_lyric_kanji.?].time < data.current_time) {
+        //Draw the lyric
+        fumen.lyrics_kanji[data.current_lyric_kanji.?].draw(lyrics_kanji_x, lyrics_kanji_y, render_state);
+    }
+
+    //If we are not at the last lyric
+    if (data.current_lyric_kanji != null and data.current_lyric_kanji.? < fumen.lyrics_kanji.len - 1) {
+        const next_lyric_kanji = fumen.lyrics_kanji[data.current_lyric_kanji.? + 1];
+
+        //Draw the next lyirc
+        next_lyric_kanji.draw(lyrics_kanji_x, lyrics_kanji_next_y, render_state);
+    }
+    //If we have not reached a lyric yet
+    else if (data.current_lyric_kanji == null) {
+        const next_lyric_kanji = fumen.lyrics_kanji[0];
+
+        //Draw the next lyirc
+        next_lyric_kanji.draw(lyrics_kanji_x, lyrics_kanji_next_y, render_state);
     }
 
     //Draw the score

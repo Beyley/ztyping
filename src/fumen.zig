@@ -1,5 +1,6 @@
 const std = @import("std");
 const IConv = @import("iconv.zig");
+const RenderState = @import("screen.zig").RenderState;
 
 pub const Lyric = struct {
     pub const HitResult = enum {
@@ -31,6 +32,11 @@ pub const LyricKanji = struct {
     text: [:0]const u8,
     time: f64,
     time_end: f64,
+
+    pub fn draw(self: LyricKanji, x: f32, y: f32, render_state: RenderState) void {
+        //TODO: fade in lyrics letter by letter
+        render_state.fontstash.drawText(.{ x, y }, self.text);
+    }
 };
 pub const BeatLine = struct {
     pub const Type = enum {
@@ -127,10 +133,16 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
                 try lyrics.append(lyric);
             },
             '*' => {
-                var space_idx = std.mem.indexOf(u8, without_identifier, &.{' '}).?;
+                const space_idx = std.mem.indexOf(u8, without_identifier, &.{' '}).?;
+
+                const time = try std.fmt.parseFloat(f64, without_identifier[0..space_idx]);
+
+                if (lyrics_kanji.items.len > 0) {
+                    lyrics_kanji.items[lyrics_kanji.items.len - 1].time_end = time;
+                }
 
                 var lyric = LyricKanji{
-                    .time = try std.fmt.parseFloat(f64, without_identifier[0..space_idx]),
+                    .time = time,
                     .time_end = std.math.inf(f64),
                     .text = try allocator.dupeZ(u8, without_identifier[(space_idx + 1)..]),
                 };
