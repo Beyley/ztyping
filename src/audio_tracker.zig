@@ -1,7 +1,4 @@
 const std = @import("std");
-const zaudio = @import("zaudio");
+const bass = @import("bass");
 
-const Engine = zaudio.Engine;
-
-engine: *Engine,
-music: ?*zaudio.Sound = null,
+music: ?bass.Stream,

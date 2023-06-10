@@ -1,5 +1,5 @@
 const std = @import("std");
-const zaudio = @import("zaudio");
+const bass = @import("bass");
 const zmath = @import("zmath");
 const builtin = @import("builtin");
 const Gfx = @import("gfx.zig");
@@ -30,20 +30,25 @@ pub var allocator: std.mem.Allocator = undefined;
 
 pub fn main() !void {
     //The scale of the window
-    const scale = 1.5;
+    const scale = 2;
 
     //Create the allocator to be used in the lifetime of the app
     gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer if (gpa.deinit() == .leak) @panic("Memory leak!");
     allocator = gpa.allocator();
 
-    //Initialize zaudio
-    zaudio.init(allocator);
-    defer zaudio.deinit();
-
-    //Initialize our audio engine
-    const audio_engine = try zaudio.Engine.create(null);
-    defer audio_engine.destroy();
+    var state: GameState = GameState{
+        .is_running = true,
+        .audio_tracker = .{
+            .music = null,
+        },
+        .map_list = undefined,
+        .convert = undefined,
+        .current_map = null,
+        .delta_time = 0,
+        .counter_freq = 0,
+        .counter_curr = 0,
+    };
 
     //Initialize SDL
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
@@ -61,6 +66,29 @@ pub fn main() !void {
     };
     defer c.SDL_DestroyWindow(window);
     std.debug.print("Created SDL window\n", .{});
+
+    var bass_window_ptr: ?*anyopaque = null;
+
+    if (builtin.os.tag == .windows) {
+        var info: c.SDL_SysWMinfo = undefined;
+        c.SDL_GetVersion(&info.version);
+        var result = c.SDL_GetWindowWMInfo(window, &info);
+
+        if (result == c.SDL_FALSE) {
+            return error.UnableToRetrieveWindowWMInfo;
+        }
+
+        //If the window is using the Windows backend
+        if (info.subsystem == c.SDL_SYSWM_WINDOWS) {
+            //Set the bass window ptr to the HWND
+            bass_window_ptr = info.info.win.window;
+        }
+    }
+
+    try bass.init(.default, null, .{}, bass_window_ptr);
+    defer bass.deinit();
+
+    try bass.setConfig(.global_stream_volume, 0.1 * 10000);
 
     //Initialize our graphics
     var gfx: Gfx = try Gfx.init(window, scale);
@@ -130,16 +158,6 @@ pub fn main() !void {
     var old_height: c_int = 0;
     c.SDL_GL_GetDrawableSize(window, &old_width, &old_height);
 
-    var state: GameState = GameState{
-        .is_running = true,
-        .audio_tracker = .{
-            .engine = audio_engine,
-        },
-        .map_list = undefined,
-        .convert = undefined,
-        .current_map = null,
-    };
-
     state.map_list = try Music.readUTypingList(allocator);
     defer {
         for (0..state.map_list.len) |i| {
@@ -158,14 +176,22 @@ pub fn main() !void {
         state.convert.deinit();
     }
 
-    // for (state.convert.conversions) |conversion| {
-    //     std.debug.print("read conversion: \"{s}\" / \"{s}\" / \"{s}\" / \"{d}\"\n", .{ conversion.romaji, conversion.hiragana, conversion.romaji[0..conversion.length], conversion.length });
-    // }
-
     std.debug.print("parsed {d} maps!\n", .{state.map_list.len});
+
+    const freq = @intToFloat(f64, c.SDL_GetPerformanceFrequency());
+    state.counter_freq = freq;
+    var delta_start = c.SDL_GetPerformanceCounter();
 
     try screen_stack.load(&Screen.MainMenu.MainMenu, gfx, &state);
     while (state.is_running) {
+        var current_counter = c.SDL_GetPerformanceCounter();
+        state.counter_curr = current_counter;
+        const delta_time = @intToFloat(f64, (current_counter - delta_start)) / freq;
+        state.delta_time = delta_time;
+        delta_start = c.SDL_GetPerformanceCounter();
+
+        // std.debug.print("delta: {d}ms\n", .{delta_time});
+
         var ev: c.SDL_Event = undefined;
 
         //Get the top screen
@@ -237,6 +263,11 @@ pub fn main() !void {
             .fontstash = fontstash,
             .render_pass_encoder = &render_pass_encoder,
         });
+
+        var open = false;
+        _ = c.igBegin("fps", &open, 0);
+        c.igText("%fms %dfps", state.delta_time * 1000, @floatToInt(usize, 1 / state.delta_time));
+        c.igEnd();
 
         c.igRender();
         c.ImGui_ImplWGPU_RenderDrawData(c.igGetDrawData(), render_pass_encoder.c);

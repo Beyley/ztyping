@@ -1,5 +1,5 @@
 const std = @import("std");
-const zaudio = @import("zaudio");
+const bass = @import("bass");
 const builtin = @import("builtin");
 
 const c = @import("../main.zig").c;
@@ -21,11 +21,14 @@ const Phase = enum {
     exit,
 };
 
-const SongSelectData = struct {
+const GameplayData = struct {
     phase: Phase = .ready,
     beat_line_left: usize = 0,
     beat_line_right: usize = std.math.maxInt(usize),
-    last_x: f32 = 0,
+
+    current_time: f64 = 0,
+
+    last_mouse_x: f32 = 0,
     scrub_frame_counter: usize = 0,
 };
 
@@ -44,7 +47,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) Screen.
     _ = gfx;
     self.allocator = allocator;
 
-    var data = try allocator.create(SongSelectData);
+    var data = allocator.create(GameplayData) catch @panic("OOM");
 
     data.* = .{};
 
@@ -61,43 +64,56 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) Screen.
     var audio_pathZ = try allocator.dupeZ(u8, full_audio_path);
     defer allocator.free(audio_pathZ);
     std.debug.print("Loading song file {s}\n", .{audio_pathZ});
-    //Load the audio file
-    self.state.audio_tracker.music = try self.state.audio_tracker.engine.createSoundFromFile(audio_pathZ, .{ .flags = .{ .stream = true } });
+    self.state.audio_tracker.music = try bass.createFileStream(
+        .{ .file = .{ .path = audio_pathZ } },
+        0,
+        .{
+            .@"union" = .{
+                .stream = .prescan,
+            },
+        },
+    );
 }
 
 pub fn deinitScreen(self: *Screen) void {
-    var data = self.getData(SongSelectData);
+    var data = self.getData(GameplayData);
 
-    self.state.audio_tracker.music.?.stop() catch @panic("music stop");
-    self.state.audio_tracker.music.?.destroy();
+    //Stop the song
+    self.state.audio_tracker.music.?.stop() catch |err| {
+        std.debug.panicExtra(null, null, "Unable to stop music!!! err:{s}\n", .{@errorName(err)});
+    };
+    //Deinit the stream
+    self.state.audio_tracker.music.?.deinit();
+
+    //Destroy the data pointer
     self.allocator.destroy(data);
 }
 
 pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
     _ = typed_char;
-    var data = self.getData(SongSelectData);
+    var data = self.getData(GameplayData);
     _ = data;
 }
 
 pub fn keyDown(self: *Screen, key: c.SDL_Keysym) Screen.ScreenError!void {
-    var data = self.getData(SongSelectData);
+    var data = self.getData(GameplayData);
 
     switch (key.sym) {
         c.SDLK_ESCAPE => {
             self.close_screen = true;
         },
         c.SDLK_p => {
-            if (self.state.audio_tracker.music.?.isPlaying()) {
-                try self.state.audio_tracker.music.?.stop();
+            if (try self.state.audio_tracker.music.?.activeState() == .playing) {
+                try self.state.audio_tracker.music.?.pause();
             } else {
-                try self.state.audio_tracker.music.?.start();
+                try self.state.audio_tracker.music.?.play(false);
             }
         },
         else => {
             if (data.phase == .ready) {
                 data.phase = .main;
 
-                try self.state.audio_tracker.music.?.start();
+                try self.state.audio_tracker.music.?.play(true);
             }
         },
     }
@@ -146,7 +162,9 @@ inline fn getDrawPosY(x: f32) f32 {
 }
 
 pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError!void {
-    var data = self.getData(SongSelectData);
+    var data = self.getData(GameplayData);
+
+    data.current_time = try self.state.audio_tracker.music.?.getSecondPosition();
 
     //In debug mode, allow the user to scrub through the song
     if (builtin.mode == .Debug) {
@@ -168,13 +186,13 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
                 mouse_x = max_x;
             }
 
-            if ((mouse_buttons & c.SDL_BUTTON(3)) != 0 and mouse_x != data.last_x) {
-                var frame = @floatToInt(u64, @intToFloat(f64, try self.state.audio_tracker.music.?.getLengthInPcmFrames()) * (mouse_x / max_x));
+            if ((mouse_buttons & c.SDL_BUTTON(3)) != 0 and mouse_x != data.last_mouse_x) {
+                var byte = @floatToInt(u64, @intToFloat(f64, try self.state.audio_tracker.music.?.getLength(.byte)) * (mouse_x / max_x));
 
-                try self.state.audio_tracker.music.?.seekToPcmFrame(frame);
+                try self.state.audio_tracker.music.?.setPosition(byte, .byte, .{});
             }
 
-            data.last_x = mouse_x;
+            data.last_mouse_x = mouse_x;
 
             data.scrub_frame_counter = 0;
         }
@@ -185,7 +203,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
     try render_state.renderer.begin();
 
-    var time: f64 = try self.state.audio_tracker.music.?.getCursorInSeconds();
+    var time: f64 = data.current_time;
 
     if (data.phase == .ready) {
         render_state.fontstash.setMincho();
@@ -272,7 +290,13 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         }
 
         //Draw the text inside of the notes
-        render_state.fontstash.drawText(.{ posX, posY + circle_y + render_state.fontstash.verticalMetrics().line_height - 3 }, lyric.text);
+        render_state.fontstash.drawText(
+            .{
+                posX,
+                posY + circle_y + render_state.fontstash.verticalMetrics().line_height - 3,
+            },
+            lyric.text,
+        );
 
         //Draw the text below the notes
         render_state.fontstash.setGothic();

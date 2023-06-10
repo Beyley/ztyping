@@ -1,6 +1,6 @@
 const std = @import("std");
-const zaudio = @import("libs/zaudio/build.zig");
 const zmath = @import("libs/zmath/build.zig");
+const bass = @import("libs/zig-bass/build.zig");
 const sdl = @import("libs/SDL/build.zig");
 const fontstash = @import("libs/fontstash/build.zig");
 const wgpu = @import("wgpu.zig");
@@ -30,10 +30,15 @@ pub fn build(b: *std.Build) !void {
         exe.linkFramework("QuartzCore");
     }
 
-    { //zaudio
-        const zaudio_pkg = zaudio.package(b, target, optimize, .{});
-        zaudio_pkg.link(exe);
-    } //zaudio
+    { //zig-bass
+        const zig_bass = b.addModule("bass", .{ .source_file = .{ .path = root_path ++ "libs/zig-bass/src/bass.zig" } });
+        exe.addModule("bass", zig_bass);
+
+        bass.linkBass(exe);
+        bass.installBass(b, target);
+
+        exe.addIncludePath(root_path ++ "libs/zig-bass/src");
+    } //zig-bass
 
     { //zmath
         const zmath_pkg = zmath.package(b, target, optimize, .{

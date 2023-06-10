@@ -1,9 +1,9 @@
 const std = @import("std");
-const zaudio = @import("zaudio");
+const bass = @import("bass");
 
 const c = @import("main.zig").c;
 
-pub const ScreenError = zaudio.Error || std.mem.Allocator.Error || std.fs.File.OpenError || std.fs.Dir.OpenError || Gfx.Error || std.time.Timer.Error;
+pub const ScreenError = bass.Error || std.mem.Allocator.Error || std.fs.File.OpenError || std.fs.Dir.OpenError || Gfx.Error || std.time.Timer.Error;
 
 const Renderer = @import("renderer.zig");
 const Gfx = @import("gfx.zig");
