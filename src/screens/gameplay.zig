@@ -30,6 +30,11 @@ const GameplayData = struct {
 
     last_mouse_x: f32 = 0,
     scrub_frame_counter: usize = 0,
+
+    //things Actually Relavent to the gameplay
+
+    ///The current note the user is on
+    active_note: usize = 0,
 };
 
 pub var Gameplay = Screen{
@@ -270,7 +275,23 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         if (posX > 640 + circle_r) continue;
 
         //Draw the note circle itself
-        try render_state.renderer.reserveTexQuadPxSize("note", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.RedF);
+        try render_state.renderer.reserveTexQuadPxSize(
+            "note",
+            .{ posX - circle_r, posY + circle_y - circle_r },
+            .{ circle_r * 2, circle_r * 2 },
+            Gfx.RedF,
+        );
+
+        if (builtin.mode == .Debug) {
+            if (i == data.active_note) {
+                try render_state.renderer.reserveTexQuadPxSize(
+                    "note",
+                    .{ posX - circle_r / 2, posY + circle_y - circle_r * 2 },
+                    .{ circle_r, circle_r },
+                    Gfx.BlueF,
+                );
+            }
+        }
 
         var size: f32 = 50;
 
@@ -318,4 +339,13 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
     try render_state.fontstash.renderer.end();
 
     try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
+
+    if (builtin.mode == .Debug) {
+        var open = false;
+        _ = c.igBegin("Gameplay Debugging", &open, 0);
+
+        c.igText("Active Note: %d", data.active_note);
+
+        c.igEnd();
+    }
 }

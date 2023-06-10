@@ -264,10 +264,12 @@ pub fn main() !void {
             .render_pass_encoder = &render_pass_encoder,
         });
 
-        var open = false;
-        _ = c.igBegin("fps", &open, 0);
-        c.igText("%fms %dfps", state.delta_time * 1000, @floatToInt(usize, 1 / state.delta_time));
-        c.igEnd();
+        if (builtin.mode == .Debug) {
+            var open = false;
+            _ = c.igBegin("fps", &open, 0);
+            c.igText("%fms %dfps", state.delta_time * 1000, @floatToInt(usize, 1 / state.delta_time));
+            c.igEnd();
+        }
 
         c.igRender();
         c.ImGui_ImplWGPU_RenderDrawData(c.igGetDrawData(), render_pass_encoder.c);
