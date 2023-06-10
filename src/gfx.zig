@@ -15,6 +15,11 @@ pub const RedF = ColorF{ 1, 0, 0, 1 };
 pub const GreenF = ColorF{ 0, 1, 0, 1 };
 pub const BlueF = ColorF{ 0, 0, 1, 1 };
 
+pub const WhiteB = ColorB{ 255, 255, 255, 255 };
+pub const RedB = ColorB{ 255, 0, 0, 255 };
+pub const GreenB = ColorB{ 0, 255, 0, 255 };
+pub const BlueB = ColorB{ 0, 0, 255, 255 };
+
 pub fn colorBToF(orig: ColorB) ColorF {
     var f = ColorF{
         @intToFloat(f32, orig[0]),

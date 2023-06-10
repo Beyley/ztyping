@@ -1,6 +1,7 @@
 const std = @import("std");
 const IConv = @import("iconv.zig");
 const RenderState = @import("screen.zig").RenderState;
+const Gfx = @import("gfx.zig");
 
 pub const Lyric = struct {
     pub const HitResult = enum {
@@ -29,13 +30,26 @@ pub const LyricCutoff = struct {
     time: f64,
 };
 pub const LyricKanji = struct {
-    text: [:0]const u8,
+    pub const Part = struct {
+        text: [:0]const u8,
+        color: Gfx.ColorB,
+    };
+
+    parts: []const Part,
     time: f64,
     time_end: f64,
 
     pub fn draw(self: LyricKanji, x: f32, y: f32, render_state: RenderState) void {
         //TODO: fade in lyrics letter by letter
-        render_state.fontstash.drawText(.{ x, y }, self.text);
+
+        var acc_x = x;
+        for (self.parts) |part| {
+            render_state.fontstash.setColor(part.color);
+            render_state.fontstash.drawText(.{ acc_x, y }, part.text);
+
+            const bounds = render_state.fontstash.textBounds(part.text);
+            acc_x += bounds.x2 - bounds.x1;
+        }
     }
 };
 pub const BeatLine = struct {
@@ -65,7 +79,11 @@ pub fn deinit(self: Self) void {
     }
 
     for (self.lyrics_kanji) |lyric_kanji| {
-        self.allocator.free(lyric_kanji.text);
+        for (lyric_kanji.parts) |part| {
+            self.allocator.free(part.text);
+        }
+
+        self.allocator.free(lyric_kanji.parts);
     }
 
     self.allocator.free(self.audio_path);
@@ -141,10 +159,38 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
                     lyrics_kanji.items[lyrics_kanji.items.len - 1].time_end = time;
                 }
 
+                //The raw text of the lyric
+                const raw_text = try allocator.dupe(u8, without_identifier[(space_idx + 1)..]);
+                defer allocator.free(raw_text);
+
+                //Split the text by "\|"
+                var split_iterator = std.mem.splitSequence(u8, raw_text, "¥|");
+
+                var part_list = std.ArrayList(LyricKanji.Part).init(allocator);
+                defer part_list.deinit();
+                errdefer {
+                    for (part_list.items) |part| {
+                        allocator.free(part.text);
+                    }
+                }
+
+                var grey = false;
+                var next = split_iterator.next();
+                while (next != null) {
+                    try part_list.append(LyricKanji.Part{
+                        .text = try allocator.dupeZ(u8, next.?),
+                        .color = if (grey) .{ 64, 64, 85, 255 } else Gfx.WhiteB,
+                    });
+
+                    //Flip grey, since every split in UTyping is a alternating color of grey, white
+                    grey = !grey;
+                    next = split_iterator.next();
+                }
+
                 var lyric = LyricKanji{
                     .time = time,
                     .time_end = std.math.inf(f64),
-                    .text = try allocator.dupeZ(u8, without_identifier[(space_idx + 1)..]),
+                    .parts = try part_list.toOwnedSlice(),
                 };
 
                 try lyrics_kanji.append(lyric);
