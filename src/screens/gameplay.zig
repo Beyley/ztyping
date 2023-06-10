@@ -345,7 +345,11 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
     //Move the current lyric forward by 1, if applicable
     while (data.current_lyric_kanji != null and fumen.lyrics_kanji[data.current_lyric_kanji.?].time_end < data.current_time) {
-        data.current_lyric_kanji.? += 1;
+        if (data.current_lyric_kanji.? != fumen.lyrics_kanji.len - 1) {
+            data.current_lyric_kanji.? += 1;
+        } else {
+            break;
+        }
     }
 
     //If we havent reached a lyric yet, check if we have reached it
