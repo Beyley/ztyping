@@ -32,7 +32,7 @@ jobs:
           git submodule update --init --recursive --depth 0 libs/iconv-zig/
           git submodule update --init --recursive --depth 0 libs/wgpu-native/
           git submodule update --init --recursive --depth 0 libs/zigimg/
-          git submodule update --init --recursive --depth 0 libs/zaudio/libs/miniaudio
+          git submodule update --init --recursive --depth 0 libs/zig-bass/
 
           cd libs/SDL/
           git submodule update --init --depth 0 submodules/jack2/
