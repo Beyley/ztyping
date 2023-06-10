@@ -1,19 +1,38 @@
 const std = @import("std");
 const IConv = @import("iconv.zig");
 
-const Lyric = struct {
+pub const Lyric = struct {
+    pub const HitResult = enum {
+        excellent,
+        good,
+        fair,
+        poor,
+    };
+
     text: [:0]const u8,
     time: f64,
+
+    /// The hit result that they *could* get if they completed the note
+    /// This is set when they press the first romaji of the note
+    pending_hit_result: ?HitResult = null,
+    ///The final hit result of the note, `null` means unset/unplayed
+    hit_result: ?HitResult = null,
+
+    ///Reset the status of the notes, allowing a song to be played again safely with the same note object
+    pub fn resetHitStatus(self: *Lyric) void {
+        self.hit_result = null;
+        self.pending_hit_result = null;
+    }
 };
-const LyricCutoff = struct {
+pub const LyricCutoff = struct {
     time: f64,
 };
-const LyricKanji = struct {
+pub const LyricKanji = struct {
     text: [:0]const u8,
     time: f64,
     time_end: f64,
 };
-const BeatLine = struct {
+pub const BeatLine = struct {
     pub const Type = enum {
         bar,
         beat,
