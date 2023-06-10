@@ -44,7 +44,7 @@ pub fn init(allocator: std.mem.Allocator, gfx: *Gfx, texture: Gfx.Texture) !Self
     self.recorded_buffers = std.ArrayList(RenderBuffer).init(self.allocator);
     self.queued_buffers = std.ArrayList(RenderBuffer).init(self.allocator);
     self.cpu_vtx = try self.allocator.alloc(Gfx.Vertex, vtx_per_buf);
-    self.cpu_idx = try self.allocator.alloc(IndexType, vtx_per_buf);
+    self.cpu_idx = try self.allocator.alloc(IndexType, idx_per_buf);
 
     //I think quad_per_buf * 3 is a good amount of tris for most 2d scenes
     const common_max_capacity = 3;
