@@ -124,10 +124,10 @@ pub fn textBounds(self: *Self, text: [:0]const u8) Bounds {
 
     _ = c.fonsTextBounds(self.context, 0, 0, text.ptr, null, @ptrCast([*c]f32, &bounds));
 
-    bounds.x1 /= 2;
-    bounds.x2 /= 2;
-    bounds.y1 /= 2;
-    bounds.y2 /= 2;
+    bounds.x1 /= self.gfx.scale;
+    bounds.x2 /= self.gfx.scale;
+    bounds.y1 /= self.gfx.scale;
+    bounds.y2 /= self.gfx.scale;
 
     return bounds;
 }
