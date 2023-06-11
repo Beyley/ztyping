@@ -216,6 +216,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
     try render_state.renderer.begin();
 
+    //If we are in the ready phase, render the "Press any key to start." text
     if (data.phase == .ready) {
         render_state.fontstash.setMincho();
         render_state.fontstash.setSizePt(36);
@@ -233,13 +234,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
     drawKanjiLyrics(render_state, data, fumen);
 
-    //Draw the score
-    render_state.fontstash.setMincho();
-    render_state.fontstash.setSizePt(36);
-    render_state.fontstash.setAlign(.right);
-    render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, "12345678");
-
-    try render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
+    drawScoreUi(render_state, data, fumen);
 
     try render_state.renderer.end();
     try render_state.renderer.draw(render_state.render_pass_encoder);
@@ -256,6 +251,16 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
         c.igEnd();
     }
+}
+
+fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData, fumen: Fumen) void {
+    _ = fumen;
+    _ = data;
+    //Draw the score
+    render_state.fontstash.setMincho();
+    render_state.fontstash.setSizePt(36);
+    render_state.fontstash.setAlign(.right);
+    render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, "12345678");
 }
 
 fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData, fumen: Fumen) !void {
@@ -360,6 +365,8 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData, fum
         render_state.fontstash.setSizePt(28);
         render_state.fontstash.drawText(.{ posX, lyrics_y + posY }, lyric.text);
     }
+
+    try render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
 }
 
 fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData, fumen: Fumen) void {
