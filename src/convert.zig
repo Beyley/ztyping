@@ -22,6 +22,11 @@ pub fn deinit(self: Self) void {
     self.allocator.free(self.conversions);
 }
 
+fn conversionLessThan(context: void, lhs: Conversion, rhs: Conversion) bool {
+    _ = context;
+    return lhs.hiragana.len > rhs.hiragana.len;
+}
+
 pub fn readUTypingConversions(allocator: std.mem.Allocator) !Self {
     var file = try std.fs.cwd().openFile("convert.dat", .{});
     defer file.close();
@@ -71,6 +76,8 @@ pub fn readUTypingConversions(allocator: std.mem.Allocator) !Self {
     }
 
     std.debug.print("parsed {d} hiragana/romaji conversions\n", .{conversions.items.len});
+
+    std.mem.sort(Conversion, conversions.items, {}, conversionLessThan);
 
     return .{
         .allocator = allocator,
