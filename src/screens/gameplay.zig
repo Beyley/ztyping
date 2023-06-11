@@ -7,6 +7,7 @@ const c = @import("../main.zig").c;
 const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");
 const Fumen = @import("../fumen.zig");
+const Music = @import("../music.zig");
 
 const RenderState = Screen.RenderState;
 
@@ -37,6 +38,9 @@ const GameplayData = struct {
 
     //things Actually Relavent to the gameplay
 
+    ///Get the actively playing music
+    music: Music,
+
     ///The current note the user is on
     active_note: usize = 0,
 };
@@ -58,15 +62,17 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) Screen.
 
     var data = allocator.create(GameplayData) catch @panic("OOM");
 
-    data.* = .{};
+    data.* = .{
+        .music = self.state.current_map.?,
+    };
 
     self.data = data;
 
     //Open the dir of the fumen folder
-    var dir = try std.fs.openDirAbsolute(self.state.current_map.?.fumen.fumen_folder, .{});
+    var dir = try std.fs.openDirAbsolute(data.music.fumen.fumen_folder, .{});
     defer dir.close();
     //Get the real path of the audio file
-    var full_audio_path = dir.realpathAlloc(allocator, self.state.current_map.?.fumen.audio_path) catch @panic(":(");
+    var full_audio_path = dir.realpathAlloc(allocator, data.music.fumen.audio_path) catch @panic(":(");
     defer allocator.free(full_audio_path);
 
     //Create a sentinel-ending array for the path
@@ -211,6 +217,8 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         }
     }
 
+    checkForMissedNotes(data);
+
     try render_state.fontstash.renderer.begin();
     render_state.fontstash.reset();
 
@@ -228,13 +236,11 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         );
     }
 
-    var fumen = self.state.current_map.?.fumen;
+    try drawGameplayLyrics(render_state, data);
 
-    try drawGameplayLyrics(render_state, data, fumen);
+    drawKanjiLyrics(render_state, data);
 
-    drawKanjiLyrics(render_state, data, fumen);
-
-    drawScoreUi(render_state, data, fumen);
+    drawScoreUi(render_state, data);
 
     try render_state.renderer.end();
     try render_state.renderer.draw(render_state.render_pass_encoder);
@@ -253,8 +259,16 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
     }
 }
 
-fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData, fumen: Fumen) void {
-    _ = fumen;
+fn checkForMissedNotes(data: *GameplayData) void {
+    //The current note the user is playing
+    var current_note = data.music.fumen.lyrics[data.active_note];
+    //The next note the user *could* hit
+    var next_note: ?Fumen.Lyric = if (data.active_note < data.music.fumen.lyrics.len - 1) data.music.fumen.lyrics[data.active_note + 1] else null;
+    _ = current_note;
+    _ = next_note;
+}
+
+fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) void {
     _ = data;
     //Draw the score
     render_state.fontstash.setMincho();
@@ -263,10 +277,10 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData, fumen: Fum
     render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, "12345678");
 }
 
-fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData, fumen: Fumen) !void {
+fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !void {
     //Draw all the beat lines
-    for (0..fumen.beat_lines.len) |i| {
-        var beat_line = fumen.beat_lines[i];
+    for (0..data.music.fumen.beat_lines.len) |i| {
+        var beat_line = data.music.fumen.beat_lines[i];
 
         var time_diff = data.current_time - beat_line.time;
         var posX = getDrawPosX(time_diff);
@@ -286,10 +300,10 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData, fum
     }
 
     //Draw all the typing cutoffs
-    for (0..fumen.lyric_cutoffs) |j| {
-        var i = fumen.lyric_cutoffs.len - 1 - j;
+    for (0..data.music.fumen.lyric_cutoffs) |j| {
+        var i = data.music.fumen.lyric_cutoffs.len - 1 - j;
 
-        var lyric_cutoff = fumen.lyric_cutoffs[i];
+        var lyric_cutoff = data.music.fumen.lyric_cutoffs[i];
         var time_diff = data.current_time - lyric_cutoff.time;
 
         var posX = getDrawPosX(time_diff);
@@ -303,10 +317,10 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData, fum
     }
 
     //Draw all the lyrics
-    for (0..fumen.lyrics.len) |j| {
-        var i = fumen.lyrics.len - 1 - j;
+    for (0..data.music.fumen.lyrics.len) |j| {
+        var i = data.music.fumen.lyrics.len - 1 - j;
 
-        var lyric = fumen.lyrics[i];
+        var lyric = data.music.fumen.lyrics[i];
         var time_diff = data.current_time - lyric.time;
 
         var posX = getDrawPosX(time_diff);
@@ -323,13 +337,27 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData, fum
             Gfx.RedF,
         );
 
+        //If we are in debug mode,
         if (builtin.mode == .Debug) {
+            //And this is the active note,
             if (i == data.active_note) {
+                //Render a small marker, to mark the note the game thinks the user is playing
                 try render_state.renderer.reserveTexQuadPxSize(
                     "note",
                     .{ posX - circle_r / 2, posY + circle_y - circle_r * 2 },
                     .{ circle_r, circle_r },
                     Gfx.BlueF,
+                );
+            }
+
+            //And this is the note after the active note, along with the user being after the current note *in time*
+            if (i == data.active_note + 1 and data.music.fumen.lyrics[data.active_note].time < data.current_time) {
+                //Render a small marker, to mark the note the user *could* switch to hitting
+                try render_state.renderer.reserveTexQuadPxSize(
+                    "note",
+                    .{ posX - circle_r / 2, posY + circle_y - circle_r * 2 },
+                    .{ circle_r, circle_r },
+                    Gfx.GreenF,
                 );
             }
         }
@@ -369,7 +397,7 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData, fum
     try render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
 }
 
-fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData, fumen: Fumen) void {
+fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) void {
     const next_string = "Next: ";
 
     render_state.fontstash.setAlign(.left);
@@ -382,8 +410,8 @@ fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData, fumen:
     render_state.fontstash.drawText(.{ lyrics_kanji_x - next_string_width, lyrics_kanji_next_y }, next_string);
 
     //Move the current lyric forward by 1, if applicable
-    while (data.current_lyric_kanji != null and fumen.lyrics_kanji[data.current_lyric_kanji.?].time_end < data.current_time) {
-        if (data.current_lyric_kanji.? != fumen.lyrics_kanji.len - 1) {
+    while (data.current_lyric_kanji != null and data.music.fumen.lyrics_kanji[data.current_lyric_kanji.?].time_end < data.current_time) {
+        if (data.current_lyric_kanji.? != data.music.fumen.lyrics_kanji.len - 1) {
             data.current_lyric_kanji.? += 1;
         } else {
             break;
@@ -391,26 +419,26 @@ fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData, fumen:
     }
 
     //If we havent reached a lyric yet, check if we have reached it
-    if (data.current_lyric_kanji == null and fumen.lyrics_kanji[0].time < data.current_time) {
+    if (data.current_lyric_kanji == null and data.music.fumen.lyrics_kanji[0].time < data.current_time) {
         data.current_lyric_kanji = 0;
     }
 
     //If the current lyric has started,
-    if (data.current_lyric_kanji != null and fumen.lyrics_kanji[data.current_lyric_kanji.?].time < data.current_time) {
+    if (data.current_lyric_kanji != null and data.music.fumen.lyrics_kanji[data.current_lyric_kanji.?].time < data.current_time) {
         //Draw the lyric
-        fumen.lyrics_kanji[data.current_lyric_kanji.?].draw(lyrics_kanji_x, lyrics_kanji_y, render_state);
+        data.music.fumen.lyrics_kanji[data.current_lyric_kanji.?].draw(lyrics_kanji_x, lyrics_kanji_y, render_state);
     }
 
     //If we are not at the last lyric
-    if (data.current_lyric_kanji != null and data.current_lyric_kanji.? < fumen.lyrics_kanji.len - 1) {
-        const next_lyric_kanji = fumen.lyrics_kanji[data.current_lyric_kanji.? + 1];
+    if (data.current_lyric_kanji != null and data.current_lyric_kanji.? < data.music.fumen.lyrics_kanji.len - 1) {
+        const next_lyric_kanji = data.music.fumen.lyrics_kanji[data.current_lyric_kanji.? + 1];
 
         //Draw the next lyirc
         next_lyric_kanji.draw(lyrics_kanji_x, lyrics_kanji_next_y, render_state);
     }
     //If we have not reached a lyric yet
     else if (data.current_lyric_kanji == null) {
-        const next_lyric_kanji = fumen.lyrics_kanji[0];
+        const next_lyric_kanji = data.music.fumen.lyrics_kanji[0];
 
         //Draw the next lyirc
         next_lyric_kanji.draw(lyrics_kanji_x, lyrics_kanji_next_y, render_state);
