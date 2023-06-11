@@ -6,6 +6,7 @@ const c = @import("../main.zig").c;
 
 const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");
+const Fumen = @import("../fumen.zig");
 
 const RenderState = Screen.RenderState;
 
@@ -332,6 +333,34 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         render_state.fontstash.drawText(.{ posX, lyrics_y + posY }, lyric.text);
     }
 
+    drawKanjiLyrics(render_state, data, fumen);
+
+    //Draw the score
+    render_state.fontstash.setMincho();
+    render_state.fontstash.setSizePt(36);
+    render_state.fontstash.setAlign(.right);
+    render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, "12345678");
+
+    try render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
+
+    try render_state.renderer.end();
+    try render_state.renderer.draw(render_state.render_pass_encoder);
+
+    try render_state.fontstash.renderer.end();
+
+    try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
+
+    if (builtin.mode == .Debug) {
+        var open = false;
+        _ = c.igBegin("Gameplay Debugging", &open, 0);
+
+        c.igText("Active Note: %d", data.active_note);
+
+        c.igEnd();
+    }
+}
+
+fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData, fumen: Fumen) void {
     const next_string = "Next: ";
 
     render_state.fontstash.setAlign(.left);
@@ -376,29 +405,5 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
         //Draw the next lyirc
         next_lyric_kanji.draw(lyrics_kanji_x, lyrics_kanji_next_y, render_state);
-    }
-
-    //Draw the score
-    render_state.fontstash.setMincho();
-    render_state.fontstash.setSizePt(36);
-    render_state.fontstash.setAlign(.right);
-    render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, "12345678");
-
-    try render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
-
-    try render_state.renderer.end();
-    try render_state.renderer.draw(render_state.render_pass_encoder);
-
-    try render_state.fontstash.renderer.end();
-
-    try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
-
-    if (builtin.mode == .Debug) {
-        var open = false;
-        _ = c.igBegin("Gameplay Debugging", &open, 0);
-
-        c.igText("Active Note: %d", data.active_note);
-
-        c.igEnd();
     }
 }
