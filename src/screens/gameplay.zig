@@ -265,7 +265,30 @@ fn checkForMissedNotes(data: *GameplayData) void {
     //The next note the user *could* hit
     var next_note: ?Fumen.Lyric = if (data.active_note < data.music.fumen.lyrics.len - 1) data.music.fumen.lyrics[data.active_note + 1] else null;
     _ = current_note;
-    _ = next_note;
+
+    //If the user should miss the current note
+    if (missCheck(data, next_note)) {
+        //TODO: proper miss scoring handling
+
+        //Mark that we are on the next note now
+        data.active_note += 1;
+        return;
+    }
+}
+
+///Whether the user is in a state to miss the current note
+fn missCheck(data: *GameplayData, next_note: ?Fumen.Lyric) bool {
+
+    //TODO: take into account typing cutoffs
+
+    if (next_note) |next| {
+        //If the user is past the next note, then return that they should miss it
+        if (next.time < data.current_time) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) void {
