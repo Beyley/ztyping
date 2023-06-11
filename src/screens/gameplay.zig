@@ -39,7 +39,7 @@ const GameplayData = struct {
     //things Actually Relavent to the gameplay
 
     ///Get the actively playing music
-    music: Music,
+    music: *Music,
 
     ///The current note the user is on
     active_note: usize = 0,
@@ -63,8 +63,13 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) Screen.
     var data = allocator.create(GameplayData) catch @panic("OOM");
 
     data.* = .{
-        .music = self.state.current_map.?,
+        .music = &self.state.current_map.?,
     };
+
+    //Reset the hit status for all the lyrics before the game starts
+    for (data.music.fumen.lyrics) |*lyric| {
+        lyric.resetHitStatus();
+    }
 
     self.data = data;
 
@@ -259,6 +264,15 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
     }
 }
 
+///Causes the game to process a full miss on the current note
+fn missNote(data: *GameplayData) void {
+    data.music.fumen.lyrics[data.active_note].pending_hit_result = null;
+    data.music.fumen.lyrics[data.active_note].hit_result = .poor;
+
+    //Mark that we are on the next note now
+    data.active_note += 1;
+}
+
 fn checkForMissedNotes(data: *GameplayData) void {
     //The current note the user is playing
     var current_note = data.music.fumen.lyrics[data.active_note];
@@ -268,11 +282,7 @@ fn checkForMissedNotes(data: *GameplayData) void {
 
     //If the user should miss the current note
     if (missCheck(data, next_note)) {
-        //TODO: proper miss scoring handling
-
-        //Mark that we are on the next note now
-        data.active_note += 1;
-        return;
+        return missNote(data);
     }
 }
 
@@ -352,12 +362,14 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
         if (posX < 0 - circle_r) break;
         if (posX > 640 + circle_r) continue;
 
+        const note_color = if (lyric.hit_result != null and lyric.hit_result.? == .poor) Gfx.ColorF{ 0.3, 0.3, 0.3, 0.3 } else Gfx.RedF;
+
         //Draw the note circle itself
         try render_state.renderer.reserveTexQuadPxSize(
             "note",
             .{ posX - circle_r, posY + circle_y - circle_r },
             .{ circle_r * 2, circle_r * 2 },
-            Gfx.RedF,
+            note_color,
         );
 
         //If we are in debug mode,

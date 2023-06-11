@@ -63,7 +63,7 @@ pub const BeatLine = struct {
 };
 
 audio_path: [:0]const u8,
-lyrics: []const Lyric,
+lyrics: []Lyric,
 lyric_cutoffs: []const LyricCutoff,
 lyrics_kanji: []const LyricKanji,
 beat_lines: []const BeatLine,
