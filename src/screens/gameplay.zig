@@ -435,14 +435,13 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
 fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) void {
     const next_string = "Next: ";
 
-    render_state.fontstash.setAlign(.left);
+    render_state.fontstash.setAlign(.right);
     render_state.fontstash.setGothic();
     render_state.fontstash.setSizePt(16);
 
-    var bounds = render_state.fontstash.textBounds(next_string);
-    var next_string_width = bounds.x2 - bounds.x1;
+    render_state.fontstash.drawText(.{ lyrics_kanji_x, lyrics_kanji_next_y }, next_string);
 
-    render_state.fontstash.drawText(.{ lyrics_kanji_x - next_string_width, lyrics_kanji_next_y }, next_string);
+    render_state.fontstash.setAlign(.left);
 
     //Move the current lyric forward by 1, if applicable
     while (data.current_lyric_kanji != null and data.music.fumen.lyrics_kanji[data.current_lyric_kanji.?].time_end < data.current_time) {
