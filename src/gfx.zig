@@ -550,16 +550,30 @@ pub const Device = struct {
     }
 
     pub fn createSwapChainOptimal(self: Device, adapter: Adapter, surface: Surface, window: *c.SDL_Window) !SwapChain {
-        //Try to create a swapchain with mailbox
-        return self.createSwapChain(adapter, surface, window, .mailbox) catch {
-            std.debug.print("mailbox failed... trying immediate\n", .{});
-            //If that fails, try to create one with standard VSync
-            return self.createSwapChain(adapter, surface, window, .immediate) catch {
-                std.debug.print("immediate failed... trying fifo\n", .{});
-                //If even that fails, fall back to FIFO
-                return self.createSwapChain(adapter, surface, window, .fifo);
+        var properties: c.WGPUAdapterProperties = undefined;
+
+        c.wgpuAdapterGetProperties(adapter.c, &properties);
+
+        var modes_to_try: []const PresentMode = &.{ .mailbox, .fifo, .immediate };
+
+        //If we are on an iGPU, lets prefer standard vsync over `mailbox`
+        if (properties.adapterType == c.WGPUAdapterType_IntegratedGPU) {
+            modes_to_try = &.{ .fifo, .mailbox, .immediate };
+        }
+
+        for (modes_to_try, 0..) |mode, i| {
+            std.debug.print("trying to create swapchain with type {s}\n", .{@tagName(mode)});
+            return self.createSwapChain(adapter, surface, window, mode) catch |err| {
+                //If we are on the last mode and it failed, return the error we got
+                if (i == modes_to_try.len - 1) {
+                    return err;
+                }
+
+                continue;
             };
-        };
+        }
+
+        return Error.UnableToCreateSwapChain;
     }
 
     const PresentMode = enum(c_uint) {
