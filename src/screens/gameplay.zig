@@ -216,8 +216,6 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
     try render_state.renderer.begin();
 
-    var time: f64 = data.current_time;
-
     if (data.phase == .ready) {
         render_state.fontstash.setMincho();
         render_state.fontstash.setSizePt(36);
@@ -231,11 +229,41 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
     var fumen = self.state.current_map.?.fumen;
 
+    try drawGameplayLyrics(render_state, data, fumen);
+
+    drawKanjiLyrics(render_state, data, fumen);
+
+    //Draw the score
+    render_state.fontstash.setMincho();
+    render_state.fontstash.setSizePt(36);
+    render_state.fontstash.setAlign(.right);
+    render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, "12345678");
+
+    try render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
+
+    try render_state.renderer.end();
+    try render_state.renderer.draw(render_state.render_pass_encoder);
+
+    try render_state.fontstash.renderer.end();
+
+    try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
+
+    if (builtin.mode == .Debug) {
+        var open = false;
+        _ = c.igBegin("Gameplay Debugging", &open, 0);
+
+        c.igText("Active Note: %d", data.active_note);
+
+        c.igEnd();
+    }
+}
+
+fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData, fumen: Fumen) !void {
     //Draw all the beat lines
     for (0..fumen.beat_lines.len) |i| {
         var beat_line = fumen.beat_lines[i];
 
-        var time_diff = time - beat_line.time;
+        var time_diff = data.current_time - beat_line.time;
         var posX = getDrawPosX(time_diff);
         var posY = getDrawPosY(posX);
 
@@ -257,7 +285,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         var i = fumen.lyric_cutoffs.len - 1 - j;
 
         var lyric_cutoff = fumen.lyric_cutoffs[i];
-        var time_diff = time - lyric_cutoff.time;
+        var time_diff = data.current_time - lyric_cutoff.time;
 
         var posX = getDrawPosX(time_diff);
         var posY = getDrawPosY(posX);
@@ -274,7 +302,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         var i = fumen.lyrics.len - 1 - j;
 
         var lyric = fumen.lyrics[i];
-        var time_diff = time - lyric.time;
+        var time_diff = data.current_time - lyric.time;
 
         var posX = getDrawPosX(time_diff);
         var posY = getDrawPosY(posX);
@@ -331,32 +359,6 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         render_state.fontstash.setGothic();
         render_state.fontstash.setSizePt(28);
         render_state.fontstash.drawText(.{ posX, lyrics_y + posY }, lyric.text);
-    }
-
-    drawKanjiLyrics(render_state, data, fumen);
-
-    //Draw the score
-    render_state.fontstash.setMincho();
-    render_state.fontstash.setSizePt(36);
-    render_state.fontstash.setAlign(.right);
-    render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, "12345678");
-
-    try render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
-
-    try render_state.renderer.end();
-    try render_state.renderer.draw(render_state.render_pass_encoder);
-
-    try render_state.fontstash.renderer.end();
-
-    try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
-
-    if (builtin.mode == .Debug) {
-        var open = false;
-        _ = c.igBegin("Gameplay Debugging", &open, 0);
-
-        c.igText("Active Note: %d", data.active_note);
-
-        c.igEnd();
     }
 }
 
