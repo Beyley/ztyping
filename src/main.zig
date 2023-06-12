@@ -30,7 +30,7 @@ pub var allocator: std.mem.Allocator = undefined;
 
 pub fn main() !void {
     //The scale of the window
-    const scale = 2;
+    const scale = 1.5;
 
     //Create the allocator to be used in the lifetime of the app
     gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -210,8 +210,10 @@ pub fn main() !void {
                     }
                 },
                 c.SDL_TEXTINPUT => {
-                    var end = std.mem.indexOf(u8, &ev.text.text, &.{0}).?;
+                    //Get the end of the arr
+                    var end = std.mem.indexOf(u8, &ev.text.text, &.{0}) orelse 32;
 
+                    //Send the event to the screen
                     if (screen.char) |char| {
                         try char(screen, ev.text.text[0..end]);
                     }

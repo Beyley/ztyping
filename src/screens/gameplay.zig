@@ -43,6 +43,10 @@ const GameplayData = struct {
 
     ///The current note the user is on
     active_note: usize = 0,
+
+    typed_hiragana: []const u8 = &.{},
+
+    typed_romaji: []const u8 = &.{},
 };
 
 pub var Gameplay = Screen{
@@ -109,10 +113,75 @@ pub fn deinitScreen(self: *Screen) void {
     self.allocator.destroy(data);
 }
 
+///The window to get an Excellent, in seconds in both directions
+pub const excellent_window = 0.02;
+///The window to get a Good, in seconds in both directions
+pub const good_window = 0.05;
+///The window to get a Fair, in seconds in both directions
+pub const fair_window = 0.10;
+///The window to get a Poor, in seconds in both directions
+pub const poor_window = 0.20;
+
 pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
-    _ = typed_char;
     var data = self.getData(GameplayData);
-    _ = data;
+
+    var current_time = try self.state.audio_tracker.music.?.getSecondPosition();
+
+    var current_note = &data.music.fumen.lyrics[data.active_note];
+    var next_note: ?Fumen.Lyric = if (data.active_note + 1 == data.music.fumen.lyrics.len) null else data.music.fumen.lyrics[data.active_note + 1];
+
+    var hiragana_to_type = current_note.text[data.typed_hiragana.len..];
+    var hiragana_to_type_next: ?[:0]const u8 = if (next_note != null) next_note.?.text else &.{};
+
+    var hit = false;
+
+    var matched_next: ?struct {} = null;
+
+    //Iterate over all conversions,
+    for (self.state.convert.conversions) |conversion| {
+        const hiragana_matches = std.mem.startsWith(u8, hiragana_to_type, conversion.hiragana);
+        const hiragana_matches_next: ?bool = if (hiragana_to_type_next != null) std.mem.startsWith(u8, hiragana_to_type_next.?, conversion.hiragana) else null;
+        _ = hiragana_matches_next;
+
+        //If we have hit a note and we have matched to the next note,
+        if (hit and matched_next != null) {
+            //Break out
+            break;
+        }
+
+        //If the text we need to type starts with the conversion we are testing, and we havent hit a note already,
+        if (hiragana_matches and !hit) {
+            //If the conversion starts with the romaji we have already typed,
+            if (std.mem.startsWith(u8, conversion.romaji, data.typed_romaji)) {
+                var romaji_to_type = conversion.romaji[data.typed_romaji.len..];
+
+                //If the romaji we need to type starts with the characters the user has just typed
+                if (std.mem.startsWith(u8, romaji_to_type, typed_char)) {
+                    if (data.typed_romaji.len == 0) {
+                        //Get the offset the user hit the note at, to determine the hit result of the note
+                        var delta = @fabs(current_note.time - current_time);
+
+                        if (delta < excellent_window) {
+                            current_note.pending_hit_result = .excellent;
+                        } else if (delta < good_window) {
+                            current_note.pending_hit_result = .good;
+                        } else if (delta < fair_window) {
+                            current_note.pending_hit_result = .fair;
+                        } else if (delta < poor_window) {
+                            current_note.pending_hit_result = .poor;
+                        }
+                    }
+
+                    //Add the typed romaji
+                    data.typed_romaji = conversion.romaji[0 .. data.typed_romaji.len + typed_char.len];
+                    //Mark that we have hit a note
+                    hit = true;
+
+                    break;
+                }
+            }
+        }
+    }
 }
 
 pub fn keyDown(self: *Screen, key: c.SDL_Keysym) Screen.ScreenError!void {
@@ -266,8 +335,13 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
 ///Causes the game to process a full miss on the current note
 fn missNote(data: *GameplayData) void {
+    //Set the pending hit result to null, and mark the hit as "poor" since they missed
     data.music.fumen.lyrics[data.active_note].pending_hit_result = null;
     data.music.fumen.lyrics[data.active_note].hit_result = .poor;
+
+    //Clear out the typed flags, to prepare for the next note
+    data.typed_hiragana = &.{};
+    data.typed_romaji = &.{};
 
     //Mark that we are on the next note now
     data.active_note += 1;
