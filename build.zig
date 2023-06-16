@@ -24,8 +24,9 @@ pub fn build(b: *std.Build) !void {
     exe.linkLibCpp();
 
     if (target.isDarwin()) {
-        exe.addIncludePath(root_path ++ "src/");
-        exe.addCSourceFile(root_path ++ "src/osx_helper.mm", &.{"-fobjc-arc"});
+        exe.addIncludePath(root_path ++ "src/osx");
+        exe.addCSourceFile(root_path ++ "src/osx/osx_helper.mm", &.{"-fobjc-arc"});
+
         exe.linkFramework("Metal");
         exe.linkFramework("QuartzCore");
     }
@@ -44,11 +45,13 @@ pub fn build(b: *std.Build) !void {
         const zmath_pkg = zmath.package(b, target, optimize, .{
             .options = .{ .enable_cross_platform_determinism = true },
         });
+
         zmath_pkg.link(exe);
     } //zmath
 
     { //fontstash
         var fontstash_lib = fontstash.buildFontstash(b, target, optimize, false);
+
         exe.linkLibrary(fontstash_lib);
         exe.addIncludePath("libs/fontstash/src");
     } //fontstash
@@ -96,6 +99,7 @@ pub fn build(b: *std.Build) !void {
             }
         }
 
+        //On windows we need to link these libraries for wgpu to work
         if (target.getOsTag() == .windows) {
             exe.linkSystemLibrary("ws2_32");
             exe.linkSystemLibrary("userenv");
@@ -127,6 +131,7 @@ pub fn build(b: *std.Build) !void {
 
         exe.linkLibrary(iconv_lib);
 
+        //On MacOS, we need to link iconv manually, on other platforms its part of libc (Linux) or by ourselves through win_iconv (Windows)
         if (target.getOsTag() == .macos) {
             exe.linkSystemLibrary("iconv");
         }
