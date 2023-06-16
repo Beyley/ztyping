@@ -85,17 +85,17 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
             author = try allocator.dupeZ(u8, line);
         } else if (i == 3) {
             self.level = try std.fmt.parseUnsigned(u3, line, 0);
+
+            //While i dont like this behaviour, it matches UTyping
+            if (self.level == 0) {
+                return error.MusicInvalidLevel;
+            }
         } else if (i == 4) {
             fumen_file_name = try allocator.dupeZ(u8, line);
         } else if (i == 5) {
             ranking_file_name = try allocator.dupeZ(u8, line);
         } else {
             try comments.append(try allocator.dupeZ(u8, line));
-        }
-
-        //While i dont like this behaviour, it matches UTyping
-        if (self.level == 0) {
-            return error.MusicInvalidLevel;
         }
 
         i += 1;
