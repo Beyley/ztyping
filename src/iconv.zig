@@ -5,7 +5,7 @@ const Context = extern struct {
     context: ?*anyopaque,
 
     ///Converts the original array into the format specified by the context
-    pub fn convert(self: Context, allocator: std.mem.Allocator, original: []u8) ![]const u8 {
+    pub fn convert(self: Context, allocator: std.mem.Allocator, original: []u8) ![]u8 {
         //Allocate a destination slicethat is 1.5x the size of the original slice
         var dest_line = try allocator.alloc(u8, original.len + (original.len / 2));
         defer allocator.free(dest_line);
@@ -42,6 +42,9 @@ const Context = extern struct {
 
                 //Set the old destination array to the new one
                 dest_line = new;
+
+                //Update the destination C ptr
+                dst_c_ptr = dest_line.ptr;
             }
         }
 
