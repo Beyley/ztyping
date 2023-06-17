@@ -45,8 +45,10 @@ const GameplayData = struct {
     ///The current note the user is on
     active_note: usize = 0,
 
+    ///The hiragana the user typed so far of the current note
     typed_hiragana: []const u8 = &.{},
 
+    ///The romaji the user has typed so far for the current hiragana
     typed_romaji: []const u8 = &.{},
 };
 
@@ -126,7 +128,12 @@ pub const poor_window = 0.20;
 pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
     var data = self.getData(GameplayData);
 
-    std.debug.print("user wrote {s}\n", .{typed_char});
+    //If we're not in the main phase, ignore the input
+    if (data.phase != .main) {
+        return;
+    }
+
+    // std.debug.print("user wrote {s}\n", .{typed_char});
 
     var current_time = try self.state.audio_tracker.music.?.getSecondPosition();
 
@@ -137,11 +144,20 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
     var hiragana_to_type_next: ?[:0]const u8 = if (next_note != null) next_note.?.text else &.{};
 
     const Match = struct {
+        //The matched conversion
         conversion: Convert.Conversion,
+        //The romaji to type
+        romaji_to_type: []const u8,
     };
 
+    //The found match for the current note
     var matched: ?Match = null;
+    //The found match for the next hiragana (only for the current note, check matched_next for the next note)
+    var next_hiragana_matched: ?Match = null;
+    //The found match for the next note
     var matched_next: ?Match = null;
+
+    _ = next_hiragana_matched;
 
     //Iterate over all conversions,
     for (self.state.convert.conversions) |conversion| {
@@ -163,7 +179,10 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
 
                 //If the romaji we need to type starts with the characters the user has just typed
                 if (std.mem.startsWith(u8, romaji_to_type, typed_char)) {
-                    matched = .{ .conversion = conversion };
+                    matched = .{
+                        .conversion = conversion,
+                        .romaji_to_type = romaji_to_type,
+                    };
                 }
             }
         }
@@ -172,11 +191,27 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
         if (hiragana_matches_next != null and hiragana_matches_next.? and matched_next == null) {
             //And if the conversion's romaji starts with the characters the user has just typed
             if (std.mem.startsWith(u8, conversion.romaji, typed_char)) {
-                matched_next = .{ .conversion = conversion };
+                matched_next = .{
+                    .conversion = conversion,
+                    .romaji_to_type = conversion.romaji,
+                };
             }
         }
     }
 
+    //If we have matched the current note
+    if (matched) |matched_for_current_note| {
+        _ = matched_for_current_note;
+
+        //Iterate over all conversions,
+        for (self.state.convert.conversions) |conversion| {
+            _ = conversion;
+        }
+    }
+
+    var current_note_finished: bool = false;
+    var current_hiragana_finished: bool = false;
+    var end_cut_hit: bool = false;
     if (matched) |matched_for_current_note| {
         if (current_note.pending_hit_result == null) {
             //Get the offset the user hit the note at, used to determine the hit result of the note
@@ -203,31 +238,90 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
             //Add the typed romaji
             data.typed_romaji = matched_for_current_note.conversion.romaji[0 .. data.typed_romaji.len + typed_char.len];
 
-            std.debug.print("adding romaji, now {s}/{s}\n", .{ data.typed_romaji, matched_for_current_note.conversion.romaji });
+            // std.debug.print("adding romaji, now {s}/{s}\n", .{ data.typed_romaji, matched_for_current_note.conversion.romaji });
 
             if (data.typed_romaji.len == matched_for_current_note.conversion.romaji.len) {
                 //If the user has typed all the romaji for the current note, then we need to append the hiragana
                 data.typed_hiragana = current_note.text[0 .. data.typed_hiragana.len + matched_for_current_note.conversion.hiragana.len];
 
-                std.debug.print("finished hiragana {s}/{s}\n", .{ data.typed_hiragana, current_note.text });
+                // std.debug.print("finished hiragana {s}/{s}\n", .{ data.typed_hiragana, current_note.text });
 
                 //Clear the typed romaji
                 data.typed_romaji = &.{};
 
+                //Mark that we finished the current hiragana
+                current_hiragana_finished = true;
+
                 //If the user has typed all the hiragana for the current note, then we need to move to the next note
                 if (data.typed_hiragana.len == current_note.text.len) {
-                    std.debug.print("finished note {s}\n", .{current_note.text});
+                    // std.debug.print("finished note {s}\n", .{current_note.text});
 
                     //Hit the current note
                     hitNote(data);
 
                     //Clear the typed hiragana
                     data.typed_hiragana = &.{};
+
+                    //Mark that we finished the current note
+                    current_note_finished = true;
                 }
             }
 
-            //Return out, so we dont trigger the "next" match
-            return;
+            //If the current match has an end cut
+            if (matched_for_current_note.conversion.end_cut) |end_cut| {
+                //And the user has typed that end cut
+                if (std.mem.eql(u8, typed_char, end_cut)) {
+                    end_cut_hit = true;
+                }
+            }
+
+            //If we have hit the end cut, then we want to continue out, so if we have not,
+            if (!end_cut_hit) {
+                //Return out, so we dont trigger the "next" match
+                return;
+            }
+        }
+    }
+
+    //If we hit the end cut, and we have finished the current hiragana, and we have not finished the current note
+    if (end_cut_hit and current_hiragana_finished and !current_note_finished) {
+        hiragana_to_type = current_note.text[data.typed_hiragana.len..];
+
+        for (self.state.convert.conversions) |conversion| {
+            if (std.mem.startsWith(u8, hiragana_to_type, conversion.hiragana)) {
+                //Add the typed characters to the typed romaji
+                data.typed_romaji = conversion.romaji[0..typed_char.len];
+
+                // std.debug.print("adding romaji for next note on end cut, now {s}/{s}\n", .{ data.typed_romaji, conversion.romaji });
+
+                //If the typed romaji is the same as the romaji for the conversion
+                if (std.mem.eql(u8, data.typed_romaji, conversion.romaji)) {
+                    //Clear the typed romaji
+                    data.typed_romaji = &.{};
+
+                    //Add the typed hiragana
+                    data.typed_hiragana = current_note.text[0 .. data.typed_hiragana.len + conversion.hiragana.len];
+
+                    // std.debug.print("adding hiragana for next note on end cut, now {s}/{s}\n", .{ data.typed_hiragana, current_note.text });
+
+                    //If the user has typed all the hiragana for the current note, then we need to move to the next note
+                    if (data.typed_hiragana.len == current_note.text.len) {
+                        // std.debug.print("finished note {s}\n", .{current_note.text});
+
+                        //Hit the current note
+                        hitNote(data);
+
+                        //Clear the typed hiragana
+                        data.typed_hiragana = &.{};
+
+                        //Mark that we finished the current note
+                        current_note_finished = true;
+                    }
+                }
+
+                //Return out so the matched_next logic doesnt get triggered
+                return;
+            }
         }
     }
 
@@ -238,12 +332,15 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
         //Get the hit result, using the absolute value
         var hit_result = deltaToHitResult(@fabs(delta));
 
-        std.debug.print("next {s}/{d}/{any}\n", .{ matched_for_next_note.conversion.romaji, delta, hit_result });
+        // std.debug.print("next \"{s}\"/{d}/{any}\n", .{ matched_for_next_note.conversion.romaji, delta, hit_result });
 
         //If it is a valid hit,
         if (hit_result) |valid_hit_result| {
-            //Miss the current note
-            missNote(data);
+            //If the end cut is not hit, then we need to mark the previous note as hit, not doing this will cause the next note to be marked as missed, because the current note has been completed
+            if (!end_cut_hit) {
+                //Miss the current note
+                missNote(data);
+            }
 
             //Set the pending hit result to the valid hit result
             next_note.?.pending_hit_result = valid_hit_result;
@@ -251,7 +348,7 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
             //Set the typed romaji to the characters they typed
             data.typed_romaji = matched_for_next_note.conversion.romaji[0..typed_char.len];
 
-            std.debug.print("adding next romaji, now {s}/{s}\n", .{ data.typed_romaji, matched_for_next_note.conversion.romaji });
+            // std.debug.print("adding next romaji, now {s}/{s}\n", .{ data.typed_romaji, matched_for_next_note.conversion.romaji });
 
             if (data.typed_romaji.len == matched_for_next_note.conversion.romaji.len) {
                 //If the user has typed all the romaji for the current note, then we need to append the hiragana
@@ -260,11 +357,11 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
                 //Clear the typed romaji
                 data.typed_romaji = &.{};
 
-                std.debug.print("finished next hiragana {s}/{s}\n", .{ data.typed_hiragana, next_note.?.text });
+                // std.debug.print("finished next hiragana {s}/{s}\n", .{ data.typed_hiragana, next_note.?.text });
 
                 //If the user has typed all the hiragana for the current note, then we need to move to the next note
                 if (data.typed_hiragana.len == next_note.?.text.len) {
-                    std.debug.print("finished next note {s}\n", .{next_note.?.text});
+                    // std.debug.print("finished next note {s}\n", .{next_note.?.text});
 
                     //Hit the current note
                     hitNote(data);
@@ -276,13 +373,13 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
         }
     }
 
-    if (matched) |matched_match| {
-        std.debug.print("found match {s}\n", .{matched_match.conversion.romaji});
-    }
+    // if (matched) |matched_match| {
+    //     std.debug.print("found match {s}\n", .{matched_match.conversion.romaji});
+    // }
 
-    if (matched_next) |matched_match| {
-        std.debug.print("found match_next {s}\n", .{matched_match.conversion.romaji});
-    }
+    // if (matched_next) |matched_match| {
+    //     std.debug.print("found match_next {s}\n", .{matched_match.conversion.romaji});
+    // }
 }
 
 fn hitNote(data: *GameplayData) void {
@@ -297,6 +394,11 @@ fn hitNote(data: *GameplayData) void {
 
     //Mark that we are on the next note
     data.active_note += 1;
+
+    if (data.active_note == data.music.fumen.lyrics.len) {
+        data.phase = .finished;
+        std.debug.print("note hit, game finished\n", .{});
+    }
 }
 
 ///Returns the expected hit result for the delta
@@ -473,16 +575,21 @@ fn missNote(data: *GameplayData) void {
     data.typed_hiragana = &.{};
     data.typed_romaji = &.{};
 
-    //If we are on the last note, mark the game as finished
-    if (data.music.fumen.lyrics.len == data.active_note + 1) {
-        data.phase = .finished;
-        return;
-    }
     //Mark that we are on the next note now
     data.active_note += 1;
+
+    //If we are on the last note, mark the game as finished
+    if (data.music.fumen.lyrics.len == data.active_note) {
+        data.phase = .finished;
+        std.debug.print("note missed, game finished\n", .{});
+    }
 }
 
 fn checkForMissedNotes(data: *GameplayData) void {
+    if (data.phase != .main) {
+        return;
+    }
+
     //The current note the user is playing
     var current_note = data.music.fumen.lyrics[data.active_note];
     //The next note the user *could* hit
@@ -645,6 +752,11 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
 }
 
 fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) void {
+    //If there are no kanji lyrics, return out
+    if (data.music.fumen.lyrics_kanji.len == 0) {
+        return;
+    }
+
     const next_string = "Next: ";
 
     render_state.fontstash.setAlign(.right);
