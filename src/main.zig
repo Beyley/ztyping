@@ -25,17 +25,29 @@ pub const c = @cImport({
     }
 });
 
-pub var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
-pub var allocator: std.mem.Allocator = undefined;
-
 pub fn main() !void {
     //The scale of the window
-    const scale = 1.5;
+    const scale = 2;
 
-    //Create the allocator to be used in the lifetime of the app
-    gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer if (gpa.deinit() == .leak) @panic("Memory leak!");
-    allocator = gpa.allocator();
+    const use_gpa = std.debug.runtime_safety;
+
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    //Deinit the GPA, if in use
+    defer if (use_gpa and gpa.deinit() == .leak) {
+        @panic("Memory leak!");
+    };
+
+    //TODO: once we figure out why C allocator is borked, use it
+    var allocator: std.mem.Allocator = blk: {
+        // If we should use the GPA,
+        if (use_gpa) {
+            //Set the allocator to the allocator of the general purpose allocator
+            break :blk gpa.allocator();
+        } else {
+            // Otherwise, use the C allocator
+            break :blk std.heap.c_allocator;
+        }
+    };
 
     var state: GameState = GameState{
         .is_running = true,
@@ -59,7 +71,6 @@ pub fn main() !void {
     std.debug.print("Initialized SDL\n", .{});
 
     //Create the window
-    // const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640 * 2, 480 * 2, c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_RESIZABLE) orelse {
     const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640 * scale, 480 * scale, c.SDL_WINDOW_SHOWN) orelse {
         std.debug.print("SDL window creation failed! err:{s}\n", .{c.SDL_GetError()});
         return error.CreateWindowFailure;
