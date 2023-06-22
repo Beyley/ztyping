@@ -499,7 +499,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
             var mouse_x_i: c_int = 0;
             var mouse_y: c_int = 0;
             var mouse_buttons = c.SDL_GetMouseState(&mouse_x_i, &mouse_y);
-            var mouse_x = @intToFloat(f32, mouse_x_i);
+            var mouse_x = @floatFromInt(f32, mouse_x_i);
 
             var max_x = render_state.gfx.scale * 640.0;
 
@@ -512,7 +512,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
             }
 
             if ((mouse_buttons & c.SDL_BUTTON(3)) != 0 and mouse_x != data.last_mouse_x) {
-                var byte = @floatToInt(u64, @intToFloat(f64, try self.state.audio_tracker.music.?.getLength(.byte)) * (mouse_x / max_x));
+                var byte = @intFromFloat(u64, @floatFromInt(f64, try self.state.audio_tracker.music.?.getLength(.byte)) * (mouse_x / max_x));
 
                 try self.state.audio_tracker.music.?.setPosition(byte, .byte, .{});
             }

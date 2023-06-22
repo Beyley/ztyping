@@ -7,7 +7,7 @@ const Image = struct {
     image: img.Image,
     name: []const u8,
     fn pathological_multiplier(self: Image) f32 {
-        return @intToFloat(f32, @max(self.width, self.height)) / @intToFloat(f32, @min(self.width, self.height)) * @intToFloat(f32, self.width) * @intToFloat(f32, self.height);
+        return @floatFromInt(f32, @max(self.width, self.height)) / @floatFromInt(f32, @min(self.width, self.height)) * @floatFromInt(f32, self.width) * @floatFromInt(f32, self.height);
     }
     fn sorting_func(context: void, a: Image, b: Image) bool {
         _ = context;

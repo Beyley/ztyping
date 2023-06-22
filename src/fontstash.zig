@@ -79,7 +79,7 @@ pub const Alignment = enum(c_int) {
 };
 
 pub fn setAlign(self: *Self, alignment: Alignment) void {
-    c.fonsSetAlign(self.context, @enumToInt(alignment));
+    c.fonsSetAlign(self.context, @intFromEnum(alignment));
 }
 
 pub fn reset(self: *Self) void {

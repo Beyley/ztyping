@@ -22,10 +22,10 @@ pub const BlueB = ColorB{ 0, 0, 255, 255 };
 
 pub fn colorBToF(orig: ColorB) ColorF {
     var f = ColorF{
-        @intToFloat(f32, orig[0]),
-        @intToFloat(f32, orig[1]),
-        @intToFloat(f32, orig[2]),
-        @intToFloat(f32, orig[3]),
+        @floatFromInt(f32, orig[0]),
+        @floatFromInt(f32, orig[1]),
+        @floatFromInt(f32, orig[2]),
+        @floatFromInt(f32, orig[3]),
     };
 
     f /= ColorF{ 255.0, 255.0, 255.0, 255.0 };
@@ -139,7 +139,7 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
             },
         }) orelse return Error.UnableToCreateTextureBindGroup,
     };
-    std.debug.print("got projection matrix bind group 0x{x}\n", .{@ptrToInt(self.projection_matrix_bind_group.c.?)});
+    std.debug.print("got projection matrix bind group 0x{x}\n", .{@intFromPtr(self.projection_matrix_bind_group.c.?)});
 
     self.sampler = c.wgpuDeviceCreateSampler(self.device.c, &c.WGPUSamplerDescriptor{
         .nextInChain = null,
@@ -158,7 +158,7 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
         .lodMinClamp = 0,
         .maxAnisotropy = 1,
     }) orelse return Error.UnableToCreateSampler;
-    std.debug.print("got sampler 0x{x}\n", .{@ptrToInt(self.sampler.?)});
+    std.debug.print("got sampler 0x{x}\n", .{@intFromPtr(self.sampler.?)});
 
     return self;
 }
@@ -218,7 +218,7 @@ pub const RenderPassEncoder = struct {
     pub fn setIndexBuffer(self: RenderPassEncoder, buffer: Buffer, comptime index_format: type, offset: u64, size: u64) void {
         const format: IndexFormat = if (index_format == u16) .uint16 else if (index_format == u32) .uint32 else @compileError("Invalid index format type!");
 
-        c.wgpuRenderPassEncoderSetIndexBuffer(self.c.?, buffer.c.?, @enumToInt(format), offset, size);
+        c.wgpuRenderPassEncoderSetIndexBuffer(self.c.?, buffer.c.?, @intFromEnum(format), offset, size);
     }
 
     pub fn drawIndexed(self: RenderPassEncoder, index_count: u32, instance_count: u32, first_index: u32, base_vertex: i32, first_instance: u32) void {
@@ -286,7 +286,7 @@ pub const Texture = struct {
             }) orelse return Error.UnableToCreateBindGroupForTexture,
         };
 
-        std.debug.print("got texture bind group 0x{x}\n", .{@ptrToInt(self.bind_group.?.c.?)});
+        std.debug.print("got texture bind group 0x{x}\n", .{@intFromPtr(self.bind_group.?.c.?)});
     }
 };
 
@@ -455,7 +455,7 @@ pub const Instance = struct {
 
         var surface = c.wgpuInstanceCreateSurface(self.c, &descriptor);
 
-        std.debug.print("got surface 0x{x}\n", .{@ptrToInt(surface.?)});
+        std.debug.print("got surface 0x{x}\n", .{@intFromPtr(surface.?)});
 
         return .{ .c = surface orelse return Error.SurfaceCreationError };
     }
@@ -470,7 +470,7 @@ pub const Instance = struct {
             .forceFallbackAdapter = false,
         }, handleAdapterCallback, @ptrCast(*anyopaque, &adapter));
 
-        std.debug.print("got adapter 0x{x}\n", .{@ptrToInt(adapter.?)});
+        std.debug.print("got adapter 0x{x}\n", .{@intFromPtr(adapter.?)});
 
         return .{ .c = adapter orelse return Error.UnableToRequestAdapter };
     }
@@ -500,7 +500,7 @@ pub const Adapter = struct {
             .nextInChain = null,
         }, handleDeviceCallback, @ptrCast(*anyopaque, &device));
 
-        std.debug.print("got device 0x{x}\n", .{@ptrToInt(device.?)});
+        std.debug.print("got device 0x{x}\n", .{@intFromPtr(device.?)});
 
         return .{ .c = device orelse return Error.UnableToRequestDevice };
     }
@@ -590,7 +590,7 @@ pub const Device = struct {
         var swap_chain = c.wgpuDeviceCreateSwapChain(self.c, surface.c, &c.WGPUSwapChainDescriptor{
             .usage = c.WGPUTextureUsage_RenderAttachment,
             .format = surface.getPreferredFormat(adapter),
-            .presentMode = @enumToInt(present_mode),
+            .presentMode = @intFromEnum(present_mode),
             .nextInChain = null,
             .width = @intCast(u32, width),
             .height = @intCast(u32, height),
@@ -598,7 +598,7 @@ pub const Device = struct {
         });
 
         if (swap_chain != null) {
-            std.debug.print("got swap chain 0x{x} with size {d}x{d}\n", .{ @ptrToInt(swap_chain.?), width, height });
+            std.debug.print("got swap chain 0x{x} with size {d}x{d}\n", .{ @intFromPtr(swap_chain.?), width, height });
         }
 
         return .{ .c = swap_chain orelse return Error.UnableToCreateSwapChain };
@@ -625,7 +625,7 @@ pub const Device = struct {
             .hintCount = 0,
         });
 
-        std.debug.print("got shader module 0x{x}\n", .{@ptrToInt(module.?)});
+        std.debug.print("got shader module 0x{x}\n", .{@intFromPtr(module.?)});
 
         return module orelse Error.UnableToCreateShaderModule;
     }
@@ -690,8 +690,8 @@ pub const Device = struct {
             }) orelse return Error.UnableToCreateProjectionMatrixBindGroupLayout,
         };
 
-        std.debug.print("got texture/sampler bind group layout 0x{x}\n", .{@ptrToInt(layouts.texture_sampler.c.?)});
-        std.debug.print("got projection matrix bind group layout 0x{x}\n", .{@ptrToInt(layouts.projection_matrix.c.?)});
+        std.debug.print("got texture/sampler bind group layout 0x{x}\n", .{@intFromPtr(layouts.texture_sampler.c.?)});
+        std.debug.print("got projection matrix bind group layout 0x{x}\n", .{@intFromPtr(layouts.projection_matrix.c.?)});
 
         return layouts;
     }
@@ -707,7 +707,7 @@ pub const Device = struct {
             .nextInChain = null,
         });
 
-        std.debug.print("got pipeline layout 0x{x}\n", .{@ptrToInt(layout.?)});
+        std.debug.print("got pipeline layout 0x{x}\n", .{@intFromPtr(layout.?)});
 
         return layout;
     }
@@ -788,7 +788,7 @@ pub const Device = struct {
             },
         });
 
-        std.debug.print("got render pipeline 0x{x}\n", .{@ptrToInt(pipeline.?)});
+        std.debug.print("got render pipeline 0x{x}\n", .{@intFromPtr(pipeline.?)});
 
         return .{ .c = pipeline orelse return Error.UnableToCreateRenderPipeline };
     }
@@ -923,11 +923,11 @@ pub const Device = struct {
             .nextInChain = null,
             .size = size,
             .mappedAtCreation = false,
-            .usage = @enumToInt(buffer_type) | c.WGPUBufferUsage_CopyDst,
+            .usage = @intFromEnum(buffer_type) | c.WGPUBufferUsage_CopyDst,
             .label = "Buffer (" ++ @tagName(buffer_type) ++ ")",
         });
 
-        std.debug.print("got buffer 0x{x}\n", .{@ptrToInt(buffer.?)});
+        std.debug.print("got buffer 0x{x}\n", .{@intFromPtr(buffer.?)});
 
         return .{
             .c = buffer orelse return Error.UnableToCreateBuffer,
@@ -968,7 +968,7 @@ pub fn createInstance() !Instance {
         .nextInChain = null,
     });
 
-    std.debug.print("got instance 0x{x}\n", .{@ptrToInt(instance.?)});
+    std.debug.print("got instance 0x{x}\n", .{@intFromPtr(instance.?)});
 
     return .{ .c = instance orelse return Error.InstanceCreationError };
 }
@@ -1025,7 +1025,7 @@ pub fn updateProjectionMatrixBuffer(self: *Self, queue: Queue, window: *c.SDL_Wi
     w = 640;
     h = 480;
 
-    var mat = zmath.orthographicOffCenterLh(0, @intToFloat(f32, w), 0, @intToFloat(f32, h), 0, 1);
+    var mat = zmath.orthographicOffCenterLh(0, @floatFromInt(f32, w), 0, @floatFromInt(f32, h), 0, 1);
 
     queue.writeBuffer(self.projection_matrix_buffer, 0, zmath.Mat, &.{mat});
 }
