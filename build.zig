@@ -1,7 +1,6 @@
 const std = @import("std");
 const zmath = @import("libs/zmath/build.zig");
 const bass = @import("libs/zig-bass/build.zig");
-const sdl = @import("libs/SDL/build.zig");
 const fontstash = @import("libs/fontstash/build.zig");
 const wgpu = @import("wgpu.zig");
 const cimgui = @import("libs/cimgui/build.zig");
@@ -24,11 +23,19 @@ pub fn build(b: *std.Build) !void {
     exe.linkLibCpp();
 
     if (target.isDarwin()) {
+        exe.addIncludePath(root_path ++ "libs/system-sdk/macos12/usr/include");
+        exe.addFrameworkPath(root_path ++ "libs/system-sdk/macos12/System/Library/Frameworks");
+        exe.addLibraryPath(root_path ++ "libs/system-sdk/macos12/usr/lib");
+
         exe.addIncludePath(root_path ++ "src/osx");
         exe.addCSourceFile(root_path ++ "src/osx/osx_helper.mm", &.{"-fobjc-arc"});
 
         exe.linkFramework("Metal");
         exe.linkFramework("QuartzCore");
+        exe.linkFramework("Foundation");
+        // exe.linkFramework("CoreFoundation");
+
+        exe.linkSystemLibrary("objc");
     }
 
     { //zig-bass
@@ -57,19 +64,35 @@ pub fn build(b: *std.Build) !void {
     } //fontstash
 
     { //SDL
-        var sdl_options = sdl.getDefaultOptionsForTarget(target);
+        const sdl_pkg = b.dependency("SDL2", .{
+            .target = target,
+            .optimize = optimize,
+            .osx_sdk_path = @as([]const u8, root_path ++ "libs/system-sdk/macos12"),
+            .linux_sdk_path = @as([]const u8, root_path ++ "libs/system-sdk/linux"),
+        });
+        const sdl_lib = sdl_pkg.artifact("SDL2");
 
-        sdl_options.linux_sdk_path = root_path ++ "libs/system-sdk/linux";
-        sdl_options.osx_sdk_path = root_path ++ "libs/system-sdk/macos12";
+        //Link SDL
+        exe.linkLibrary(sdl_lib);
+        //Install the SDL headers
+        exe.installLibraryHeaders(sdl_lib);
 
-        const sdl_pkg = try sdl.createSDL(b, target, optimize, sdl_options);
-        exe.linkLibrary(sdl_pkg);
-        exe.addIncludePath("libs/SDL/include");
+        //Add all the SDL C macros to our executable too
+        try exe.c_macros.appendSlice(sdl_lib.c_macros.items);
 
-        try sdl.applyLinkerArgs(b, target, exe, sdl_options);
+        // var sdl_options = sdl.getDefaultOptionsForTarget(target);
 
-        //Add the C macros to the exe
-        try exe.c_macros.appendSlice(sdl_pkg.c_macros.items);
+        // sdl_options.linux_sdk_path = root_path ++ "libs/system-sdk/linux";
+        // sdl_options.osx_sdk_path = root_path ++ "libs/system-sdk/macos12";
+
+        // const sdl_pkg = try sdl.createSDL(b, target, optimize, sdl_options);
+        // exe.linkLibrary(sdl_pkg);
+        // exe.addIncludePath("libs/SDL/include");
+
+        // try sdl.applyLinkerArgs(b, target, exe, sdl_options);
+
+        // //Add the C macros to the exe
+        // try exe.c_macros.appendSlice(sdl_pkg.c_macros.items);
     } //SDL
 
     { //wgpu

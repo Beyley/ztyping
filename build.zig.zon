@@ -1,0 +1,10 @@
+.{
+    .name = "ztyping",
+    .version = "0.0.0",
+    .dependencies = .{
+        .SDL2 = .{
+            .url = "https://github.com/Beyley/SDL/archive/fd13272b50d8cef9c6ce7547eb1181e86d349a1e.tar.gz",
+            .hash = "12209059cb5e39651f596049bba3d9f9649452fb496cdd47ac99521b2bd5f9915255",
+        },
+    },
+}

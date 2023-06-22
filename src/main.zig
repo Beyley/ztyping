@@ -13,8 +13,8 @@ const Convert = @import("convert.zig");
 
 pub const c = @cImport({
     @cInclude("fontstash.h");
-    @cInclude("SDL.h");
-    @cInclude("SDL_syswm.h");
+    @cInclude("SDL2/SDL.h");
+    @cInclude("SDL2/SDL_syswm.h");
     @cInclude("wgpu.h");
     @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", "1");
     @cDefine("CIMGUI_USE_SDL2", "1");
