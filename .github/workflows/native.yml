@@ -26,17 +26,12 @@ jobs:
       - name: Checkout submodules, configure git
         if: matrix.env.os == 'windows-latest'
         run: |
-          git submodule update --init --depth 0 libs/SDL/
           git submodule update --init --recursive --depth 0 libs/cimgui/
           git submodule update --init --recursive --depth 0 libs/fontstash/
           git submodule update --init --recursive --depth 0 libs/iconv-zig/
           git submodule update --init --recursive --depth 0 libs/wgpu-native/
           git submodule update --init --recursive --depth 0 libs/zigimg/
           git submodule update --init --recursive --depth 0 libs/zig-bass/
-
-          cd libs/SDL/
-          git submodule update --init --depth 0 submodules/jack2/
-          cd ../..
       #on non-windows, clone recursively
       - uses: actions/checkout@v2
       - name: Checkout submodules, configure git
