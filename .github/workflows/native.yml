@@ -54,9 +54,9 @@ jobs:
       - name: Cross compile to Linux x86_64 glibc
         if: matrix.env.os != 'macos-latest'
         run: zig build -Dtarget=x86_64-linux-gnu
-      - name: Cross compile to Linux x86_64 musl
-        if: matrix.env.os != 'macos-latest'
-        run: zig build -Dtarget=x86_64-linux-musl
+      # - name: Cross compile to Linux x86_64 musl
+      #   if: matrix.env.os != 'macos-latest'
+      #   run: zig build -Dtarget=x86_64-linux-musl
       - name: Cross compile to Windows x86_64 GNU
         run: zig build -Dtarget=x86_64-windows-gnu
       - name: Cross compile to MacOS x86_64

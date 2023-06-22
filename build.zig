@@ -38,6 +38,11 @@ pub fn build(b: *std.Build) !void {
         exe.linkSystemLibrary("objc");
     }
 
+    if (target.isLinux() and !target.isNative()) {
+        exe.addIncludePath(root_path ++ "libs/system-sdk/linux/include");
+        exe.addLibraryPath(b.fmt(root_path ++ "libs/system-sdk/linux/lib/{s}", .{try target.linuxTriple(b.allocator)}));
+    }
+
     { //zig-bass
         const zig_bass = b.addModule("bass", .{ .source_file = .{ .path = root_path ++ "libs/zig-bass/src/bass.zig" } });
         exe.addModule("bass", zig_bass);
@@ -63,37 +68,25 @@ pub fn build(b: *std.Build) !void {
         exe.addIncludePath("libs/fontstash/src");
     } //fontstash
 
-    { //SDL
-        const sdl_pkg = b.dependency("SDL2", .{
-            .target = target,
-            .optimize = optimize,
-            .osx_sdk_path = @as([]const u8, root_path ++ "libs/system-sdk/macos12"),
-            .linux_sdk_path = @as([]const u8, root_path ++ "libs/system-sdk/linux"),
-        });
-        const sdl_lib = sdl_pkg.artifact("SDL2");
+    //SDL
 
-        //Link SDL
-        exe.linkLibrary(sdl_lib);
-        //Install the SDL headers
-        exe.installLibraryHeaders(sdl_lib);
+    const sdl_pkg = b.dependency("SDL2", .{
+        .target = target,
+        .optimize = optimize,
+        .osx_sdk_path = @as([]const u8, root_path ++ "libs/system-sdk/macos12"),
+        .linux_sdk_path = @as([]const u8, root_path ++ "libs/system-sdk/linux"),
+    });
+    const sdl_lib = sdl_pkg.artifact("SDL2");
 
-        //Add all the SDL C macros to our executable too
-        try exe.c_macros.appendSlice(sdl_lib.c_macros.items);
+    //Link SDL
+    exe.linkLibrary(sdl_lib);
+    //Install the SDL headers
+    exe.installLibraryHeaders(sdl_lib);
 
-        // var sdl_options = sdl.getDefaultOptionsForTarget(target);
+    //Add all the SDL C macros to our executable too
+    try exe.c_macros.appendSlice(sdl_lib.c_macros.items);
 
-        // sdl_options.linux_sdk_path = root_path ++ "libs/system-sdk/linux";
-        // sdl_options.osx_sdk_path = root_path ++ "libs/system-sdk/macos12";
-
-        // const sdl_pkg = try sdl.createSDL(b, target, optimize, sdl_options);
-        // exe.linkLibrary(sdl_pkg);
-        // exe.addIncludePath("libs/SDL/include");
-
-        // try sdl.applyLinkerArgs(b, target, exe, sdl_options);
-
-        // //Add the C macros to the exe
-        // try exe.c_macros.appendSlice(sdl_pkg.c_macros.items);
-    } //SDL
+    //SDL
 
     { //wgpu
         var wgpu_from_source = b.option(bool, "wgpu_from_source", "Compile WGPU from source") orelse false;
@@ -139,9 +132,11 @@ pub fn build(b: *std.Build) !void {
     { //cimgui
         const cimgui_lib = try cimgui.create_cimgui(b, target, optimize);
 
-        exe.linkLibrary(cimgui_lib);
-
+        cimgui_lib.installLibraryHeaders(sdl_lib);
+        cimgui_lib.linkLibrary(sdl_lib);
         exe.addIncludePath("libs/cimgui/");
+
+        exe.linkLibrary(cimgui_lib);
     } //cimgui
 
     { //zigimg
