@@ -59,11 +59,14 @@ pub fn build(b: *std.Build) !void {
     { //SDL
         var sdl_options = sdl.getDefaultOptionsForTarget(target);
 
+        sdl_options.linux_sdk_path = root_path ++ "libs/system-sdk/linux";
+        sdl_options.osx_sdk_path = root_path ++ "libs/system-sdk/macos12";
+
         const sdl_pkg = try sdl.createSDL(b, target, optimize, sdl_options);
         exe.linkLibrary(sdl_pkg);
         exe.addIncludePath("libs/SDL/include");
 
-        try sdl.applyLinkerArgs(b.allocator, target, exe, sdl_options);
+        try sdl.applyLinkerArgs(b, target, exe, sdl_options);
 
         //Add the C macros to the exe
         try exe.c_macros.appendSlice(sdl_pkg.c_macros.items);
