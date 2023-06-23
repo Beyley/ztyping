@@ -24,6 +24,13 @@ const Phase = enum {
     exit,
 };
 
+const Score = struct {
+    ///The score gotten from accuracy
+    accuracy_score: u64 = 0,
+    ///The score gotten from typing
+    typing_score: u64 = 0,
+};
+
 const GameplayData = struct {
     phase: Phase = .ready,
     beat_line_left: usize = 0,
@@ -50,6 +57,8 @@ const GameplayData = struct {
 
     ///The romaji the user has typed so far for the current hiragana
     typed_romaji: []const u8 = &.{},
+
+    score: Score = .{},
 };
 
 pub var Gameplay = Screen{
@@ -124,6 +133,38 @@ pub const good_window = 0.05;
 pub const fair_window = 0.10;
 ///The window to get a Poor, in seconds in both directions
 pub const poor_window = 0.20;
+
+///The string to display for an excellent hit
+pub const excellent_str = "優";
+///The string to display for a good hit
+pub const good_str = "良";
+///The string to display for a fair hit
+pub const fair_str = "可";
+///The string to display for a poor hit
+pub const poor_str = "不可";
+
+///The color to display for an excellent hit
+pub const excellent_color: Gfx.ColorF = .{ 1, 1, 0, 0 };
+///The color to display for a good hit
+pub const good_color: Gfx.ColorF = .{ 0, 1, 0, 0 };
+///The color to display for a fair hit
+pub const fair_color: Gfx.ColorF = .{ 0, 0.5, 1, 0 };
+///The color to display for a poor hit
+pub const poor_color: Gfx.ColorF = .{ 0.5, 0.5, 0.5, 0 };
+
+///The score for an excellent hit
+pub const excellent_score = 1500;
+///The score for a good hit
+pub const good_score = 1000;
+///The score for a fair hit
+pub const fair_score = 500;
+///The score for a poor hit
+pub const poor_score = 0;
+
+pub const combo_score = 10;
+pub const combo_score_max = 1000;
+
+pub const typing_score = 500;
 
 pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
     var data = self.getData(GameplayData);
@@ -559,17 +600,25 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
         var open = false;
         _ = c.igBegin("Gameplay Debugger", &open, 0);
 
-        const gameplay_data_type_info: std.builtin.Type = @typeInfo(GameplayData);
+        c.igText("Gameplay State");
 
-        inline for (gameplay_data_type_info.Struct.fields) |field| {
+        inline for (@typeInfo(GameplayData).Struct.fields) |field| {
             handleDebugType(data, field.name, field.type, {});
+        }
+
+        c.igSeparator();
+
+        c.igText("Score");
+
+        inline for (@typeInfo(Score).Struct.fields) |field| {
+            handleDebugType(data.score, field.name, field.type, {});
         }
 
         c.igEnd();
     }
 }
 
-fn handleDebugType(data: *GameplayData, comptime name: []const u8, comptime T: type, contents: anytype) void {
+fn handleDebugType(data: anytype, comptime name: []const u8, comptime T: type, contents: anytype) void {
     const actual_contents = if (@TypeOf(contents) == void) @field(data, name) else contents;
 
     switch (@typeInfo(T)) {
@@ -665,12 +714,21 @@ fn missCheck(data: *GameplayData, next_note: ?Fumen.Lyric) bool {
 }
 
 fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) void {
-    _ = data;
     //Draw the score
     render_state.fontstash.setMincho();
     render_state.fontstash.setSizePt(36);
     render_state.fontstash.setAlign(.right);
-    render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, "12345678");
+    render_state.fontstash.setColor(.{ 255, 255, 255, 255 });
+
+    var buf: [8:0]u8 = [8:0]u8{ 0, 0, 0, 0, 0, 0, 0, 0 };
+    _ = std.fmt.formatIntBuf(
+        &buf,
+        data.score.accuracy_score + data.score.typing_score,
+        10,
+        .upper,
+        .{ .width = 8, .fill = '0' },
+    );
+    render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, &buf);
 }
 
 fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !void {
