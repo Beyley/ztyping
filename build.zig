@@ -139,13 +139,14 @@ pub fn build(b: *std.Build) !void {
         exe.linkLibrary(cimgui_lib);
     } //cimgui
 
-    { //zigimg
-        var module = b.addModule("zigimg", .{
-            .source_file = .{ .path = root_path ++ "libs/zigimg/zigimg.zig" },
-        });
-
-        exe.addModule("zigimg", module);
-    } //zigimg
+    //zigimg
+    const zigimg_pkg = b.dependency("zigimg", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const zigimg_module = zigimg_pkg.module("zigimg");
+    exe.addModule("zigimg", zigimg_module);
+    //zigimg
 
     { //iconv
         var iconv_lib = iconv.createIconv(b, target, optimize);
@@ -159,9 +160,17 @@ pub fn build(b: *std.Build) !void {
     } //iconv
 
     { //process assets
-        const process_images_step = b.step("Process images", "Process image files into a QOI texture atlas");
+        var process_assets_exe = b.addExecutable(.{
+            .name = "asset_processor",
+            .root_source_file = .{ .path = root_path ++ "image_processor.zig" },
+        });
+        process_assets_exe.linkLibC();
+        process_assets_exe.addModule("zigimg", zigimg_module);
+        var run_process_assets = b.addRunArtifact(process_assets_exe);
+        run_process_assets.addArg(root_path);
 
-        process_images_step.makeFn = ImageProcessor.processImages;
+        const process_images_step = b.step("Process images", "Process image files into a QOI texture atlas");
+        process_images_step.dependOn(&run_process_assets.step);
 
         exe.step.dependOn(process_images_step);
     } //process assets

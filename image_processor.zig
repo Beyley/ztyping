@@ -1,5 +1,5 @@
 const std = @import("std");
-const img = @import("libs/zigimg/zigimg.zig");
+const img = @import("zigimg");
 
 const Image = struct {
     width: u32,
@@ -15,15 +15,16 @@ const Image = struct {
     }
 };
 
-pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !void {
-    var start = std.time.nanoTimestamp();
-    defer step.result_duration_ns = @intCast(u64, std.time.nanoTimestamp() - start);
+pub fn main() !void {
+    const allocator = std.heap.c_allocator;
 
-    step.state = .running;
-    progress_node.activate();
+    var args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
 
-    var allocator = step.owner.allocator;
+    try processImages(allocator, args[1]);
+}
 
+pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void {
     var images = std.ArrayList(Image).init(allocator);
     defer {
         //Free all the images
@@ -33,19 +34,25 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
         images.deinit();
     }
 
-    var png_files = try find_png_files(allocator, root_path ++ "content/");
+    std.debug.assert(std.fs.path.isAbsolute(root_path));
+
+    const content_path = try std.mem.concat(allocator, u8, &.{ root_path, "content/" });
+    defer allocator.free(content_path);
+
+    var png_files = try find_png_files(allocator, content_path);
     defer allocator.free(png_files);
 
-    progress_node.setEstimatedTotalItems(png_files.len + 4);
+    const atlas_gen_folder = try std.mem.concat(allocator, u8, &.{ root_path, "zig-cache/atlas-gen/" });
+    defer allocator.free(atlas_gen_folder);
 
     //ignore errors, just try to make it
-    std.fs.makeDirAbsolute(root_path ++ "zig-cache/atlas-gen/") catch |err| {
+    std.fs.makeDirAbsolute(atlas_gen_folder) catch |err| {
         if (err != std.os.MakeDirError.PathAlreadyExists) {
             return err;
         }
     };
 
-    var cache_dir = try std.fs.openDirAbsolute(root_path ++ "zig-cache/atlas-gen/", .{});
+    var cache_dir = try std.fs.openDirAbsolute(atlas_gen_folder, .{});
     defer cache_dir.close();
 
     var hashes: [][]u8 = try allocator.alloc([]u8, png_files.len);
@@ -93,7 +100,6 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
     }
 
     if (!needs_rebuild) {
-        step.result_cached = true;
         return;
     }
 
@@ -123,20 +129,14 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
         //Create the cache file if it does not exist
         var cache_file = try cache_dir.createFile(hashes[i], .{});
         cache_file.close();
-
-        progress_node.setCompletedItems(i + 1);
     }
 
     std.sort.block(Image, images.items, {}, Image.sorting_func);
-
-    progress_node.setCompletedItems(png_files.len + 1);
 
     const bin_size = 4096;
 
     var packed_images = try packImages(allocator, Image, images.items, .{ .w = bin_size, .h = bin_size });
     defer allocator.free(packed_images);
-
-    progress_node.setCompletedItems(png_files.len + 2);
 
     var final_image = try img.Image.create(allocator, bin_size, bin_size, .rgba32);
     defer final_image.deinit();
@@ -170,20 +170,25 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
         }
     }
 
-    progress_node.setCompletedItems(png_files.len + 3);
+    const output_content_folder = try std.mem.concat(allocator, u8, &.{ root_path, "src/content/" });
+    defer allocator.free(output_content_folder);
 
-    std.fs.makeDirAbsolute(root_path ++ "src/content/") catch {};
+    const output_atlas_image = try std.mem.concat(allocator, u8, &.{ output_content_folder, "atlas.qoi" });
+    defer allocator.free(output_atlas_image);
 
-    var output_file = try std.fs.createFileAbsolute(root_path ++ "src/content/atlas.qoi", .{});
+    const output_atlas_code = try std.mem.concat(allocator, u8, &.{ output_content_folder, "atlas.zig" });
+    defer allocator.free(output_atlas_code);
+
+    std.fs.makeDirAbsolute(output_content_folder) catch {};
+
+    var output_file = try std.fs.createFileAbsolute(output_atlas_image, .{});
     defer output_file.close();
 
     var output_stream = .{ .file = output_file };
 
     try img.qoi.QOI.writeImage(allocator, &output_stream, final_image, .{ .qoi = .{} });
 
-    progress_node.setCompletedItems(png_files.len + 4);
-
-    var output_atlas_info = try std.fs.createFileAbsolute(root_path ++ "src/content/atlas.zig", .{});
+    var output_atlas_info = try std.fs.createFileAbsolute(output_atlas_code, .{});
     defer output_atlas_info.close();
 
     try output_atlas_info.writeAll("pub const Rectangle = struct {x: comptime_float, y: comptime_float, w: comptime_float, h: comptime_float};\n\n");
@@ -204,8 +209,6 @@ pub fn processImages(step: *std.Build.Step, progress_node: *std.Progress.Node) !
         try output_atlas_info.writeAll(image_rect);
         try output_atlas_info.writeAll("\n");
     }
-
-    progress_node.end();
 }
 
 ///Finds all png files in a folder recursively
@@ -344,9 +347,3 @@ pub fn packImages(allocator: std.mem.Allocator, comptime T: type, images: []cons
 
     return packed_images.toOwnedSlice();
 }
-
-fn root() []const u8 {
-    return std.fs.path.dirname(@src().file) orelse ".";
-}
-
-const root_path = root() ++ "/";

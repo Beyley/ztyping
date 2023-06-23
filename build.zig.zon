@@ -6,5 +6,9 @@
             .url = "https://github.com/Beyley/SDL/archive/0fa2452089e64a235ded73093dea46c878a4b3eb.tar.gz",
             .hash = "12205ad91c3c703efa1fc1def6165117f3e63b02ee65eb3f219b116808654d31a65d",
         },
+        .zigimg = .{
+            .url = "https://github.com/zigimg/zigimg/archive/5d21a69654ca6d28dbc86d1e3a10d65ffc5ea75c.tar.gz",
+            .hash = "122064d0e56e030694d35019802f665cd86e5bd45a3cc93eb8c78d9814120059f09e",
+        },
     },
 }
