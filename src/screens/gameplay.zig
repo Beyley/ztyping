@@ -29,6 +29,10 @@ const Score = struct {
     accuracy_score: u64 = 0,
     ///The score gotten from typing
     typing_score: u64 = 0,
+    ///The current combo the user has
+    combo: u64 = 0,
+    ///The highest combo the user has reached
+    max_combo: u64 = 0,
 };
 
 const GameplayData = struct {
@@ -72,7 +76,7 @@ pub var Gameplay = Screen{
     .state = undefined,
 };
 
-pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) Screen.ScreenError!void {
+pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerror!void {
     _ = gfx;
     self.allocator = allocator;
 
@@ -166,7 +170,7 @@ pub const combo_score_max = 1000;
 
 pub const typing_score = 500;
 
-pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
+pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
     var data = self.getData(GameplayData);
 
     //If we're not in the main phase, ignore the input
@@ -271,6 +275,8 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
             if (hit_result) |valid_hit_result| {
                 //Set the pending hit result to the valid hit result
                 current_note.pending_hit_result = valid_hit_result;
+
+                handleNoteFirstChar(data, current_note);
             }
         }
 
@@ -278,6 +284,8 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
         if (current_note.pending_hit_result != null) {
             //Add the typed romaji
             data.typed_romaji = matched_for_current_note.conversion.romaji[0 .. data.typed_romaji.len + typed_char.len];
+
+            try handleTypedRomaji(data, typed_char);
 
             // std.debug.print("adding romaji, now {s}/{s}\n", .{ data.typed_romaji, matched_for_current_note.conversion.romaji });
 
@@ -333,6 +341,8 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
                 //Add the typed characters to the typed romaji
                 data.typed_romaji = conversion.romaji[0..typed_char.len];
 
+                try handleTypedRomaji(data, typed_char);
+
                 // std.debug.print("adding romaji for next note on end cut, now {s}/{s}\n", .{ data.typed_romaji, conversion.romaji });
 
                 //If the typed romaji is the same as the romaji for the conversion
@@ -386,6 +396,8 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
             //Set the pending hit result to the valid hit result
             next_note.?.pending_hit_result = valid_hit_result;
 
+            handleNoteFirstChar(data, next_note.?);
+
             //Set the typed romaji to the characters they typed
             data.typed_romaji = matched_for_next_note.conversion.romaji[0..typed_char.len];
 
@@ -423,6 +435,33 @@ pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
     // }
 }
 
+fn handleTypedRomaji(data: *GameplayData, typed: []const u8) !void {
+    data.score.typing_score += typing_score * try std.unicode.utf8CountCodepoints(typed);
+}
+
+fn handleNoteFirstChar(data: *GameplayData, note: *Fumen.Lyric) void {
+    //Get the extra score from having a combo, capped to the `combo_score_max` value
+    var score_combo = @min(combo_score * data.score.combo, combo_score_max);
+
+    //Add the accuracy the user has reached to the accuracy score, ignore bonus score with a `poor` hit
+    data.score.accuracy_score += (if (note.pending_hit_result.? == .poor) 0 else score_combo) + hitResultToAccuracyScore(note.pending_hit_result.?);
+
+    //TODO: set combo/accuracy strings
+
+    //Increment the combo
+    data.score.combo += 1;
+
+    //Reset the combo if its a poor hit
+    if (note.pending_hit_result.? == .poor) {
+        data.score.combo = 0;
+    }
+
+    //If the user has reached a higher max combo
+    if (data.score.combo > data.score.max_combo) {
+        data.score.max_combo = data.score.combo;
+    }
+}
+
 fn hitNote(data: *GameplayData) void {
     //Get the current note
     const current_note = &data.music.fumen.lyrics[data.active_note];
@@ -457,7 +496,16 @@ fn deltaToHitResult(delta: f64) ?Fumen.Lyric.HitResult {
     return null;
 }
 
-pub fn keyDown(self: *Screen, key: c.SDL_Keysym) Screen.ScreenError!void {
+fn hitResultToAccuracyScore(hit_result: Fumen.Lyric.HitResult) u64 {
+    return switch (hit_result) {
+        .excellent => excellent_score,
+        .good => good_score,
+        .fair => fair_score,
+        .poor => poor_score,
+    };
+}
+
+pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
     var data = self.getData(GameplayData);
 
     switch (key.sym) {
@@ -527,7 +575,7 @@ inline fn getDrawPosY(x: f32) f32 {
     return -y; // スクリーン座標は上下が逆
 }
 
-pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError!void {
+pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     var data = self.getData(GameplayData);
 
     data.current_time = try self.state.audio_tracker.music.?.getSecondPosition();
@@ -675,6 +723,9 @@ fn missNote(data: *GameplayData) void {
     //Mark that we are on the next note now
     data.active_note += 1;
 
+    //Reset the combo
+    data.score.combo = 0;
+
     //If we are on the last note, mark the game as finished
     if (data.music.fumen.lyrics.len == data.active_note) {
         data.phase = .finished;
@@ -720,7 +771,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) void {
     render_state.fontstash.setAlign(.right);
     render_state.fontstash.setColor(.{ 255, 255, 255, 255 });
 
-    var buf: [8:0]u8 = [8:0]u8{ 0, 0, 0, 0, 0, 0, 0, 0 };
+    var buf: [8:0]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0 };
     _ = std.fmt.formatIntBuf(
         &buf,
         data.score.accuracy_score + data.score.typing_score,

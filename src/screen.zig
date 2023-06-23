@@ -3,8 +3,6 @@ const bass = @import("bass");
 
 const c = @import("main.zig").c;
 
-pub const ScreenError = bass.Error || std.mem.Allocator.Error || std.fs.File.OpenError || std.fs.Dir.OpenError || Gfx.Error || std.time.Timer.Error;
-
 const Renderer = @import("renderer.zig");
 const Gfx = @import("gfx.zig");
 const Fontstash = @import("fontstash.zig");
@@ -27,10 +25,10 @@ pub const RenderState = struct {
 close_screen: bool = false,
 screen_push: ?*Self = null,
 state: *GameState,
-render: *const fn (*Self, RenderState) ScreenError!void,
-char: ?*const fn (*Self, []const u8) ScreenError!void = null,
-key_down: ?*const fn (*Self, c.SDL_Keysym) ScreenError!void = null,
-init: *const fn (*Self, std.mem.Allocator, Gfx) ScreenError!void,
+render: *const fn (*Self, RenderState) anyerror!void,
+char: ?*const fn (*Self, []const u8) anyerror!void = null,
+key_down: ?*const fn (*Self, c.SDL_Keysym) anyerror!void = null,
+init: *const fn (*Self, std.mem.Allocator, Gfx) anyerror!void,
 deinit: *const fn (*Self) void,
 data: *anyopaque,
 allocator: std.mem.Allocator,

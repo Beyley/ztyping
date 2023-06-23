@@ -24,7 +24,7 @@ pub var SongSelect = Screen{
     .state = undefined,
 };
 
-pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) Screen.ScreenError!void {
+pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerror!void {
     _ = gfx;
     self.allocator = allocator;
 
@@ -45,7 +45,7 @@ pub fn deinitScreen(self: *Screen) void {
 //     _ = data;
 // }
 
-pub fn keyDown(self: *Screen, key: c.SDL_Keysym) Screen.ScreenError!void {
+pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
     var data = self.getData(SongSelectData);
     _ = data;
 
@@ -57,7 +57,7 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) Screen.ScreenError!void {
     }
 }
 
-pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError!void {
+pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     var data = self.getData(SongSelectData);
     _ = data;
 

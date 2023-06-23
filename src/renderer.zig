@@ -162,8 +162,8 @@ pub inline fn reserveTexQuad(
     scale: Gfx.Vector2,
     col: Gfx.ColorF,
 ) !void {
-    const uvs = Gfx.getTexUVsFromAtlas(tex_name);
-    const size = Gfx.getTexSizeFromAtlas(tex_name);
+    const uvs = comptime Gfx.getTexUVsFromAtlas(tex_name);
+    const size = comptime Gfx.getTexSizeFromAtlas(tex_name);
 
     var reserved = try self.reserve(4, 6);
     reserved.copyIn(&.{

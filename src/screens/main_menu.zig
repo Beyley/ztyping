@@ -24,7 +24,7 @@ pub var MainMenu = Screen{
     .state = undefined,
 };
 
-pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) Screen.ScreenError!void {
+pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerror!void {
     _ = gfx;
     self.allocator = allocator;
 
@@ -43,13 +43,13 @@ pub fn deinitScreen(self: *Screen) void {
     self.allocator.destroy(data);
 }
 
-pub fn char(self: *Screen, typed_char: []const u8) Screen.ScreenError!void {
+pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
     var data = self.getData(MainMenuData);
 
     try data.name.appendSlice(typed_char);
 }
 
-pub fn keyDown(self: *Screen, key: c.SDL_Keysym) Screen.ScreenError!void {
+pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
     var data = self.getData(MainMenuData);
 
     switch (key.sym) {
@@ -73,7 +73,7 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) Screen.ScreenError!void {
     }
 }
 
-pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError!void {
+pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     var data = self.getData(MainMenuData);
 
     try render_state.fontstash.renderer.begin();
