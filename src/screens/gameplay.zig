@@ -557,11 +557,59 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) Screen.ScreenError
 
     if (builtin.mode == .Debug) {
         var open = false;
-        _ = c.igBegin("Gameplay Debugging", &open, 0);
+        _ = c.igBegin("Gameplay Debugger", &open, 0);
 
-        c.igText("Active Note: %d", data.active_note);
+        const gameplay_data_type_info: std.builtin.Type = @typeInfo(GameplayData);
+
+        inline for (gameplay_data_type_info.Struct.fields) |field| {
+            handleDebugType(data, field.name, field.type, {});
+        }
 
         c.igEnd();
+    }
+}
+
+fn handleDebugType(data: *GameplayData, comptime name: []const u8, comptime T: type, contents: anytype) void {
+    const actual_contents = if (@TypeOf(contents) == void) @field(data, name) else contents;
+
+    switch (@typeInfo(T)) {
+        .Int => {
+            c.igText(name ++ ": %d", actual_contents);
+        },
+        .Float => {
+            c.igText(name ++ ": %f", actual_contents);
+        },
+        .Enum => {
+            c.igText(name ++ ": %s", @tagName(actual_contents).ptr);
+        },
+        .Pointer => |ptr| {
+            //We dont handle printing non-slices, so just break out
+            if (ptr.size != .Slice) return;
+
+            switch (ptr.child) {
+                u8 => {
+                    //We can just use normal %s for sentinel terminated arrays
+                    if (ptr.sentinel != null) {
+                        c.igText(name ++ ": \"%s\"", actual_contents.ptr);
+                    }
+                    //Else we have to use the `%.*s` magic
+                    else {
+                        c.igText(name ++ ": \"%.*s\"", actual_contents.len, actual_contents.ptr);
+                    }
+                },
+                else => {},
+            }
+        },
+        .Optional => |optional| {
+            const content = @field(data, name);
+
+            if (content == null) {
+                c.igText(name ++ ": null");
+            } else {
+                handleDebugType(data, name, optional.child, content.?);
+            }
+        },
+        else => {},
     }
 }
 
