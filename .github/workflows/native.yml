@@ -11,7 +11,7 @@ jobs:
             name: Linux
             extras: |
               sudo apt-get update 
-              sudo apt-get install -y xorg-dev build-essential libudev-dev libasound2
+              sudo apt-get install -y xorg-dev build-essential libudev-dev libasound2 libasound2-dev libpipewire-0.3-0 libpipewire-0.3-dev libjack-jackd2-0 libjack-jackd2-dev libpulse-dev libpulse0
           - os: macos-latest
             name: MacOS
             extras: "echo no extras needed"
