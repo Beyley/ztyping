@@ -139,7 +139,7 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
             },
         }) orelse return Error.UnableToCreateTextureBindGroup,
     };
-    std.debug.print("got projection matrix bind group 0x{x}\n", .{@intFromPtr(self.projection_matrix_bind_group.c.?)});
+    std.debug.print("got projection matrix bind group {*}\n", .{self.projection_matrix_bind_group.c.?});
 
     self.sampler = c.wgpuDeviceCreateSampler(self.device.c, &c.WGPUSamplerDescriptor{
         .nextInChain = null,
@@ -158,7 +158,7 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
         .lodMinClamp = 0,
         .maxAnisotropy = 1,
     }) orelse return Error.UnableToCreateSampler;
-    std.debug.print("got sampler 0x{x}\n", .{@intFromPtr(self.sampler.?)});
+    std.debug.print("got sampler {*}\n", .{self.sampler.?});
 
     return self;
 }
@@ -286,7 +286,7 @@ pub const Texture = struct {
             }) orelse return Error.UnableToCreateBindGroupForTexture,
         };
 
-        std.debug.print("got texture bind group 0x{x}\n", .{@intFromPtr(self.bind_group.?.c.?)});
+        std.debug.print("got texture bind group {*}\n", .{self.bind_group.?.c.?});
     }
 };
 
@@ -455,7 +455,7 @@ pub const Instance = struct {
 
         var surface = c.wgpuInstanceCreateSurface(self.c, &descriptor);
 
-        std.debug.print("got surface 0x{x}\n", .{@intFromPtr(surface.?)});
+        std.debug.print("got surface {*}\n", .{surface.?});
 
         return .{ .c = surface orelse return Error.SurfaceCreationError };
     }
@@ -470,7 +470,7 @@ pub const Instance = struct {
             .forceFallbackAdapter = false,
         }, handleAdapterCallback, @ptrCast(*anyopaque, &adapter));
 
-        std.debug.print("got adapter 0x{x}\n", .{@intFromPtr(adapter.?)});
+        std.debug.print("got adapter {*}\n", .{adapter.?});
 
         return .{ .c = adapter orelse return Error.UnableToRequestAdapter };
     }
@@ -500,7 +500,7 @@ pub const Adapter = struct {
             .nextInChain = null,
         }, handleDeviceCallback, @ptrCast(*anyopaque, &device));
 
-        std.debug.print("got device 0x{x}\n", .{@intFromPtr(device.?)});
+        std.debug.print("got device {*}\n", .{device.?});
 
         return .{ .c = device orelse return Error.UnableToRequestDevice };
     }
@@ -598,7 +598,7 @@ pub const Device = struct {
         });
 
         if (swap_chain != null) {
-            std.debug.print("got swap chain 0x{x} with size {d}x{d}\n", .{ @intFromPtr(swap_chain.?), width, height });
+            std.debug.print("got swap chain {*} with size {d}x{d}\n", .{ swap_chain.?, width, height });
         }
 
         return .{ .c = swap_chain orelse return Error.UnableToCreateSwapChain };
@@ -625,7 +625,7 @@ pub const Device = struct {
             .hintCount = 0,
         });
 
-        std.debug.print("got shader module 0x{x}\n", .{@intFromPtr(module.?)});
+        std.debug.print("got shader module {*}\n", .{module.?});
 
         return module orelse Error.UnableToCreateShaderModule;
     }
@@ -690,8 +690,8 @@ pub const Device = struct {
             }) orelse return Error.UnableToCreateProjectionMatrixBindGroupLayout,
         };
 
-        std.debug.print("got texture/sampler bind group layout 0x{x}\n", .{@intFromPtr(layouts.texture_sampler.c.?)});
-        std.debug.print("got projection matrix bind group layout 0x{x}\n", .{@intFromPtr(layouts.projection_matrix.c.?)});
+        std.debug.print("got texture/sampler bind group layout {*}\n", .{layouts.texture_sampler.c.?});
+        std.debug.print("got projection matrix bind group layout {*}\n", .{layouts.projection_matrix.c.?});
 
         return layouts;
     }
@@ -707,7 +707,7 @@ pub const Device = struct {
             .nextInChain = null,
         });
 
-        std.debug.print("got pipeline layout 0x{x}\n", .{@intFromPtr(layout.?)});
+        std.debug.print("got pipeline layout {*}\n", .{layout.?});
 
         return layout;
     }
@@ -788,7 +788,7 @@ pub const Device = struct {
             },
         });
 
-        std.debug.print("got render pipeline 0x{x}\n", .{@intFromPtr(pipeline.?)});
+        std.debug.print("got render pipeline {*}\n", .{pipeline.?});
 
         return .{ .c = pipeline orelse return Error.UnableToCreateRenderPipeline };
     }
@@ -927,7 +927,7 @@ pub const Device = struct {
             .label = "Buffer (" ++ @tagName(buffer_type) ++ ")",
         });
 
-        std.debug.print("got buffer 0x{x}\n", .{@intFromPtr(buffer.?)});
+        std.debug.print("got buffer {*}\n", .{buffer.?});
 
         return .{
             .c = buffer orelse return Error.UnableToCreateBuffer,
@@ -968,7 +968,7 @@ pub fn createInstance() !Instance {
         .nextInChain = null,
     });
 
-    std.debug.print("got instance 0x{x}\n", .{@intFromPtr(instance.?)});
+    std.debug.print("got instance {*}\n", .{instance.?});
 
     return .{ .c = instance orelse return Error.InstanceCreationError };
 }
