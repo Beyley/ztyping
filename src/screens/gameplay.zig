@@ -62,7 +62,13 @@ const GameplayData = struct {
     ///The romaji the user has typed so far for the current hiragana
     typed_romaji: []const u8 = &.{},
 
+    ///Info about the score the user has achieved
     score: Score = .{},
+
+    ///The accuracy text to display (eg. 優)
+    accuracy_text: [:0]const u8 = "",
+    ///The color of the accuracy text
+    accuracy_text_color: Gfx.ColorB = .{ 255, 255, 255, 255 },
 };
 
 pub var Gameplay = Screen{
@@ -148,13 +154,22 @@ pub const fair_str = "可";
 pub const poor_str = "不可";
 
 ///The color to display for an excellent hit
-pub const excellent_color: Gfx.ColorF = .{ 1, 1, 0, 0 };
+pub const excellent_color: Gfx.ColorF = .{ 1, 1, 0, 1 };
 ///The color to display for a good hit
-pub const good_color: Gfx.ColorF = .{ 0, 1, 0, 0 };
+pub const good_color: Gfx.ColorF = .{ 0, 1, 0, 1 };
 ///The color to display for a fair hit
-pub const fair_color: Gfx.ColorF = .{ 0, 0.5, 1, 0 };
+pub const fair_color: Gfx.ColorF = .{ 0, 0.5, 1, 1 };
 ///The color to display for a poor hit
-pub const poor_color: Gfx.ColorF = .{ 0.5, 0.5, 0.5, 0 };
+pub const poor_color: Gfx.ColorF = .{ 0.5, 0.5, 0.5, 1 };
+
+///The color to display for an excellent hit
+pub const excellent_color_b: Gfx.ColorB = .{ 255, 255, 0, 255 };
+///The color to display for a good hit
+pub const good_color_b: Gfx.ColorB = .{ 0, 255, 0, 255 };
+///The color to display for a fair hit
+pub const fair_color_b: Gfx.ColorB = .{ 0, 128, 255, 255 };
+///The color to display for a poor hit
+pub const poor_color_b: Gfx.ColorB = .{ 128, 128, 128, 255 };
 
 ///The score for an excellent hit
 pub const excellent_score = 1500;
@@ -460,6 +475,20 @@ fn handleNoteFirstChar(data: *GameplayData, note: *Fumen.Lyric) void {
     if (data.score.combo > data.score.max_combo) {
         data.score.max_combo = data.score.combo;
     }
+
+    data.accuracy_text = switch (note.pending_hit_result.?) {
+        .excellent => excellent_str,
+        .good => good_str,
+        .fair => fair_str,
+        .poor => poor_str,
+    };
+
+    data.accuracy_text_color = switch (note.pending_hit_result.?) {
+        .excellent => excellent_color_b,
+        .good => good_color_b,
+        .fair => fair_color_b,
+        .poor => poor_color_b,
+    };
 }
 
 fn hitNote(data: *GameplayData) void {
@@ -764,12 +793,16 @@ fn missCheck(data: *GameplayData, next_note: ?Fumen.Lyric) bool {
     return false;
 }
 
+const accuracy_x = circle_x - circle_r;
+const accuracy_y = 90;
+
 fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) void {
+    render_state.fontstash.reset();
+
     //Draw the score
     render_state.fontstash.setMincho();
     render_state.fontstash.setSizePt(36);
     render_state.fontstash.setAlign(.right);
-    render_state.fontstash.setColor(.{ 255, 255, 255, 255 });
 
     var buf: [8:0]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0 };
     _ = std.fmt.formatIntBuf(
@@ -780,9 +813,31 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) void {
         .{ .width = 8, .fill = '0' },
     );
     render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, &buf);
+
+    render_state.fontstash.setColor(data.accuracy_text_color);
+    render_state.fontstash.setAlign(.left);
+
+    var metrics = render_state.fontstash.verticalMetrics();
+    render_state.fontstash.drawText(.{ accuracy_x, accuracy_y + metrics.line_height }, data.accuracy_text);
+
+    if (data.score.combo >= 10) {
+        var digits = std.fmt.count("{d}", .{data.score.combo});
+
+        _ = std.fmt.formatIntBuf(
+            &buf,
+            data.score.combo,
+            10,
+            .upper,
+            .{ .width = 8, .fill = '0' },
+        );
+
+        render_state.fontstash.drawText(.{ accuracy_x + 35, accuracy_y + metrics.line_height }, buf[buf.len - digits ..]);
+    }
 }
 
 fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !void {
+    render_state.fontstash.reset();
+
     //Draw all the beat lines
     for (0..data.music.fumen.beat_lines.len) |i| {
         var beat_line = data.music.fumen.beat_lines[i];
@@ -909,6 +964,8 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
 }
 
 fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) void {
+    render_state.fontstash.reset();
+
     //If there are no kanji lyrics, return out
     if (data.music.fumen.lyrics_kanji.len == 0) {
         return;
