@@ -7,8 +7,47 @@ const img = @import("zigimg");
 const Self = @This();
 
 pub const Vector2 = @Vector(2, f32);
+pub const Vector2u = @Vector(2, usize);
+pub const Vector2i = @Vector(2, isize);
+///RGBA f32 color
 pub const ColorF = @Vector(4, f32);
+///RGBA u8 color
 pub const ColorB = @Vector(4, u8);
+
+pub fn vector2FToU(orig: Vector2) Vector2u {
+    return .{
+        @intFromFloat(usize, orig[0]),
+        @intFromFloat(usize, orig[1]),
+    };
+}
+
+pub fn vector2UToF(orig: Vector2u) Vector2 {
+    return .{
+        @floatFromInt(f32, orig[0]),
+        @floatFromInt(f32, orig[1]),
+    };
+}
+
+pub fn vector2IToF(orig: Vector2i) Vector2 {
+    return .{
+        @floatFromInt(f32, orig[0]),
+        @floatFromInt(f32, orig[1]),
+    };
+}
+
+pub fn vector2UToI(orig: Vector2u) Vector2i {
+    return .{
+        @intCast(isize, orig[0]),
+        @intCast(isize, orig[1]),
+    };
+}
+
+pub fn vector2IToU(orig: Vector2i) Vector2u {
+    return .{
+        @intCast(usize, orig[0]),
+        @intCast(usize, orig[1]),
+    };
+}
 
 pub const WhiteF = ColorF{ 1, 1, 1, 1 };
 pub const RedF = ColorF{ 1, 0, 0, 1 };

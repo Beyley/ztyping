@@ -7,11 +7,16 @@ const Renderer = @import("renderer.zig");
 
 const Self = @This();
 
+pub const Fontstash = @import("fontstash_impl.zig");
+
+pub const Mincho = "mincho";
+pub const Gothic = "gothic";
+
 gfx: *Gfx,
 renderer: Renderer,
-context: *c.FONScontext,
-gothic: c_int,
-mincho: c_int,
+context: *Fontstash,
+gothic: *Fontstash.Font,
+mincho: *Fontstash.Font,
 texture: ?Gfx.Texture = null,
 allocator: std.mem.Allocator,
 font_size: f32 = 0,
@@ -20,77 +25,36 @@ pub fn init(self: *Self, gfx: *Gfx, allocator: std.mem.Allocator) !void {
     self.allocator = allocator;
     self.gfx = gfx;
 
-    var params = c.FONSparams{
-        .renderCreate = create,
-        .renderDelete = delete,
-        .renderDraw = draw,
-        .renderResize = resize,
-        .renderUpdate = update,
+    self.context = try Fontstash.create(allocator, Fontstash.Parameters{
+        .zero_position = .top_left,
         .width = 4096,
         .height = 4096,
-        .flags = c.FONS_ZERO_TOPLEFT,
-        .userPtr = self,
-    };
-
-    self.context = c.fonsCreateInternal(&params) orelse return error.UnableToCreateFontStashContext;
+        .user_ptr = self,
+        .impl_create_texture = create,
+        .impl_update_texture = update,
+        .impl_draw = draw,
+        .impl_delete = delete,
+    });
+    errdefer self.context.deinit();
 
     self.renderer = try Renderer.init(allocator, gfx, self.texture.?);
+    errdefer self.renderer.deinit();
 
     var gothic_data = @embedFile("fonts/gothic.ttf");
     var mincho_data = @embedFile("fonts/mincho.ttf");
 
-    self.gothic = c.fonsAddFontMem(self.context, "gothic", gothic_data.ptr, @intCast(c_int, gothic_data.len), 0);
-    if (self.gothic == c.FONS_INVALID) return error.UnableToAddFont;
-
-    self.mincho = c.fonsAddFontMem(self.context, "mincho", mincho_data.ptr, @intCast(c_int, mincho_data.len), 0);
-    if (self.mincho == c.FONS_INVALID) return error.UnableToAddFont;
+    self.gothic = try self.context.addFontMem("gothic", gothic_data);
+    self.mincho = try self.context.addFontMem("mincho", mincho_data);
 }
 
-pub fn setGothic(self: *Self) void {
-    c.fonsSetFont(self.context, self.gothic);
-}
+pub fn verticalMetrics(self: *Self, state: Fontstash.State) struct { ascender: f32, descender: f32, line_height: f32 } {
+    var ascender: f32 = undefined;
+    var descender: f32 = undefined;
+    var line_height: f32 = undefined;
+    // c.fonsVertMetrics(self.context, &ascender, &descender, &line_height);
 
-pub fn setMincho(self: *Self) void {
-    c.fonsSetFont(self.context, self.mincho);
-}
-
-pub fn setSizePt(self: *Self, size: f32) void {
-    self.setSizePx(size / (4.0 / 3.0));
-}
-
-pub fn setSizePx(self: *Self, size: f32) void {
-    self.font_size = size;
-    //We multiply by scale here so that FSS works in scaled space, this is undone during rendering
-    c.fonsSetSize(self.context, size * self.gfx.scale);
-}
-
-pub fn setColor(self: *Self, color: Gfx.ColorB) void {
-    c.fonsSetColor(self.context, @bitCast(c_uint, color));
-}
-
-pub const Alignment = enum(c_int) {
-    left = 1,
-    center = 2,
-    right = 4,
-    top = 8,
-    middle = 16,
-    bottom = 32,
-    baseline = 64,
-};
-
-pub fn setAlign(self: *Self, alignment: Alignment) void {
-    c.fonsSetAlign(self.context, @intFromEnum(alignment));
-}
-
-pub fn reset(self: *Self) void {
-    c.fonsClearState(self.context);
-}
-
-pub fn verticalMetrics(self: *Self) struct { ascender: f32, descender: f32, line_height: f32 } {
-    var ascender: f32 = 0;
-    var descender: f32 = 0;
-    var line_height: f32 = 0;
-    c.fonsVertMetrics(self.context, &ascender, &descender, &line_height);
+    var internal_state = state;
+    internal_state.size *= self.gfx.scale;
 
     return .{
         .ascender = ascender / self.gfx.scale,
@@ -101,15 +65,31 @@ pub fn verticalMetrics(self: *Self) struct { ascender: f32, descender: f32, line
     };
 }
 
-pub fn drawText(self: *Self, position: Gfx.Vector2, text: [:0]const u8) void {
-    _ = c.fonsDrawText(
-        self.context,
-        //We multiply by gfx scale so that FSS stays in scaled space, this gets undone during rendering
-        position[0] * self.gfx.scale,
-        position[1] * self.gfx.scale,
-        text.ptr,
-        null,
+pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: Fontstash.State) !void {
+    // _ = c.fonsDrawText(
+    //     self.context,
+    //     //We multiply by gfx scale so that FSS stays in scaled space, this gets undone during rendering
+    //     position[0] * self.gfx.scale,
+    //     position[1] * self.gfx.scale,
+    //     text.ptr,
+    //     null,
+    // );
+
+    var internal_state = state;
+    internal_state.size *= self.gfx.scale;
+
+    _ = try self.context.drawText(
+        position * Gfx.Vector2{
+            self.gfx.scale,
+            self.gfx.scale,
+        },
+        text,
+        internal_state,
     );
+}
+
+pub fn ptToPx(pt: f32) f32 {
+    return pt / (4.0 / 3.0);
 }
 
 const Bounds = extern struct {
@@ -119,10 +99,14 @@ const Bounds = extern struct {
     y2: f32,
 };
 
-pub fn textBounds(self: *Self, text: [:0]const u8) Bounds {
+pub fn textBounds(self: *Self, text: []const u8, state: Fontstash.State) Bounds {
+    _ = text;
     var bounds: Bounds = undefined;
 
-    _ = c.fonsTextBounds(self.context, 0, 0, text.ptr, null, @ptrCast([*c]f32, &bounds));
+    var internal_state = state;
+    internal_state.size *= self.gfx.scale;
+
+    // _ = c.fonsTextBounds(self.context, 0, 0, text.ptr, null, @ptrCast([*c]f32, &bounds));
 
     bounds.x1 /= self.gfx.scale;
     bounds.x2 /= self.gfx.scale;
@@ -133,29 +117,23 @@ pub fn textBounds(self: *Self, text: [:0]const u8) Bounds {
 }
 
 pub fn deinit(self: *Self) void {
-    c.fonsDeleteInternal(self.context);
+    self.renderer.deinit();
+    self.context.deinit();
 }
 
 fn toSelf(ptr: *anyopaque) *Self {
     return @ptrCast(*Self, @alignCast(@alignOf(Self), ptr));
 }
 
-fn create(self_ptr: ?*anyopaque, width: c_int, height: c_int) callconv(.C) c_int {
+fn create(self_ptr: ?*anyopaque, width: usize, height: usize) anyerror!void {
     var self = toSelf(self_ptr.?);
 
-    self.texture = self.gfx.device.createBlankTexture(@intCast(u32, width), @intCast(u32, height)) catch {
-        // return 0;
-        @panic("Unable to create texture!");
-    };
+    self.texture = try self.gfx.device.createBlankTexture(@intCast(u32, width), @intCast(u32, height));
 
-    self.texture.?.createBindGroup(self.gfx.device, self.gfx.sampler, self.gfx.bind_group_layouts) catch {
-        @panic("Unable to create bind group texture");
-    };
-
-    return 1;
+    try self.texture.?.createBindGroup(self.gfx.device, self.gfx.sampler, self.gfx.bind_group_layouts);
 }
 
-fn resize(self_ptr: ?*anyopaque, width: c_int, height: c_int) callconv(.C) c_int {
+fn resize(self_ptr: ?*anyopaque, width: usize, height: usize) anyerror!void {
     var self = toSelf(self_ptr.?);
 
     //If the texture exists,
@@ -164,25 +142,19 @@ fn resize(self_ptr: ?*anyopaque, width: c_int, height: c_int) callconv(.C) c_int
         self.texture.?.deinit();
     }
 
-    self.texture = self.gfx.device.createBlankTexture(@intCast(u32, width), @intCast(u32, height)) catch {
-        @panic("Unable to create texture!");
-        // return 0;
-    };
-
-    return 1;
+    self.texture = try self.gfx.device.createBlankTexture(@intCast(u32, width), @intCast(u32, height));
 }
 
-fn update(self_ptr: ?*anyopaque, rect: [*c]c_int, data: [*c]const u8) callconv(.C) void {
+fn update(self_ptr: ?*anyopaque, rect: Fontstash.Rectangle, data: []const u8) anyerror!void {
     var self = toSelf(self_ptr.?);
 
-    var rect_x = @intCast(usize, rect[0]);
-    var rect_y = @intCast(usize, rect[1]);
-    var w = @intCast(usize, rect[2] - rect[0]);
-    var h = @intCast(usize, rect[3] - rect[1]);
+    var rect_x = rect.tl[0];
+    var rect_y = rect.tl[1];
+    var rect_wh = rect.br - rect.tl;
+    var w = rect_wh[0];
+    var h = rect_wh[1];
 
-    var full = self.allocator.alloc(Gfx.ColorB, @intCast(usize, w * h)) catch {
-        @panic("Unable to allocate for pixel   w i d e n i n g");
-    };
+    var full = try self.allocator.alloc(Gfx.ColorB, @intCast(usize, w * h));
     defer self.allocator.free(full);
 
     //TODO: can we SIMD this?
@@ -201,8 +173,8 @@ fn update(self_ptr: ?*anyopaque, rect: [*c]c_int, data: [*c]const u8) callconv(.
         Gfx.ColorB,
         full,
         c.WGPUOrigin3D{
-            .x = @intCast(u32, rect[0]),
-            .y = @intCast(u32, rect[1]),
+            .x = @intCast(u32, rect_x),
+            .y = @intCast(u32, rect_y),
             .z = 0,
         },
         c.WGPUExtent3D{
@@ -213,34 +185,39 @@ fn update(self_ptr: ?*anyopaque, rect: [*c]c_int, data: [*c]const u8) callconv(.
     );
 }
 
-fn draw(self_ptr: ?*anyopaque, verts: [*c]const f32, tcoords: [*c]const f32, colors: [*c]const c_uint, nverts: c_int) callconv(.C) void {
+fn draw(
+    self_ptr: ?*anyopaque,
+    positions: []const Gfx.Vector2,
+    tex_coords: []const Gfx.Vector2,
+    colors: []const Gfx.ColorF,
+) anyerror!void {
     var self = toSelf(self_ptr.?);
 
-    var reserved = self.renderer.reserve(@intCast(u64, nverts), @intCast(u64, nverts)) catch {
-        @panic("Unable to reserve data from renderer");
+    //Assert these lengths are all the same
+    std.debug.assert(positions.len == tex_coords.len and tex_coords.len == colors.len);
+
+    var reserved = try self.renderer.reserve(@intCast(u64, positions.len), @intCast(u64, positions.len));
+
+    var scale = Gfx.Vector2{
+        self.gfx.scale,
+        self.gfx.scale,
     };
 
-    for (0..@intCast(usize, nverts)) |i| {
+    for (0..positions.len) |i| {
         reserved.vtx[i] = Gfx.Vertex{
-            .position = .{
-                //We divide by scale to move it back to proper screenspace
-                verts[i * 2] / self.gfx.scale,
-                verts[i * 2 + 1] / self.gfx.scale,
-            },
-            .tex_coord = .{ tcoords[i * 2], tcoords[i * 2 + 1] },
-            .vertex_col = Gfx.colorBToF(@bitCast(Gfx.ColorB, colors[i])),
+            .position = positions[i] / scale,
+            .tex_coord = tex_coords[i],
+            .vertex_col = colors[i],
         };
 
         reserved.idx[@intCast(usize, i)] = @intCast(u16, i + reserved.idx_offset);
     }
 }
 
-fn delete(self_ptr: ?*anyopaque) callconv(.C) void {
+fn delete(self_ptr: ?*anyopaque) void {
     var self = toSelf(self_ptr.?);
 
     if (self.texture != null) {
         self.texture.?.deinit();
     }
-
-    self.renderer.deinit();
 }

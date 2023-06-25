@@ -74,7 +74,6 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     c.igEnd();
 
     try render_state.fontstash.renderer.begin();
-    render_state.fontstash.reset();
 
     try render_state.fontstash.renderer.end();
 

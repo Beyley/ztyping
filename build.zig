@@ -38,6 +38,8 @@ pub fn build(b: *std.Build) !void {
         exe.linkSystemLibrary("objc");
     }
 
+    exe.addCSourceFile(root_path ++ "src/stb/impl_stb_truetype.c", &.{});
+
     if (target.isLinux() and !target.isNative()) {
         exe.addIncludePath(root_path ++ "libs/system-sdk/linux/include");
         exe.addLibraryPath(b.fmt(root_path ++ "libs/system-sdk/linux/lib/{s}", .{try target.linuxTriple(b.allocator)}));

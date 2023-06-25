@@ -9,6 +9,7 @@ const Gfx = @import("../gfx.zig");
 const Fumen = @import("../fumen.zig");
 const Music = @import("../music.zig");
 const Convert = @import("../convert.zig");
+const Fontstash = @import("../fontstash.zig");
 
 const RenderState = Screen.RenderState;
 
@@ -68,7 +69,7 @@ const GameplayData = struct {
     ///The accuracy text to display (eg. 優)
     accuracy_text: [:0]const u8 = "",
     ///The color of the accuracy text
-    accuracy_text_color: Gfx.ColorB = .{ 255, 255, 255, 255 },
+    accuracy_text_color: Gfx.ColorF = .{ 1, 1, 1, 1 },
 };
 
 pub var Gameplay = Screen{
@@ -644,27 +645,32 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     checkForMissedNotes(data);
 
     try render_state.fontstash.renderer.begin();
-    render_state.fontstash.reset();
 
     try render_state.renderer.begin();
 
     //If we are in the ready phase, render the "Press any key to start." text
     if (data.phase == .ready) {
-        render_state.fontstash.setMincho();
-        render_state.fontstash.setSizePt(36);
-        render_state.fontstash.setAlign(.baseline);
+        const state = .{
+            .font = Fontstash.Mincho,
+            .size = Fontstash.ptToPx(36),
+            .color = Gfx.WhiteF,
+            .alignment = .{
+                .vertical = .baseline,
+            },
+        };
 
-        render_state.fontstash.drawText(
-            .{ 50, 370 - render_state.fontstash.verticalMetrics().line_height },
+        try render_state.fontstash.drawText(
+            .{ 50, 370 - render_state.fontstash.verticalMetrics(state).line_height },
             "Press any key to start.",
+            state,
         );
     }
 
     try drawGameplayLyrics(render_state, data);
 
-    drawKanjiLyrics(render_state, data);
+    try drawKanjiLyrics(render_state, data);
 
-    drawScoreUi(render_state, data);
+    try drawScoreUi(render_state, data);
 
     try render_state.renderer.end();
     try render_state.renderer.draw(render_state.render_pass_encoder);
@@ -796,14 +802,8 @@ fn missCheck(data: *GameplayData, next_note: ?Fumen.Lyric) bool {
 const accuracy_x = circle_x - circle_r;
 const accuracy_y = 90;
 
-fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) void {
-    render_state.fontstash.reset();
-
+fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
     //Draw the score
-    render_state.fontstash.setMincho();
-    render_state.fontstash.setSizePt(36);
-    render_state.fontstash.setAlign(.right);
-
     var buf: [8:0]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0 };
     _ = std.fmt.formatIntBuf(
         &buf,
@@ -812,13 +812,37 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) void {
         .upper,
         .{ .width = 8, .fill = '0' },
     );
-    render_state.fontstash.drawText(.{ x_score, y_score - render_state.fontstash.verticalMetrics().line_height }, &buf);
 
-    render_state.fontstash.setColor(data.accuracy_text_color);
-    render_state.fontstash.setAlign(.left);
+    var state: Fontstash.Fontstash.State = .{
+        .font = Fontstash.Mincho,
+        .size = Fontstash.ptToPx(36),
+        .color = Gfx.WhiteF,
+        .alignment = .{
+            .horizontal = .right,
+        },
+    };
 
-    var metrics = render_state.fontstash.verticalMetrics();
-    render_state.fontstash.drawText(.{ accuracy_x, accuracy_y + metrics.line_height }, data.accuracy_text);
+    try render_state.fontstash.drawText(
+        .{ x_score, y_score - render_state.fontstash.verticalMetrics(state).line_height },
+        &buf,
+        state,
+    );
+
+    state = .{
+        .font = Fontstash.Mincho,
+        .size = Fontstash.ptToPx(36),
+        .color = data.accuracy_text_color,
+        .alignment = .{
+            .horizontal = .left,
+        },
+    };
+
+    var metrics = render_state.fontstash.verticalMetrics(state);
+    try render_state.fontstash.drawText(
+        .{ accuracy_x, accuracy_y + metrics.line_height },
+        data.accuracy_text,
+        state,
+    );
 
     if (data.score.combo >= 10) {
         var digits = std.fmt.count("{d}", .{data.score.combo});
@@ -831,13 +855,22 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) void {
             .{ .width = 8, .fill = '0' },
         );
 
-        render_state.fontstash.drawText(.{ accuracy_x + 35, accuracy_y + metrics.line_height }, buf[buf.len - digits ..]);
+        try render_state.fontstash.drawText(
+            .{ accuracy_x + 35, accuracy_y + metrics.line_height },
+            buf[buf.len - digits ..],
+            .{
+                .font = Fontstash.Mincho,
+                .size = Fontstash.ptToPx(36),
+                .color = data.accuracy_text_color,
+                .alignment = .{
+                    .horizontal = .left,
+                },
+            },
+        );
     }
 }
 
 fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !void {
-    render_state.fontstash.reset();
-
     //Draw all the beat lines
     for (0..data.music.fumen.beat_lines.len) |i| {
         var beat_line = data.music.fumen.beat_lines[i];
@@ -930,42 +963,54 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
 
         var size: f32 = 50;
 
-        //Set the initial font settings
-        render_state.fontstash.setMincho();
-        render_state.fontstash.setSizePt(size);
-        render_state.fontstash.setAlign(.center);
+        var state = .{
+            .font = Fontstash.Mincho,
+            .size = Fontstash.ptToPx(50),
+            .color = Gfx.WhiteF,
+            .alignment = .{
+                .horizontal = .center,
+            },
+        };
 
         //If the font size is too big and it goes outside of the notes,
-        var bounds = render_state.fontstash.textBounds(lyric.text);
+        var bounds = render_state.fontstash.textBounds(lyric.text, state);
         while (bounds.x2 > circle_r) {
             //Shrink the font size
             size -= 5;
-            render_state.fontstash.setSizePt(size);
+            state.size = size;
 
-            bounds = render_state.fontstash.textBounds(lyric.text);
+            bounds = render_state.fontstash.textBounds(lyric.text, state);
         }
 
         //Draw the text inside of the notes
-        render_state.fontstash.drawText(
+        try render_state.fontstash.drawText(
             .{
                 posX,
-                posY + circle_y + render_state.fontstash.verticalMetrics().line_height - 3,
+                posY + circle_y + render_state.fontstash.verticalMetrics(state).line_height - 3,
             },
             lyric.text,
+            state,
         );
 
         //Draw the text below the notes
-        render_state.fontstash.setGothic();
-        render_state.fontstash.setSizePt(28);
-        render_state.fontstash.drawText(.{ posX, lyrics_y + posY }, lyric.text);
+        try render_state.fontstash.drawText(
+            .{ posX, lyrics_y + posY },
+            lyric.text,
+            .{
+                .font = Fontstash.Gothic,
+                .size = Fontstash.ptToPx(28),
+                .color = Gfx.WhiteF,
+                .alignment = .{
+                    .horizontal = .center,
+                },
+            },
+        );
     }
 
     try render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
 }
 
-fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) void {
-    render_state.fontstash.reset();
-
+fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) !void {
     //If there are no kanji lyrics, return out
     if (data.music.fumen.lyrics_kanji.len == 0) {
         return;
@@ -973,13 +1018,18 @@ fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) void {
 
     const next_string = "Next: ";
 
-    render_state.fontstash.setAlign(.right);
-    render_state.fontstash.setGothic();
-    render_state.fontstash.setSizePt(16);
-
-    render_state.fontstash.drawText(.{ lyrics_kanji_x, lyrics_kanji_next_y }, next_string);
-
-    render_state.fontstash.setAlign(.left);
+    try render_state.fontstash.drawText(
+        .{ lyrics_kanji_x, lyrics_kanji_next_y },
+        next_string,
+        .{
+            .font = Fontstash.Gothic,
+            .size = Fontstash.ptToPx(16),
+            .color = Gfx.WhiteF,
+            .alignment = .{
+                .horizontal = .right,
+            },
+        },
+    );
 
     //Move the current lyric forward by 1, if applicable
     while (data.current_lyric_kanji != null and data.music.fumen.lyrics_kanji[data.current_lyric_kanji.?].time_end < data.current_time) {
@@ -998,7 +1048,7 @@ fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) void {
     //If the current lyric has started,
     if (data.current_lyric_kanji != null and data.music.fumen.lyrics_kanji[data.current_lyric_kanji.?].time < data.current_time) {
         //Draw the lyric
-        data.music.fumen.lyrics_kanji[data.current_lyric_kanji.?].draw(lyrics_kanji_x, lyrics_kanji_y, render_state);
+        try data.music.fumen.lyrics_kanji[data.current_lyric_kanji.?].draw(lyrics_kanji_x, lyrics_kanji_y, render_state);
     }
 
     //If we are not at the last lyric
@@ -1006,13 +1056,13 @@ fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) void {
         const next_lyric_kanji = data.music.fumen.lyrics_kanji[data.current_lyric_kanji.? + 1];
 
         //Draw the next lyirc
-        next_lyric_kanji.draw(lyrics_kanji_x, lyrics_kanji_next_y, render_state);
+        try next_lyric_kanji.draw(lyrics_kanji_x, lyrics_kanji_next_y, render_state);
     }
     //If we have not reached a lyric yet
     else if (data.current_lyric_kanji == null) {
         const next_lyric_kanji = data.music.fumen.lyrics_kanji[0];
 
         //Draw the next lyirc
-        next_lyric_kanji.draw(lyrics_kanji_x, lyrics_kanji_next_y, render_state);
+        try next_lyric_kanji.draw(lyrics_kanji_x, lyrics_kanji_next_y, render_state);
     }
 }

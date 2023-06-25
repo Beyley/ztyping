@@ -31,7 +31,7 @@ pub fn main() !void {
 
     const use_gpa = std.debug.runtime_safety;
 
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.GeneralPurposeAllocator(.{ .stack_trace_frames = 10 }){};
     //Deinit the GPA, if in use
     defer if (use_gpa and gpa.deinit() == .leak) {
         @panic("Memory leak!");

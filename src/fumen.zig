@@ -2,6 +2,7 @@ const std = @import("std");
 const IConv = @import("iconv.zig");
 const RenderState = @import("screen.zig").RenderState;
 const Gfx = @import("gfx.zig");
+const Fontstash = @import("fontstash.zig");
 
 pub const Lyric = struct {
     pub const HitResult = enum {
@@ -32,22 +33,34 @@ pub const LyricCutoff = struct {
 pub const LyricKanji = struct {
     pub const Part = struct {
         text: [:0]const u8,
-        color: Gfx.ColorB,
+        color: Gfx.ColorF,
     };
 
     parts: []const Part,
     time: f64,
     time_end: f64,
 
-    pub fn draw(self: LyricKanji, x: f32, y: f32, render_state: RenderState) void {
+    pub fn draw(self: LyricKanji, x: f32, y: f32, render_state: RenderState) !void {
         //TODO: fade in lyrics letter by letter
 
         var acc_x = x;
         for (self.parts) |part| {
-            render_state.fontstash.setColor(part.color);
-            render_state.fontstash.drawText(.{ acc_x, y }, part.text);
+            const state = .{
+                .font = Fontstash.Gothic,
+                .size = Fontstash.ptToPx(16),
+                .color = part.color,
+                .alignment = .{
+                    .horizontal = .right,
+                },
+            };
 
-            const bounds = render_state.fontstash.textBounds(part.text);
+            try render_state.fontstash.drawText(
+                .{ acc_x, y },
+                part.text,
+                state,
+            );
+
+            const bounds = render_state.fontstash.textBounds(part.text, state);
             acc_x += bounds.x2 - bounds.x1;
         }
     }

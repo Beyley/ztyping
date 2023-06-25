@@ -6,6 +6,7 @@ const SongSelect = @import("song_select.zig");
 
 const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");
+const Fontstash = @import("../fontstash.zig");
 
 const RenderState = Screen.RenderState;
 
@@ -77,55 +78,96 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     var data = self.getData(MainMenuData);
 
     try render_state.fontstash.renderer.begin();
-    render_state.fontstash.reset();
 
-    render_state.fontstash.setMincho();
-    render_state.fontstash.setSizePt(48);
-    render_state.fontstash.setColor(.{ 255, 255, 255, 255 });
-    render_state.fontstash.setAlign(.center);
+    try render_state.fontstash.drawText(
+        .{ Screen.display_width / 2, Screen.display_height / 3 },
+        "ztyping",
+        .{
+            .font = Fontstash.Mincho,
+            .size = Fontstash.ptToPx(48),
+            .color = Gfx.WhiteF,
+            .alignment = .{
+                .horizontal = .center,
+            },
+        },
+    );
 
-    render_state.fontstash.drawText(.{ Screen.display_width / 2, Screen.display_height / 3 }, "ztyping");
+    try render_state.fontstash.drawText(
+        .{ Screen.display_width - 10, Screen.display_height - 10 },
+        "(c)2023 Beyley",
+        .{
+            .font = Fontstash.Gothic,
+            .size = Fontstash.ptToPx(16),
+            .color = Gfx.WhiteF,
+            .alignment = .{
+                .horizontal = .right,
+            },
+        },
+    );
 
-    render_state.fontstash.setGothic();
-    render_state.fontstash.setSizePt(16);
-    render_state.fontstash.setColor(.{ 255, 255, 255, 255 });
-    render_state.fontstash.setAlign(.right);
+    try render_state.fontstash.drawText(
+        .{ Screen.display_width / 2, Screen.display_height * 2 / 3 },
+        "Press Enter key.",
+        .{
+            .font = Fontstash.Mincho,
+            .size = Fontstash.ptToPx(24),
+            .color = Gfx.WhiteF,
+            .alignment = .{
+                .horizontal = .center,
+            },
+        },
+    );
 
-    render_state.fontstash.drawText(.{ Screen.display_width - 10, Screen.display_height - 10 }, "(c)2023 Beyley");
+    var state: Fontstash.Fontstash.State = .{
+        .font = Fontstash.Gothic,
+        .size = Fontstash.ptToPx(16),
+        .color = Gfx.WhiteF,
+        .alignment = .{
+            .vertical = .baseline,
+        },
+    };
 
-    render_state.fontstash.setMincho();
-    render_state.fontstash.setSizePt(24);
-    render_state.fontstash.setColor(.{ 255, 255, 255, 255 });
-    render_state.fontstash.setAlign(.center);
-
-    render_state.fontstash.drawText(.{ Screen.display_width / 2, Screen.display_height * 2 / 3 }, "Press Enter key.");
-
-    render_state.fontstash.setGothic();
-    render_state.fontstash.setSizePt(16);
-    render_state.fontstash.setColor(.{ 255, 255, 255, 255 });
-    render_state.fontstash.setAlign(.baseline);
-
-    var metrics = render_state.fontstash.verticalMetrics();
-    render_state.fontstash.drawText(.{ 30, 375 + metrics.line_height }, "名前を入力してください :");
+    var metrics = render_state.fontstash.verticalMetrics(state);
+    try render_state.fontstash.drawText(
+        .{ 30, 375 + metrics.line_height },
+        "名前を入力してください :",
+        state,
+    );
 
     if (data.name.items.len > 0) {
-        render_state.fontstash.setMincho();
-        render_state.fontstash.setSizePt(36);
-        render_state.fontstash.setColor(.{ 255, 255, 255, 255 });
-        render_state.fontstash.setAlign(.baseline);
+        const fs_state = .{
+            .font = Fontstash.Mincho,
+            .size = Fontstash.ptToPx(36),
+            .color = Gfx.WhiteF,
+            .alignment = .{
+                .vertical = .baseline,
+            },
+        };
 
-        metrics = render_state.fontstash.verticalMetrics();
+        metrics = render_state.fontstash.verticalMetrics(fs_state);
         try data.name.append(0);
-        render_state.fontstash.drawText(.{ 60, 400 + metrics.line_height * 2 }, data.name.items[0..(data.name.items.len - 1) :0]);
+        try render_state.fontstash.drawText(
+            .{ 60, 400 + metrics.line_height * 2 },
+            data.name.items[0..(data.name.items.len - 1) :0],
+            fs_state,
+        );
         _ = data.name.pop();
     } else {
-        render_state.fontstash.setMincho();
-        render_state.fontstash.setSizePt(36);
-        render_state.fontstash.setColor(.{ 128, 128, 128, 255 });
-        render_state.fontstash.setAlign(.baseline);
+        state = .{
+            .font = Fontstash.Mincho,
+            .size = Fontstash.ptToPx(36),
+            .color = .{ 0.5, 0.5, 0.5, 1.0 },
+            .alignment = .{
+                .vertical = .baseline,
+            },
+        };
 
-        metrics = render_state.fontstash.verticalMetrics();
-        render_state.fontstash.drawText(.{ 60, 400 + metrics.line_height * 2 }, "（未設定）");
+        metrics = render_state.fontstash.verticalMetrics(state);
+        try render_state.fontstash.drawText(
+            .{ 60, 400 + metrics.line_height * 2 },
+            "（未設定）",
+            state,
+        );
     }
 
     try render_state.fontstash.renderer.end();
