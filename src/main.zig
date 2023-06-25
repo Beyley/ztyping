@@ -37,7 +37,6 @@ pub fn main() !void {
         @panic("Memory leak!");
     };
 
-    //TODO: once we figure out why C allocator is borked, use it
     var allocator: std.mem.Allocator = blk: {
         // If we should use the GPA,
         if (use_gpa) {
