@@ -462,8 +462,6 @@ fn handleNoteFirstChar(data: *GameplayData, note: *Fumen.Lyric) void {
     //Add the accuracy the user has reached to the accuracy score, ignore bonus score with a `poor` hit
     data.score.accuracy_score += (if (note.pending_hit_result.? == .poor) 0 else score_combo) + hitResultToAccuracyScore(note.pending_hit_result.?);
 
-    //TODO: set combo/accuracy strings
-
     //Increment the combo
     data.score.combo += 1;
 
@@ -804,7 +802,7 @@ const accuracy_y = 90;
 
 fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
     //Draw the score
-    var buf: [8:0]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0 };
+    var buf: [8]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0 };
     _ = std.fmt.formatIntBuf(
         &buf,
         data.score.accuracy_score + data.score.typing_score,
