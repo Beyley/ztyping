@@ -42,6 +42,15 @@ const DrawFn = *const fn (
     colors: []const Gfx.ColorF,
 ) anyerror!void;
 const DeleteFn = *const fn (user_ptr: ?*anyopaque) void;
+const ResizeFn = *const fn (
+    user_ptr: ?*anyopaque,
+    width: usize,
+    height: usize,
+) anyerror!void;
+const HandleErrorFn = *const fn (
+    user_ptr: ?*anyopaque,
+    err: anyerror,
+) anyerror!void;
 
 pub const Parameters = struct {
     pub const ZeroPosition = enum {
@@ -57,6 +66,8 @@ pub const Parameters = struct {
     impl_update_texture: UpdateTextureFn,
     impl_draw: DrawFn,
     impl_delete: DeleteFn,
+    impl_resize: ResizeFn,
+    impl_handle_error: HandleErrorFn,
 };
 
 pub const Atlas = struct {
@@ -202,6 +213,19 @@ pub const Atlas = struct {
                 i -= 1;
             }
         }
+    }
+
+    pub fn reset(self: *Atlas, width: usize, height: usize) void {
+        self.width = width;
+        self.height = height;
+
+        //Reset the node list
+        self.nodes.clearRetainingCapacity();
+
+        self.nodes.append(.{
+            .pos = .{ 0, 0 },
+            .width = width,
+        }) catch unreachable;
     }
 
     fn rectangleFits(self: *Atlas, width: usize, height: usize, idx: usize) union(enum) {
@@ -513,7 +537,7 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
 
     var glyph_position = self.atlas.getRect(glyph_width, glyph_height) catch |err| blk: {
         if (err == Atlas.AtlasErrors.AtlasFull) {
-            // self.handleError(); //TODO
+            try self.parameters.impl_handle_error(self.parameters.user_ptr, err);
             break :blk try self.atlas.getRect(glyph_width, glyph_height);
         } else {
             return err;
@@ -553,26 +577,27 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     );
 
     //Make sure there is a 1 pixel empty border
-    const glyph_tl_byte_offset = glyph.rectangle.tl[0] + (glyph.rectangle.tl[1]) * self.parameters.width;
-    const glyph_bl_byte_offset = glyph.rectangle.tl[0] + (glyph.rectangle.br[1] - 1) * self.parameters.width;
+    // const glyph_tl_byte_offset = glyph.rectangle.tl[0] + (glyph.rectangle.tl[1]) * self.parameters.width;
+    // const glyph_bl_byte_offset = glyph.rectangle.tl[0] + (glyph.rectangle.br[1] - 1) * self.parameters.width;
     //Set the top row to 0
-    @memset(self.tex_cache[glyph_tl_byte_offset .. glyph_tl_byte_offset + glyph_width - 1], 0);
+    // @memset(self.tex_cache[glyph_tl_byte_offset .. glyph_tl_byte_offset + glyph_width - 1], 0);
     //Set the bottom row to 0
-    @memset(self.tex_cache[glyph_bl_byte_offset .. glyph_bl_byte_offset + glyph_width - 1], 0);
+    // @memset(self.tex_cache[glyph_bl_byte_offset .. glyph_bl_byte_offset + glyph_width - 1], 0);
 
-    for (0..glyph_height - 2) |j| {
-        var y = j + 1;
+    // for (0..glyph_height - 2) |j| {
+    //     var y = j + 1;
 
-        //Set the left pixel
-        self.tex_cache[y * self.parameters.width + glyph.rectangle.tl[0]] = 0;
-        self.tex_cache[y * self.parameters.width + glyph.rectangle.tl[0] + glyph_width - 1] = 0;
-    }
+    //     //Set the left pixel
+    //     self.tex_cache[y * self.parameters.width + glyph.rectangle.tl[0]] = 0;
+    //     self.tex_cache[y * self.parameters.width + glyph.rectangle.tl[0] + glyph_width - 1] = 0;
+    // }
 
     //Blur
     if (state.blur > 0) {
         self.scratch_buffer.len = 0;
         var blur_dst_offset = @intCast(usize, glyph.rectangle.tl[0] + glyph.rectangle.tl[1] * self.parameters.width);
         _ = blur_dst_offset;
+
         // TODO
         // self.blur(blur_dst_offset, glyph_width, glyph_height, self.parameters.width, state.blur);
     }
@@ -868,6 +893,7 @@ fn addWhiteRect(self: *Self, width: usize, height: usize) !void {
     self.dirty_rect.br = @max(self.dirty_rect.br, rect_pos + Gfx.Vector2u{ width, height });
 }
 
+///Gets the vertical metrics relating to the current state
 pub fn verticalMetrics(self: *Self, state: State) struct {
     ascender: f32,
     descender: f32,
@@ -880,6 +906,48 @@ pub fn verticalMetrics(self: *Self, state: State) struct {
         .descender = font.descender * state.size,
         .lineh = font.lineh * state.size,
     };
+}
+
+pub fn resetAtlas(self: *Self, width: usize, height: usize) !void {
+    try self.flush();
+
+    if (width != self.parameters.width or height != self.parameters.height) {
+        try self.parameters.impl_resize(self.parameters.user_ptr, width, height);
+
+        //Set the new width/height of the atlas
+        self.parameters.width = width;
+        self.parameters.height = height;
+        //Set the new width/height texel size
+        self.width_texel = 1.0 / @floatFromInt(f32, width);
+        self.height_texel = 1.0 / @floatFromInt(f32, height);
+
+        self.atlas.width = width;
+        self.atlas.height = height;
+
+        self.tex_cache = try self.allocator.realloc(self.tex_cache, width * height);
+    }
+
+    self.atlas.reset(width, height);
+
+    //Set the CPU texture cache to 0
+    @memset(self.tex_cache, 0);
+
+    self.dirty_rect.tl = .{ width, height };
+    self.dirty_rect.br = .{ 0, 0 };
+
+    var fon_iter = self.fonts.valueIterator();
+    var next: ?**Font = fon_iter.next();
+    while (next != null) : (next = fon_iter.next()) {
+        var font = next.?.*;
+
+        //Clear the glyph array
+        font.glyphs.clearRetainingCapacity();
+
+        //Clear the LUT
+        @memset(&font.lut, null);
+    }
+
+    try self.addWhiteRect(2, 2);
 }
 
 ///Adds a new font from a slice of data containing a TTF font.

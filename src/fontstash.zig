@@ -27,13 +27,17 @@ pub fn init(self: *Self, gfx: *Gfx, allocator: std.mem.Allocator) !void {
 
     self.context = try Fontstash.create(allocator, Fontstash.Parameters{
         .zero_position = .top_left,
-        .width = 4096,
-        .height = 4096,
+        // .width = 4096,
+        // .height = 4096,
+        .width = 128,
+        .height = 128,
         .user_ptr = self,
         .impl_create_texture = create,
         .impl_update_texture = update,
         .impl_draw = draw,
         .impl_delete = delete,
+        .impl_resize = resize,
+        .impl_handle_error = handleError,
     });
     errdefer self.context.deinit();
 
@@ -111,20 +115,40 @@ fn create(self_ptr: ?*anyopaque, width: usize, height: usize) anyerror!void {
     var self = toSelf(self_ptr.?);
 
     self.texture = try self.gfx.device.createBlankTexture(@intCast(u32, width), @intCast(u32, height));
-
     try self.texture.?.createBindGroup(self.gfx.device, self.gfx.sampler, self.gfx.bind_group_layouts);
 }
 
 fn resize(self_ptr: ?*anyopaque, width: usize, height: usize) anyerror!void {
     var self = toSelf(self_ptr.?);
 
-    //If the texture exists,
-    if (self.texture) |_| {
-        //Free it
-        self.texture.?.deinit();
+    if (self.texture == null) {
+        unreachable;
     }
 
+    std.debug.print("resizing texture to {d}/{d}...\n", .{ width, height });
+
+    //Recreate the texture with the new width
     self.texture = try self.gfx.device.createBlankTexture(@intCast(u32, width), @intCast(u32, height));
+    //Recreate the texture with the new height
+    try self.texture.?.createBindGroup(self.gfx.device, self.gfx.sampler, self.gfx.bind_group_layouts);
+
+    self.renderer.texture = self.texture.?;
+}
+
+fn handleError(self_ptr: ?*anyopaque, err: anyerror) anyerror!void {
+    var self = toSelf(self_ptr.?);
+
+    std.debug.print("atlas error!\n", .{});
+
+    //TODO: when at atlas error happens, end the current draw call, and begin a new one, somehow
+
+    //If the atlas is full,
+    if (err == Fontstash.Atlas.AtlasErrors.AtlasFull) {
+        //Reset the atlas with the same size, as the default size is already *way* big enough, so just resetting it will work
+        try self.context.resetAtlas(@min(self.context.parameters.width * 2, 16384), @min(self.context.parameters.height * 2, 16384));
+
+        return;
+    }
 }
 
 fn update(self_ptr: ?*anyopaque, rect: Fontstash.Rectangle, data: []const u8) anyerror!void {
