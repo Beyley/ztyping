@@ -34,5 +34,5 @@ data: *anyopaque,
 allocator: std.mem.Allocator,
 
 pub fn getData(self: *Self, comptime T: type) *T {
-    return @ptrCast(*T, @alignCast(@alignOf(T), self.data));
+    return @ptrCast(@alignCast(self.data));
 }

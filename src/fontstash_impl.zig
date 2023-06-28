@@ -390,8 +390,8 @@ pub fn create(allocator: std.mem.Allocator, params: Parameters) !*Self {
             .tl = .{ params.width, params.height },
             .br = .{ 0, 0 },
         },
-        .width_texel = 1 / @floatFromInt(f32, params.width),
-        .height_texel = 1 / @floatFromInt(f32, params.height),
+        .width_texel = 1 / @as(f32, @floatFromInt(params.width)),
+        .height_texel = 1 / @as(f32, @floatFromInt(params.height)),
         .vertices = undefined,
         .tex_coords = undefined,
         .colors = undefined,
@@ -452,7 +452,7 @@ fn hashInt(int: anytype) @TypeOf(int) {
 }
 
 fn getGlyphIndex(font: *Font, codepoint: u21) usize {
-    return @intCast(usize, c.stbtt_FindGlyphIndex(&font.font, @intCast(c_int, codepoint)));
+    return @intCast(c.stbtt_FindGlyphIndex(&font.font, @intCast(codepoint)));
 }
 
 fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph {
@@ -462,7 +462,7 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     var render_font = font;
 
     //Convert the blur into a pixel padding, 1blur = 10px
-    var pad = @intFromFloat(isize, state.blur * 10) + 2;
+    var pad = @as(isize, @intFromFloat(state.blur * 10)) + 2;
 
     //Reset the scratch buffer usage
     self.scratch_buffer.len = 0;
@@ -508,7 +508,7 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     var left_side_bearing: c_int = undefined;
     c.stbtt_GetGlyphHMetrics(
         &render_font.font,
-        @intCast(c_int, glyph_index),
+        @intCast(glyph_index),
         &advance,
         &left_side_bearing,
     );
@@ -518,7 +518,7 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     var y1c: c_int = undefined;
     c.stbtt_GetGlyphBitmapBox(
         &render_font.font,
-        @intCast(c_int, glyph_index),
+        @intCast(glyph_index),
         scale,
         scale,
         &x0c,
@@ -527,13 +527,13 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
         &y1c,
     );
 
-    var x0 = @intCast(isize, x0c);
-    var y0 = @intCast(isize, y0c);
-    var x1 = @intCast(isize, x1c);
-    var y1 = @intCast(isize, y1c);
+    var x0: isize = @intCast(x0c);
+    var y0: isize = @intCast(y0c);
+    var x1: isize = @intCast(x1c);
+    var y1: isize = @intCast(y1c);
 
-    var glyph_width = @intCast(usize, x1 - x0 + @intCast(isize, pad) * 2);
-    var glyph_height = @intCast(usize, y1 - y0 + @intCast(isize, pad) * 2);
+    var glyph_width: usize = @intCast(x1 - x0 + @as(isize, @intCast(pad)) * 2);
+    var glyph_height: usize = @intCast(y1 - y0 + @as(isize, @intCast(pad)) * 2);
 
     var glyph_position = self.atlas.getRect(glyph_width, glyph_height) catch |err| blk: {
         if (err == Atlas.AtlasErrors.AtlasFull) {
@@ -553,9 +553,9 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
             .br = glyph_position + Gfx.Vector2u{ glyph_width, glyph_height },
         },
         .size = state.size,
-        .x_advance = scale * @floatFromInt(f32, advance),
-        .x_offset = @floatFromInt(f32, x0 - pad),
-        .y_offset = @floatFromInt(f32, y0 - pad),
+        .x_advance = scale * @as(f32, @floatFromInt(advance)),
+        .x_offset = @floatFromInt(x0 - pad),
+        .y_offset = @floatFromInt(y0 - pad),
         .next = font.lut[hash],
     };
     try render_font.glyphs.append(glyph);
@@ -564,16 +564,16 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     font.lut[hash] = font.glyphs.items.len - 1;
 
     //Rasterize
-    var dst_ptr = &self.tex_cache[(glyph.rectangle.tl[0] + @intCast(usize, pad)) + (glyph.rectangle.tl[1] + @intCast(usize, pad)) * self.parameters.width];
+    var dst_ptr = &self.tex_cache[(glyph.rectangle.tl[0] + @as(usize, @intCast(pad))) + (glyph.rectangle.tl[1] + @as(usize, @intCast(pad))) * self.parameters.width];
     c.stbtt_MakeGlyphBitmap(
         &render_font.font,
         dst_ptr,
-        @intCast(c_int, @intCast(isize, glyph_width) - pad * 2),
-        @intCast(c_int, @intCast(isize, glyph_height) - pad * 2),
-        @intCast(c_int, self.parameters.width),
+        @intCast(@as(isize, @intCast(glyph_width)) - pad * 2),
+        @intCast(@as(isize, @intCast(glyph_height)) - pad * 2),
+        @intCast(self.parameters.width),
         scale,
         scale,
-        @intCast(c_int, glyph_index),
+        @intCast(glyph_index),
     );
 
     //Make sure there is a 1 pixel empty border
@@ -595,7 +595,7 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     //Blur
     if (state.blur > 0) {
         self.scratch_buffer.len = 0;
-        var blur_dst_offset = @intCast(usize, glyph.rectangle.tl[0] + glyph.rectangle.tl[1] * self.parameters.width);
+        var blur_dst_offset: usize = @intCast(glyph.rectangle.tl[0] + glyph.rectangle.tl[1] * self.parameters.width);
         _ = blur_dst_offset;
 
         // TODO
@@ -628,11 +628,11 @@ fn getQuad(
     //If the previous glyph is specified,
     if (prev_glyph_index) |previous_glyph_index| {
         //Get the kern advnace from the previous glyph to the current glyph
-        const advance = @floatFromInt(f32, c.stbtt_GetGlyphKernAdvance(
+        const advance = @as(f32, @floatFromInt(c.stbtt_GetGlyphKernAdvance(
             &font.font,
-            @intCast(c_int, previous_glyph_index),
-            @intCast(c_int, glyph.index),
-        )) * scale;
+            @intCast(previous_glyph_index),
+            @intCast(glyph.index),
+        ))) * scale;
         //Apply the advance to the x coord
         //TODO: make a way to disable the rounding here
         x.* += @round(advance + spacing + 0.5);
@@ -918,8 +918,8 @@ pub fn resetAtlas(self: *Self, width: usize, height: usize) !void {
         self.parameters.width = width;
         self.parameters.height = height;
         //Set the new width/height texel size
-        self.width_texel = 1.0 / @floatFromInt(f32, width);
-        self.height_texel = 1.0 / @floatFromInt(f32, height);
+        self.width_texel = 1.0 / @as(f32, @floatFromInt(width));
+        self.height_texel = 1.0 / @as(f32, @floatFromInt(height));
 
         self.atlas.width = width;
         self.atlas.height = height;
@@ -990,9 +990,9 @@ pub fn addFontMem(
 
     var fh = ascent - descent;
 
-    font.ascender = @floatFromInt(f32, ascent) / @floatFromInt(f32, fh);
-    font.descender = @floatFromInt(f32, descent) / @floatFromInt(f32, fh);
-    font.lineh = @floatFromInt(f32, fh + line_gap) / @floatFromInt(f32, fh);
+    font.ascender = @as(f32, @floatFromInt(ascent)) / @as(f32, @floatFromInt(fh));
+    font.descender = @as(f32, @floatFromInt(descent)) / @as(f32, @floatFromInt(fh));
+    font.lineh = @as(f32, @floatFromInt(fh + line_gap)) / @as(f32, @floatFromInt(fh));
 
     try self.fonts.put(name, font);
 

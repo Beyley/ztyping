@@ -582,7 +582,7 @@ const y_score = 70;
 // https://github.com/toslunar/UTyping/blob/1b2eff072bda776ae4d7091f39d0c440f45d2727/UTyping.cpp#L2768
 inline fn getDrawPosX(time_diff: f64) f32 {
     //return X_CIRCLE + (int)(-timeDiff * (CIRCLE_SPEED * m_challenge.speed()));
-    return @floatCast(f32, circle_x + (-time_diff * (circle_speed * 1.0)));
+    return @as(f32, @floatCast(circle_x + (-time_diff * (circle_speed * 1.0))));
 }
 
 const scale_function = 60;
@@ -618,7 +618,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
             var mouse_x_i: c_int = 0;
             var mouse_y: c_int = 0;
             var mouse_buttons = c.SDL_GetMouseState(&mouse_x_i, &mouse_y);
-            var mouse_x = @floatFromInt(f32, mouse_x_i);
+            var mouse_x: f32 = @floatFromInt(mouse_x_i);
 
             var max_x = render_state.gfx.scale * 640.0;
 
@@ -631,7 +631,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
             }
 
             if ((mouse_buttons & c.SDL_BUTTON(3)) != 0 and mouse_x != data.last_mouse_x) {
-                var byte = @intFromFloat(u64, @floatFromInt(f64, try self.state.audio_tracker.music.?.getLength(.byte)) * (mouse_x / max_x));
+                var byte: u64 = @intFromFloat(@as(f64, @floatFromInt(try self.state.audio_tracker.music.?.getLength(.byte))) * (mouse_x / max_x));
 
                 try self.state.audio_tracker.music.?.setPosition(byte, .byte, .{});
             }

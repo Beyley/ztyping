@@ -230,7 +230,7 @@ pub fn reserve(self: *Self, vtx_count: u64, idx_count: u64) !ReservedData {
     return .{
         .vtx = self.cpu_vtx[self.recording_buffer.?.used_vtx - vtx_count .. self.recording_buffer.?.used_vtx],
         .idx = self.cpu_idx[self.recording_buffer.?.used_idx - idx_count .. self.recording_buffer.?.used_idx],
-        .idx_offset = @intCast(u16, self.recording_buffer.?.used_vtx - vtx_count),
+        .idx_offset = @intCast(self.recording_buffer.?.used_vtx - vtx_count),
     };
 }
 
@@ -248,7 +248,7 @@ pub fn draw(self: *Self, encoder: *Gfx.RenderPassEncoder) !void {
 
         encoder.setVertexBuffer(0, recorded_buffer.vtx_buf, 0, recorded_buffer.vtx_buf.size);
         encoder.setIndexBuffer(recorded_buffer.idx_buf, IndexType, 0, recorded_buffer.idx_buf.size);
-        encoder.drawIndexed(@intCast(u32, recorded_buffer.used_idx), 1, 0, 0, 0);
+        encoder.drawIndexed(@intCast(recorded_buffer.used_idx), 1, 0, 0, 0);
     }
 }
 

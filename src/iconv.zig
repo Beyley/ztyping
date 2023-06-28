@@ -18,7 +18,7 @@ const Context = extern struct {
         while (orig_bytes_left > 0) {
             //Convert as much of the data as we can
             var ret = ziconv_convert(self, &orig_c_ptr, &dst_c_ptr, &orig_bytes_left, &dest_bytes_left);
-            if (ret == @bitCast(usize, @as(isize, -1))) {
+            if (ret == @as(usize, @bitCast(@as(isize, -1)))) {
                 var errno = std.c._errno().*;
 
                 //errno 7 = E2BIG

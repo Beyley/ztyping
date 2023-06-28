@@ -7,7 +7,7 @@ const Image = struct {
     image: img.Image,
     name: []const u8,
     fn pathological_multiplier(self: Image) f32 {
-        return @floatFromInt(f32, @max(self.width, self.height)) / @floatFromInt(f32, @min(self.width, self.height)) * @floatFromInt(f32, self.width) * @floatFromInt(f32, self.height);
+        return @as(f32, @floatFromInt(@max(self.width, self.height))) / @as(f32, @floatFromInt(@min(self.width, self.height))) * @as(f32, @floatFromInt(self.width)) * @as(f32, @floatFromInt(self.height));
     }
     fn sorting_func(context: void, a: Image, b: Image) bool {
         _ = context;
@@ -119,8 +119,8 @@ pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void 
         //Load the file
         var image = try img.png.load(&image_stream, allocator, .{ .temp_allocator = allocator });
         try images.append(.{
-            .width = @intCast(u32, image.width) + 2,
-            .height = @intCast(u32, image.height) + 2,
+            .width = @as(u32, @intCast(image.width)) + 2,
+            .height = @as(u32, @intCast(image.height)) + 2,
             .image = image,
             .name = name,
         });

@@ -16,36 +16,36 @@ pub const ColorB = @Vector(4, u8);
 
 pub fn vector2FToU(orig: Vector2) Vector2u {
     return .{
-        @intFromFloat(usize, orig[0]),
-        @intFromFloat(usize, orig[1]),
+        @intFromFloat(orig[0]),
+        @intFromFloat(orig[1]),
     };
 }
 
 pub fn vector2UToF(orig: Vector2u) Vector2 {
     return .{
-        @floatFromInt(f32, orig[0]),
-        @floatFromInt(f32, orig[1]),
+        @floatFromInt(orig[0]),
+        @floatFromInt(orig[1]),
     };
 }
 
 pub fn vector2IToF(orig: Vector2i) Vector2 {
     return .{
-        @floatFromInt(f32, orig[0]),
-        @floatFromInt(f32, orig[1]),
+        @floatFromInt(orig[0]),
+        @floatFromInt(orig[1]),
     };
 }
 
 pub fn vector2UToI(orig: Vector2u) Vector2i {
     return .{
-        @intCast(isize, orig[0]),
-        @intCast(isize, orig[1]),
+        @intCast(orig[0]),
+        @intCast(orig[1]),
     };
 }
 
 pub fn vector2IToU(orig: Vector2i) Vector2u {
     return .{
-        @intCast(usize, orig[0]),
-        @intCast(usize, orig[1]),
+        @intCast(orig[0]),
+        @intCast(orig[1]),
     };
 }
 
@@ -61,10 +61,10 @@ pub const BlueB = ColorB{ 0, 0, 255, 255 };
 
 pub fn colorBToF(orig: ColorB) ColorF {
     var f = ColorF{
-        @floatFromInt(f32, orig[0]),
-        @floatFromInt(f32, orig[1]),
-        @floatFromInt(f32, orig[2]),
-        @floatFromInt(f32, orig[3]),
+        @floatFromInt(orig[0]),
+        @floatFromInt(orig[1]),
+        @floatFromInt(orig[2]),
+        @floatFromInt(orig[3]),
     };
 
     f /= ColorF{ 255.0, 255.0, 255.0, 255.0 };
@@ -247,7 +247,7 @@ pub const RenderPassEncoder = struct {
     }
 
     pub fn setBindGroup(self: RenderPassEncoder, groupIndex: u32, bind_group: BindGroup, dynamic_offsets: []const u32) void {
-        c.wgpuRenderPassEncoderSetBindGroup(self.c.?, groupIndex, bind_group.c.?, @intCast(u32, dynamic_offsets.len), dynamic_offsets.ptr);
+        c.wgpuRenderPassEncoderSetBindGroup(self.c.?, groupIndex, bind_group.c.?, @intCast(dynamic_offsets.len), dynamic_offsets.ptr);
     }
 
     pub fn setVertexBuffer(self: RenderPassEncoder, slot: u32, buffer: Buffer, offset: u64, size: u64) void {
@@ -439,52 +439,52 @@ pub const Instance = struct {
         };
         if (info.subsystem == c.SDL_SYSWM_X11) {
             if (@hasDecl(c, "SDL_VIDEO_DRIVER_X11")) {
-                descriptor.nextInChain = @ptrCast([*c]const c.WGPUChainedStruct, &c.WGPUSurfaceDescriptorFromXlibWindow{
+                descriptor.nextInChain = @as([*c]const c.WGPUChainedStruct, @ptrCast(&c.WGPUSurfaceDescriptorFromXlibWindow{
                     .chain = .{
                         .sType = c.WGPUSType_SurfaceDescriptorFromXlibWindow,
                         .next = null,
                     },
                     .display = info.info.x11.display,
-                    .window = @intCast(u32, info.info.x11.window),
-                });
+                    .window = @intCast(info.info.x11.window),
+                }));
             } else {
                 return Error.MissingSDLX11;
             }
         } else if (info.subsystem == c.SDL_SYSWM_WAYLAND) {
             if (@hasDecl(c, "SDL_VIDEO_DRIVER_WAYLAND")) {
-                descriptor.nextInChain = @ptrCast([*c]const c.WGPUChainedStruct, &c.WGPUSurfaceDescriptorFromWaylandSurface{
+                descriptor.nextInChain = @as([*c]const c.WGPUChainedStruct, @ptrCast(&c.WGPUSurfaceDescriptorFromWaylandSurface{
                     .chain = .{
                         .sType = c.WGPUSType_SurfaceDescriptorFromWaylandSurface,
                         .next = null,
                     },
                     .display = info.info.wayland.display,
                     .surface = info.info.wayland.surface,
-                });
+                }));
             } else {
                 return Error.MissingSDLWayland;
             }
         } else if (info.subsystem == c.SDL_SYSWM_WINDOWS) {
             if (@hasDecl(c, "SDL_VIDEO_DRIVER_WINDOWS")) {
-                descriptor.nextInChain = @ptrCast([*c]const c.WGPUChainedStruct, &c.WGPUSurfaceDescriptorFromWindowsHWND{
+                descriptor.nextInChain = @as([*c]const c.WGPUChainedStruct, @ptrCast(&c.WGPUSurfaceDescriptorFromWindowsHWND{
                     .chain = .{
                         .sType = c.WGPUSType_SurfaceDescriptorFromWindowsHWND,
                         .next = null,
                     },
                     .hinstance = info.info.win.hinstance,
                     .hwnd = info.info.win.window,
-                });
+                }));
             } else {
                 return Error.MissingSDLWindows;
             }
         } else if (info.subsystem == c.SDL_SYSWM_COCOA) {
             if (@hasDecl(c, "SDL_VIDEO_DRIVER_COCOA")) {
-                descriptor.nextInChain = @ptrCast([*c]const c.WGPUChainedStruct, &c.WGPUSurfaceDescriptorFromMetalLayer{
+                descriptor.nextInChain = @as([*c]const c.WGPUChainedStruct, @ptrCast(&c.WGPUSurfaceDescriptorFromMetalLayer{
                     .chain = .{
                         .sType = c.WGPUSType_SurfaceDescriptorFromMetalLayer,
                         .next = null,
                     },
                     .layer = c.createMetalLayer(info.info.cocoa.window),
-                });
+                }));
             } else {
                 return Error.MissingSDLCocoa;
             }
@@ -507,7 +507,7 @@ pub const Instance = struct {
             .nextInChain = null,
             .powerPreference = c.WGPUPowerPreference_HighPerformance,
             .forceFallbackAdapter = false,
-        }, handleAdapterCallback, @ptrCast(*anyopaque, &adapter));
+        }, handleAdapterCallback, @ptrCast(&adapter));
 
         std.debug.print("got adapter {*}\n", .{adapter.?});
 
@@ -537,7 +537,7 @@ pub const Adapter = struct {
                 .label = "Default Queue",
             },
             .nextInChain = null,
-        }, handleDeviceCallback, @ptrCast(*anyopaque, &device));
+        }, handleDeviceCallback, @ptrCast(&device));
 
         std.debug.print("got device {*}\n", .{device.?});
 
@@ -566,16 +566,16 @@ pub const Queue = struct {
             data.len * @sizeOf(DataType),
             &c.WGPUTextureDataLayout{
                 .nextInChain = null,
-                .bytesPerRow = @intCast(u32, extent.width * @sizeOf(img.color.Rgba32)),
+                .bytesPerRow = @intCast(extent.width * @sizeOf(img.color.Rgba32)),
                 .offset = 0,
-                .rowsPerImage = @intCast(u32, extent.height),
+                .rowsPerImage = @intCast(extent.height),
             },
             &extent,
         );
     }
 
     pub fn submit(self: Queue, buffers: []const c.WGPUCommandBuffer) void {
-        c.wgpuQueueSubmit(self.c, @intCast(u32, buffers.len), buffers.ptr);
+        c.wgpuQueueSubmit(self.c, @intCast(buffers.len), buffers.ptr);
     }
 };
 
@@ -631,8 +631,8 @@ pub const Device = struct {
             .format = surface.getPreferredFormat(adapter),
             .presentMode = @intFromEnum(present_mode),
             .nextInChain = null,
-            .width = @intCast(u32, width),
-            .height = @intCast(u32, height),
+            .width = @intCast(width),
+            .height = @intCast(height),
             .label = "Swapchain",
         });
 
@@ -650,15 +650,15 @@ pub const Device = struct {
     pub fn createShaderModule(self: Device) !c.WGPUShaderModule {
         var module = c.wgpuDeviceCreateShaderModule(self.c, &c.WGPUShaderModuleDescriptor{
             .label = "Shader",
-            .nextInChain = @ptrCast(
+            .nextInChain = @as(
                 [*c]c.WGPUChainedStruct,
-                @constCast(&c.WGPUShaderModuleWGSLDescriptor{
+                @ptrCast(@constCast(&c.WGPUShaderModuleWGSLDescriptor{
                     .chain = c.WGPUChainedStruct{
                         .sType = c.WGPUSType_ShaderModuleWGSLDescriptor,
                         .next = null,
                     },
                     .code = @embedFile("shader.wgsl"),
-                }),
+                })),
             ),
             .hints = null,
             .hintCount = 0,
@@ -852,8 +852,8 @@ pub const Device = struct {
             .usage = c.WGPUTextureUsage_CopyDst | c.WGPUTextureUsage_TextureBinding,
             .dimension = c.WGPUTextureDimension_2D,
             .size = c.WGPUExtent3D{
-                .width = @intCast(u32, image.width),
-                .height = @intCast(u32, image.height),
+                .width = @intCast(image.width),
+                .height = @intCast(image.height),
                 .depthOrArrayLayers = 1,
             },
             .format = texFormat,
@@ -892,20 +892,20 @@ pub const Device = struct {
             image.pixels.rgba32.len * @sizeOf(img.color.Rgba32),
             &c.WGPUTextureDataLayout{
                 .nextInChain = null,
-                .bytesPerRow = @intCast(u32, image.width * @sizeOf(img.color.Rgba32)),
+                .bytesPerRow = @intCast(image.width * @sizeOf(img.color.Rgba32)),
                 .offset = 0,
-                .rowsPerImage = @intCast(u32, image.height),
+                .rowsPerImage = @intCast(image.height),
             },
             &c.WGPUExtent3D{
-                .width = @intCast(u32, image.width),
-                .height = @intCast(u32, image.height),
+                .width = @intCast(image.width),
+                .height = @intCast(image.height),
                 .depthOrArrayLayers = 1,
             },
         );
 
         var texture = Texture{
-            .width = @intCast(u32, image.width),
-            .height = @intCast(u32, image.height),
+            .width = @intCast(image.width),
+            .height = @intCast(image.height),
             .tex = tex,
             .view = view,
         };
@@ -956,7 +956,7 @@ pub const Device = struct {
     }
 
     pub fn createBuffer(self: Device, comptime contents_type: type, count: u64, comptime buffer_type: BufferType) !Buffer {
-        const size = @intCast(u64, @sizeOf(contents_type) * count);
+        const size: u64 = @intCast(@sizeOf(contents_type) * count);
 
         var buffer = c.wgpuDeviceCreateBuffer(self.c, &c.WGPUBufferDescriptor{
             .nextInChain = null,
@@ -1034,7 +1034,7 @@ fn deviceLost(reason: c.WGPUDeviceLostReason, message: [*c]const u8, user_data: 
 }
 
 pub fn handleDeviceCallback(status: c.WGPURequestDeviceStatus, device: c.WGPUDevice, message: [*c]const u8, userdata: ?*anyopaque) callconv(.C) void {
-    var device_ptr: *c.WGPUDevice = @ptrCast(*c.WGPUDevice, @alignCast(@alignOf(c.WGPUDevice), userdata));
+    var device_ptr: *c.WGPUDevice = @ptrCast(@alignCast(userdata));
 
     if (status != c.WGPURequestDeviceStatus_Success) {
         std.debug.print("Failed to get wgpu adapter, status: {d}, message {s}", .{ status, std.mem.span(message) });
@@ -1045,7 +1045,7 @@ pub fn handleDeviceCallback(status: c.WGPURequestDeviceStatus, device: c.WGPUDev
 }
 
 pub fn handleAdapterCallback(status: c.WGPURequestAdapterStatus, adapter: c.WGPUAdapter, message: [*c]const u8, userdata: ?*anyopaque) callconv(.C) void {
-    var adapter_ptr: *c.WGPUAdapter = @ptrCast(*c.WGPUAdapter, @alignCast(@alignOf(c.WGPUAdapter), userdata));
+    var adapter_ptr: *c.WGPUAdapter = @ptrCast(@alignCast(userdata));
 
     if (status != c.WGPURequestAdapterStatus_Success) {
         std.debug.print("Failed to get wgpu adapter, status: {d}, message {s}", .{ status, std.mem.span(message) });
@@ -1064,7 +1064,7 @@ pub fn updateProjectionMatrixBuffer(self: *Self, queue: Queue, window: *c.SDL_Wi
     w = 640;
     h = 480;
 
-    var mat = zmath.orthographicOffCenterLh(0, @floatFromInt(f32, w), 0, @floatFromInt(f32, h), 0, 1);
+    var mat = zmath.orthographicOffCenterLh(0, @floatFromInt(w), 0, @floatFromInt(h), 0, 1);
 
     queue.writeBuffer(self.projection_matrix_buffer, 0, zmath.Mat, &.{mat});
 }

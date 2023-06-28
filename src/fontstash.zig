@@ -108,13 +108,13 @@ pub fn deinit(self: *Self) void {
 }
 
 fn toSelf(ptr: *anyopaque) *Self {
-    return @ptrCast(*Self, @alignCast(@alignOf(Self), ptr));
+    return @ptrCast(@alignCast(ptr));
 }
 
 fn create(self_ptr: ?*anyopaque, width: usize, height: usize) anyerror!void {
     var self = toSelf(self_ptr.?);
 
-    self.texture = try self.gfx.device.createBlankTexture(@intCast(u32, width), @intCast(u32, height));
+    self.texture = try self.gfx.device.createBlankTexture(@intCast(width), @intCast(height));
     try self.texture.?.createBindGroup(self.gfx.device, self.gfx.sampler, self.gfx.bind_group_layouts);
 }
 
@@ -128,7 +128,7 @@ fn resize(self_ptr: ?*anyopaque, width: usize, height: usize) anyerror!void {
     std.debug.print("resizing texture to {d}/{d}...\n", .{ width, height });
 
     //Recreate the texture with the new width
-    self.texture = try self.gfx.device.createBlankTexture(@intCast(u32, width), @intCast(u32, height));
+    self.texture = try self.gfx.device.createBlankTexture(@intCast(width), @intCast(height));
     //Recreate the texture with the new height
     try self.texture.?.createBindGroup(self.gfx.device, self.gfx.sampler, self.gfx.bind_group_layouts);
 
@@ -160,7 +160,7 @@ fn update(self_ptr: ?*anyopaque, rect: Fontstash.Rectangle, data: []const u8) an
     var w = rect_wh[0];
     var h = rect_wh[1];
 
-    var full = try self.allocator.alloc(Gfx.ColorB, @intCast(usize, w * h));
+    var full = try self.allocator.alloc(Gfx.ColorB, @intCast(w * h));
     defer self.allocator.free(full);
 
     //TODO: can we SIMD this?
@@ -179,13 +179,13 @@ fn update(self_ptr: ?*anyopaque, rect: Fontstash.Rectangle, data: []const u8) an
         Gfx.ColorB,
         full,
         c.WGPUOrigin3D{
-            .x = @intCast(u32, rect_x),
-            .y = @intCast(u32, rect_y),
+            .x = @intCast(rect_x),
+            .y = @intCast(rect_y),
             .z = 0,
         },
         c.WGPUExtent3D{
-            .width = @intCast(u32, w),
-            .height = @intCast(u32, h),
+            .width = @intCast(w),
+            .height = @intCast(h),
             .depthOrArrayLayers = 1,
         },
     );
@@ -202,7 +202,7 @@ fn draw(
     //Assert these lengths are all the same
     std.debug.assert(positions.len == tex_coords.len and tex_coords.len == colors.len);
 
-    var reserved = try self.renderer.reserve(@intCast(u64, positions.len), @intCast(u64, positions.len));
+    var reserved = try self.renderer.reserve(@intCast(positions.len), @intCast(positions.len));
 
     var scale = Gfx.Vector2{
         self.gfx.scale,
@@ -216,7 +216,7 @@ fn draw(
             .vertex_col = colors[i],
         };
 
-        reserved.idx[@intCast(usize, i)] = @intCast(u16, i + reserved.idx_offset);
+        reserved.idx[@intCast(i)] = @intCast(i + reserved.idx_offset);
     }
 }
 

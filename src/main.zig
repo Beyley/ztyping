@@ -187,7 +187,7 @@ pub fn main() !void {
 
     std.debug.print("parsed {d} maps!\n", .{state.map_list.len});
 
-    const freq = @floatFromInt(f64, c.SDL_GetPerformanceFrequency());
+    const freq: f64 = @floatFromInt(c.SDL_GetPerformanceFrequency());
     state.counter_freq = freq;
     var delta_start = c.SDL_GetPerformanceCounter();
 
@@ -195,7 +195,7 @@ pub fn main() !void {
     while (state.is_running) {
         var current_counter = c.SDL_GetPerformanceCounter();
         state.counter_curr = current_counter;
-        const delta_time = @floatFromInt(f64, (current_counter - delta_start)) / freq;
+        const delta_time: f64 = @as(f64, @floatFromInt((current_counter - delta_start))) / freq;
         state.delta_time = delta_time;
         delta_start = c.SDL_GetPerformanceCounter();
 
@@ -278,7 +278,7 @@ pub fn main() !void {
         if (builtin.mode == .Debug) {
             var open = false;
             _ = c.igBegin("fps", &open, 0);
-            c.igText("%fms %dfps", state.delta_time * 1000, @intFromFloat(usize, 1 / state.delta_time));
+            c.igText("%fms %dfps", state.delta_time * 1000, @as(usize, @intFromFloat(1 / state.delta_time)));
             c.igEnd();
         }
 
