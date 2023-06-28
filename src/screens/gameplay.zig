@@ -485,10 +485,10 @@ fn handleNoteFirstChar(data: *GameplayData, note: *Fumen.Lyric) void {
     };
 
     data.accuracy_text_color = switch (note.pending_hit_result.?) {
-        .excellent => excellent_color_b,
-        .good => good_color_b,
-        .fair => fair_color_b,
-        .poor => poor_color_b,
+        .excellent => excellent_color,
+        .good => good_color,
+        .fair => fair_color,
+        .poor => poor_color,
     };
 }
 
@@ -973,13 +973,13 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
         };
 
         //If the font size is too big and it goes outside of the notes,
-        var bounds = render_state.fontstash.textBounds(lyric.text, state);
+        var bounds = try render_state.fontstash.textBounds(lyric.text, state);
         while (bounds.x2 > circle_r) {
             //Shrink the font size
             size -= 5;
             state.size = size;
 
-            bounds = render_state.fontstash.textBounds(lyric.text, state);
+            bounds = try render_state.fontstash.textBounds(lyric.text, state);
         }
 
         //Draw the text inside of the notes

@@ -48,33 +48,21 @@ pub fn init(self: *Self, gfx: *Gfx, allocator: std.mem.Allocator) !void {
 }
 
 pub fn verticalMetrics(self: *Self, state: Fontstash.State) struct { ascender: f32, descender: f32, line_height: f32 } {
-    var ascender: f32 = undefined;
-    var descender: f32 = undefined;
-    var line_height: f32 = undefined;
-    // c.fonsVertMetrics(self.context, &ascender, &descender, &line_height);
-
     var internal_state = state;
     internal_state.size *= self.gfx.scale;
 
+    var metrics = self.context.verticalMetrics(internal_state);
+
     return .{
-        .ascender = ascender / self.gfx.scale,
-        .descender = descender / self.gfx.scale,
+        .ascender = metrics.ascender / self.gfx.scale,
+        .descender = metrics.descender / self.gfx.scale,
         //NOTE: fontstash seems to give us double the line height that is correct,
         //      so lets just divide by 2 to get an actually useful number...
-        .line_height = line_height / 2 / self.gfx.scale,
+        .line_height = metrics.lineh / 2 / self.gfx.scale,
     };
 }
 
 pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: Fontstash.State) !void {
-    // _ = c.fonsDrawText(
-    //     self.context,
-    //     //We multiply by gfx scale so that FSS stays in scaled space, this gets undone during rendering
-    //     position[0] * self.gfx.scale,
-    //     position[1] * self.gfx.scale,
-    //     text.ptr,
-    //     null,
-    // );
-
     var internal_state = state;
     internal_state.size *= self.gfx.scale;
 
@@ -99,21 +87,15 @@ const Bounds = extern struct {
     y2: f32,
 };
 
-pub fn textBounds(self: *Self, text: []const u8, state: Fontstash.State) Bounds {
-    _ = text;
-    var bounds: Bounds = undefined;
+pub fn textBounds(self: *Self, text: []const u8, state: Fontstash.State) !Bounds {
+    var bounds = try self.context.textBounds(.{ 0, 0 }, text, state);
 
-    var internal_state = state;
-    internal_state.size *= self.gfx.scale;
-
-    // _ = c.fonsTextBounds(self.context, 0, 0, text.ptr, null, @ptrCast([*c]f32, &bounds));
-
-    bounds.x1 /= self.gfx.scale;
-    bounds.x2 /= self.gfx.scale;
-    bounds.y1 /= self.gfx.scale;
-    bounds.y2 /= self.gfx.scale;
-
-    return bounds;
+    return .{
+        .x1 = bounds.bounds.tl[0],
+        .y1 = bounds.bounds.tl[1],
+        .x2 = bounds.bounds.br[0],
+        .y2 = bounds.bounds.br[1],
+    };
 }
 
 pub fn deinit(self: *Self) void {

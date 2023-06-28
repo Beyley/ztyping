@@ -12,7 +12,6 @@ const GameState = @import("game_state.zig");
 const Convert = @import("convert.zig");
 
 pub const c = @cImport({
-    @cInclude("fontstash.h");
     @cInclude("SDL2/SDL.h");
     @cInclude("SDL2/SDL_syswm.h");
     @cInclude("wgpu.h");

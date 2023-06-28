@@ -554,11 +554,11 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
 
     //Make sure there is a 1 pixel empty border
     const glyph_tl_byte_offset = glyph.rectangle.tl[0] + (glyph.rectangle.tl[1]) * self.parameters.width;
-    const glyph_bl_byte_offset = glyph.rectangle.tl[0] + (glyph.rectangle.br[1]) * self.parameters.width;
+    const glyph_bl_byte_offset = glyph.rectangle.tl[0] + (glyph.rectangle.br[1] - 1) * self.parameters.width;
     //Set the top row to 0
-    @memset(self.tex_cache[glyph_tl_byte_offset .. glyph_tl_byte_offset + glyph_width], 0);
+    @memset(self.tex_cache[glyph_tl_byte_offset .. glyph_tl_byte_offset + glyph_width - 1], 0);
     //Set the bottom row to 0
-    @memset(self.tex_cache[glyph_bl_byte_offset .. glyph_bl_byte_offset + glyph_width], 0);
+    @memset(self.tex_cache[glyph_bl_byte_offset .. glyph_bl_byte_offset + glyph_width - 1], 0);
 
     for (0..glyph_height - 2) |j| {
         var y = j + 1;
@@ -868,6 +868,20 @@ fn addWhiteRect(self: *Self, width: usize, height: usize) !void {
     self.dirty_rect.br = @max(self.dirty_rect.br, rect_pos + Gfx.Vector2u{ width, height });
 }
 
+pub fn verticalMetrics(self: *Self, state: State) struct {
+    ascender: f32,
+    descender: f32,
+    lineh: f32,
+} {
+    var font: *Font = self.fonts.get(state.font) orelse unreachable;
+
+    return .{
+        .ascender = font.ascender * state.size,
+        .descender = font.descender * state.size,
+        .lineh = font.lineh * state.size,
+    };
+}
+
 ///Adds a new font from a slice of data containing a TTF font.
 ///
 ///Caller is responsible for freeing `data`.
@@ -907,7 +921,10 @@ pub fn addFontMem(
     );
 
     var fh = ascent - descent;
-    _ = fh;
+
+    font.ascender = @floatFromInt(f32, ascent) / @floatFromInt(f32, fh);
+    font.descender = @floatFromInt(f32, descent) / @floatFromInt(f32, fh);
+    font.lineh = @floatFromInt(f32, fh + line_gap) / @floatFromInt(f32, fh);
 
     try self.fonts.put(name, font);
 

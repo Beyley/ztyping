@@ -50,7 +50,7 @@ pub const LyricKanji = struct {
                 .size = Fontstash.ptToPx(16),
                 .color = part.color,
                 .alignment = .{
-                    .horizontal = .right,
+                    .horizontal = .left,
                 },
             };
 
@@ -60,7 +60,7 @@ pub const LyricKanji = struct {
                 state,
             );
 
-            const bounds = render_state.fontstash.textBounds(part.text, state);
+            const bounds = try render_state.fontstash.textBounds(part.text, state);
             acc_x += bounds.x2 - bounds.x1;
         }
     }
@@ -192,7 +192,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
                 while (next != null) {
                     try part_list.append(LyricKanji.Part{
                         .text = try allocator.dupeZ(u8, next.?),
-                        .color = if (grey) .{ 64, 64, 85, 255 } else Gfx.WhiteB,
+                        .color = if (grey) .{ 0.25, 0.25, 1.0 / 3.0, 1 } else Gfx.WhiteF,
                     });
 
                     //Flip grey, since every split in UTyping is a alternating color of grey, white

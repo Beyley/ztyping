@@ -1,7 +1,6 @@
 const std = @import("std");
 const zmath = @import("libs/zmath/build.zig");
 const bass = @import("libs/zig-bass/build.zig");
-const fontstash = @import("libs/fontstash/build.zig");
 const wgpu = @import("wgpu.zig");
 const cimgui = @import("libs/cimgui/build.zig");
 const iconv = @import("libs/iconv-zig/build.zig");
@@ -39,6 +38,7 @@ pub fn build(b: *std.Build) !void {
     }
 
     exe.addCSourceFile(root_path ++ "src/stb/impl_stb_truetype.c", &.{});
+    exe.addIncludePath(root_path ++ "src/stb");
 
     if (target.isLinux() and !target.isNative()) {
         exe.addIncludePath(root_path ++ "libs/system-sdk/linux/include");
@@ -62,13 +62,6 @@ pub fn build(b: *std.Build) !void {
 
         zmath_pkg.link(exe);
     } //zmath
-
-    { //fontstash
-        var fontstash_lib = fontstash.buildFontstash(b, target, optimize, false);
-
-        exe.linkLibrary(fontstash_lib);
-        exe.addIncludePath("libs/fontstash/src");
-    } //fontstash
 
     //SDL
 
