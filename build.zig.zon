@@ -3,8 +3,8 @@
     .version = "0.0.0",
     .dependencies = .{
         .SDL2 = .{
-            .url = "https://github.com/Beyley/SDL/archive/0fa2452089e64a235ded73093dea46c878a4b3eb.tar.gz",
-            .hash = "12205ad91c3c703efa1fc1def6165117f3e63b02ee65eb3f219b116808654d31a65d",
+            .url = "https://github.com/Beyley/SDL/archive/b6374f1874f346e0d508f8d25e1325f871a8d8e2.tar.gz",
+            .hash = "12202316d35a33694d38d9a3a428022898626d5aee0ef8e8f808165aa38b1327ef59",
         },
         .zigimg = .{
             .url = "https://github.com/zigimg/zigimg/archive/814064a8935dceee99adb11f2b17871b84f75a2b.tar.gz",
