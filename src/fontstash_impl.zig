@@ -70,223 +70,211 @@ pub const Atlas = struct {
         AtlasFull,
     };
 
+    const SkylineNode = struct {
+        pos: Gfx.Vector2u,
+        width: usize,
+    };
+
     width: usize,
     height: usize,
-    nodes: []AtlasNode,
-    node_count: usize,
+    ///A list of skyline nodes
+    nodes: std.ArrayList(SkylineNode),
+    ///The surface area that has been used
+    used_surface_area: u64,
     allocator: std.mem.Allocator,
 
     pub fn create(allocator: std.mem.Allocator, width: usize, height: usize) !Atlas {
         var atlas = Atlas{
             .width = width,
             .height = height,
-            .nodes = try allocator.alloc(AtlasNode, atlas_init_nodes),
-            .node_count = atlas_init_nodes,
+            .nodes = std.ArrayList(SkylineNode).init(allocator),
+            .used_surface_area = 0,
             .allocator = allocator,
         };
 
-        //Set that we are using 1 node
-        atlas.nodes.len = 1;
+        //Ensure that we have a reasonable amount of space already allocated
+        try atlas.nodes.ensureUnusedCapacity(atlas_init_capacity);
 
-        //Init root node
-        atlas.nodes[0] = .{
-            .x = 0,
-            .y = 0,
+        try atlas.nodes.append(.{
+            .pos = .{ 0, 0 },
             .width = width,
-        };
+        });
 
         return atlas;
     }
 
-    pub fn rectFits(self: *Atlas, idx: usize, width: usize, height: usize) ?usize {
-        var i = idx;
+    ///Requests a new rect from the atlas
+    pub fn getRect(self: *Atlas, width: usize, height: usize) !Gfx.Vector2u {
+        std.debug.assert(width != 0);
+        std.debug.assert(height != 0);
 
-        const node = self.nodes[i];
+        var best_height: usize = std.math.maxInt(usize);
+        var best_wasted_area: usize = std.math.maxInt(usize);
 
-        var x = node.x;
-        var y = node.y;
+        var best_index: ?usize = null;
 
-        //If the node X pos + rect width goes past the end of the atlas, it does not fit, return null
-        if (x + width > self.width) {
-            return null;
+        var new_node: ?Rectangle = null;
+
+        for (0..self.nodes.items.len) |i| {
+            switch (self.rectangleFits(width, height, i)) {
+                .no_fit => {},
+                .fits => |fit| {
+                    best_height = fit.y + height;
+                    best_wasted_area = fit.wasted_area;
+                    best_index = i;
+
+                    new_node = Rectangle{
+                        .tl = .{ self.nodes.items[i].pos[0], fit.y },
+                        .br = .{ width, height },
+                    };
+                },
+            }
         }
 
-        var space_left: isize = @intCast(isize, width);
+        //If no new node was found, return an AtlasFull error
+        if (new_node) |node| {
+            try self.addSkylineLevel(best_index.?, node);
 
-        while (space_left > 0) : (i += 1) {
-            //If there are no more nodes to check, it does not fit, return null
-            if (i == self.nodes.len) {
-                return null;
-            }
+            self.used_surface_area += width * height;
 
-            const curr_node = self.nodes[i];
-
-            y = @max(y, curr_node.y);
-
-            //If the node Y position + height exceeds the atlas height, it does not fit, return null
-            if (y + height > self.height) {
-                return null;
-            }
-
-            //Subtract the space left by the width of the current node
-            space_left -= @intCast(isize, curr_node.width);
+            //Return the top left position of the node
+            return node.tl;
+        } else {
+            return AtlasErrors.AtlasFull;
         }
-
-        return y;
     }
 
-    pub fn insertNode(self: *Atlas, idx: usize, x: usize, y: usize, width: usize) !void {
-        if (self.nodes.len + 1 > self.node_count) {
-            //Store the variable here, so we can restore it later
-            var used_nodes = self.nodes.len;
-
-            //Set the length of the slice to the amount of nodes, this is to satisfy the allocator
-            self.nodes.len = self.node_count;
-
-            //Double the amount of nodes
-            self.node_count *= 2;
-
-            //Assert that we are going to create *some* amount of nodes
-            std.debug.assert(self.node_count != 0);
-
-            //Realloc the nodes to the new size
-            self.nodes = try self.allocator.realloc(self.nodes, self.node_count);
-
-            //Restore the length to the real used count
-            self.nodes.len = used_nodes;
-        }
-
-        var i = self.nodes.len;
-
-        //Increment the amount of used nodes
-        self.nodes.len += 1;
-
-        //Move all the nodes in front of this index forward, to make room
-        while (i > idx) : (i -= 1) {
-            self.nodes[i] = self.nodes[i - 1];
-        }
-
-        //Set the node to the values
-        self.nodes[idx] = .{
-            .x = x,
-            .y = y,
-            .width = width,
+    fn addSkylineLevel(self: *Atlas, index: usize, rect: Rectangle) !void {
+        var new_node = SkylineNode{
+            .pos = .{
+                rect.tl[0],
+                rect.tl[1] + rect.br[1],
+            },
+            .width = rect.br[0],
         };
-    }
 
-    pub fn removeNode(self: *Atlas, idx: usize) void {
-        std.debug.assert(self.nodes.len > 0);
+        try self.nodes.insert(index, new_node);
 
-        var i = idx;
-        //Move all the nodes in front of the index backward, to fill the empty space
-        while (i < self.nodes.len - 1) : (i += 1) {
-            self.nodes[i] = self.nodes[i + 1];
-        }
+        std.debug.assert(new_node.pos[0] + new_node.width <= self.width);
+        std.debug.assert(new_node.pos[1] <= self.height);
 
-        //Mark the now-unused node as undefined
-        self.nodes[self.nodes.len - 1] = undefined;
+        var i = index + 1;
+        while (i < self.nodes.items.len) {
+            var curr_node: *SkylineNode = &self.nodes.items[i];
+            const last_node: SkylineNode = self.nodes.items[i - 1];
 
-        //Decrement the amount of used nodes
-        self.nodes.len -= 1;
-    }
+            std.debug.assert(last_node.pos[0] <= curr_node.pos[0]);
 
-    pub fn addSkylineLevel(self: *Atlas, idx: usize, x: usize, y: usize, width: usize, height: usize) !void {
-        //Insert a new node
-        try self.insertNode(idx, x, y + height, width);
+            if (curr_node.pos[0] < last_node.pos[0] + last_node.width) {
+                const shrink = last_node.pos[0] + last_node.width - curr_node.pos[0];
 
-        var i: usize = idx + 1;
-        //Delete the skyline segments that fall under the shadow of the new segment
-        while (i < self.nodes.len) : (i += 1) {
-            var curr_node = &self.nodes[i];
-            const last_node = self.nodes[i - 1];
+                curr_node.pos[0] += shrink;
+                //NOTE: the @min here is to prevent the number from going negative
+                curr_node.width -= @min(curr_node.width, shrink);
 
-            //If the current node is to the left left or is inside of the last node (horizontally)
-            if (curr_node.x < last_node.x + last_node.width) {
-                //Get the amount to shrink the current node's width
-                var shrink = last_node.x + last_node.width - curr_node.x;
-
-                //Move the node to the right,
-                curr_node.x += shrink;
-                //Shrink the node
-                if (shrink > curr_node.width) {
-                    curr_node.width = 0;
-                } else {
-                    curr_node.width -= shrink;
-                }
-                // curr_node.width -= @min(shrink, curr_node.width);
-
-                //If the node's width becomes 0, then get it outta here!
                 if (curr_node.width <= 0) {
-                    self.removeNode(i);
+                    _ = self.nodes.orderedRemove(i);
                     i -= 1;
-                }
-                //If the node's width is greater than 0, then break out
-                else {
+                } else {
                     break;
                 }
-            }
-            //If the current node is to the right of the last node, break out
-            else {
+            } else {
                 break;
             }
+
+            i += 1;
         }
 
-        i = 0;
-        //Merge same height skyline segments that are next to each other.
-        while (i < self.nodes.len - 1) : (i += 1) {
-            var curr_node = &self.nodes[i];
-            var next_node = self.nodes[i + 1];
+        self.mergeSkylines();
+    }
 
-            //If the y positions match,
-            if (curr_node.y == next_node.y) {
-                //Add the next node's width to the current node
+    inline fn mergeSkylines(self: *Atlas) void {
+        var i: usize = 0;
+        while (i < self.nodes.items.len - 1) : (i += 1) {
+            var curr_node: *SkylineNode = &self.nodes.items[i];
+            var next_node: SkylineNode = self.nodes.items[i + 1];
+
+            if (curr_node.pos[1] == next_node.pos[1]) {
                 curr_node.width += next_node.width;
 
-                //Remove the next node, as it has been merged into the current node
-                self.removeNode(i + 1);
+                _ = self.nodes.orderedRemove(i + 1);
+
                 i -= 1;
             }
         }
     }
 
-    pub fn addRect(self: *Atlas, width: usize, height: usize) !Gfx.Vector2u {
-        var bestw: usize = self.width;
-        var besth: usize = self.height;
-        var besti: ?usize = null;
+    fn rectangleFits(self: *Atlas, width: usize, height: usize, idx: usize) union(enum) {
+        fits: struct {
+            y: usize,
+            wasted_area: u64,
+        },
+        no_fit: void,
+    } {
+        const node_idx = self.nodes.items[idx];
 
-        var bestx: usize = undefined;
-        var besty: usize = undefined;
-        var i: usize = 0;
+        //Get the X position of the item rectangle
+        const x = node_idx.pos[0];
 
-        for (self.nodes) |node| {
-            var fits = self.rectFits(i, width, height);
+        //If the position of the node + width of the rect is wider than the altas width, it no fit
+        if (x + width > self.width) {
+            return .{ .no_fit = {} };
+        }
 
-            if (fits) |y| {
-                if (y + width < besth or (y + width == besth and node.width < bestw)) {
-                    besti = i;
-                    bestw = node.width;
-                    besth = y + height;
-                    bestx = node.x;
-                    besty = y;
-                }
+        var width_left = width;
+
+        var i = idx;
+
+        var y = node_idx.pos[1];
+        while (width_left > 0) {
+            y = @max(y, self.nodes.items[i].pos[1]);
+            if (y + height > self.height) {
+                return .{ .no_fit = {} };
             }
+
+            //NOTE: the @min here is to prevent the number from going negative
+            width_left -= @min(self.nodes.items[i].width, width_left);
+
+            i += 1;
+
+            //Assert that we are still behind the end of the list, or that the width is less than or equal to 0
+            std.debug.assert(i < self.nodes.items.len or width_left <= 0);
         }
 
-        if (besti == null) {
-            return AtlasErrors.AtlasFull;
+        var wasted_area: u64 = 0;
+
+        const rect_left = node_idx.pos[0];
+        const rect_right = node_idx.pos[0] + node_idx.width;
+
+        i = idx;
+        while (i < self.nodes.items.len and self.nodes.items[i].pos[0] < rect_right) {
+            var curr_node = self.nodes.items[i];
+
+            //If the current node is outside of the rect,
+            if (curr_node.pos[0] >= rect_right or curr_node.pos[0] + curr_node.width <= rect_left) {
+                break;
+            }
+
+            var left_side = curr_node.pos[0];
+            var right_side = @min(rect_right, left_side + curr_node.width);
+
+            std.debug.assert(y >= curr_node.pos[1]);
+
+            wasted_area += (right_side - left_side) * (y - curr_node.pos[1]);
+
+            i += 1;
         }
 
-        try self.addSkylineLevel(besti.?, bestx, besty, width, height);
-
-        //Return the best x and y
-        return .{ bestx, besty };
+        return .{
+            .fits = .{
+                .y = y,
+                .wasted_area = wasted_area,
+            },
+        };
     }
 
-    pub fn deinit(self: *Atlas, allocator: std.mem.Allocator) void {
-        self.nodes.len = self.node_count;
-
-        //Free the list of nodes
-        allocator.free(self.nodes);
+    pub fn deinit(self: *Atlas) void {
+        self.nodes.deinit();
 
         //Mark the underlying object as undefined
         self.* = undefined;
@@ -344,7 +332,7 @@ pub const Font = struct {
 };
 
 const scratch_buffer_size = 64000;
-const atlas_init_nodes = 256;
+const atlas_init_capacity = 256;
 const hash_lut_size = 256;
 const vertex_count = 1024;
 
@@ -390,7 +378,7 @@ pub fn create(allocator: std.mem.Allocator, params: Parameters) !*Self {
     errdefer allocator.free(self.scratch_buffer);
     //Create our atlas object
     self.atlas = try Atlas.create(allocator, params.width, params.height);
-    errdefer self.atlas.deinit(allocator);
+    errdefer self.atlas.deinit();
 
     //Tell the implementation to create its texture
     try params.impl_create_texture(params.user_ptr, params.width, params.height);
@@ -523,10 +511,10 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     var glyph_width = @intCast(usize, x1 - x0 + @intCast(isize, pad) * 2);
     var glyph_height = @intCast(usize, y1 - y0 + @intCast(isize, pad) * 2);
 
-    var glyph_position = self.atlas.addRect(glyph_width, glyph_height) catch |err| blk: {
+    var glyph_position = self.atlas.getRect(glyph_width, glyph_height) catch |err| blk: {
         if (err == Atlas.AtlasErrors.AtlasFull) {
             // self.handleError(); //TODO
-            break :blk try self.atlas.addRect(glyph_width, glyph_height);
+            break :blk try self.atlas.getRect(glyph_width, glyph_height);
         } else {
             return err;
         }
@@ -552,7 +540,7 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     font.lut[hash] = font.glyphs.items.len - 1;
 
     //Rasterize
-    var dst_ptr = &self.tex_cache[(glyph.rectangle.tl[0] + @intCast(usize, pad)) + glyph.rectangle.tl[1] * self.parameters.width];
+    var dst_ptr = &self.tex_cache[(glyph.rectangle.tl[0] + @intCast(usize, pad)) + (glyph.rectangle.tl[1] + @intCast(usize, pad)) * self.parameters.width];
     c.stbtt_MakeGlyphBitmap(
         &render_font.font,
         dst_ptr,
@@ -565,14 +553,19 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     );
 
     //Make sure there is a 1 pixel empty border
-    const offset = glyph.rectangle.tl[0] + glyph.rectangle.tl[1] * self.parameters.width;
-    for (0..glyph_height) |y| {
-        self.tex_cache[offset + (y * self.parameters.width)] = 0;
-        self.tex_cache[offset + (glyph_width - 1 + y * self.parameters.width)] = 0;
-    }
-    for (0..glyph_width) |x| {
-        self.tex_cache[offset + x] = 0;
-        self.tex_cache[offset + (x + (glyph_width - 1) * self.parameters.width)] = 0;
+    const glyph_tl_byte_offset = glyph.rectangle.tl[0] + (glyph.rectangle.tl[1]) * self.parameters.width;
+    const glyph_bl_byte_offset = glyph.rectangle.tl[0] + (glyph.rectangle.br[1]) * self.parameters.width;
+    //Set the top row to 0
+    @memset(self.tex_cache[glyph_tl_byte_offset .. glyph_tl_byte_offset + glyph_width], 0);
+    //Set the bottom row to 0
+    @memset(self.tex_cache[glyph_bl_byte_offset .. glyph_bl_byte_offset + glyph_width], 0);
+
+    for (0..glyph_height - 2) |j| {
+        var y = j + 1;
+
+        //Set the left pixel
+        self.tex_cache[y * self.parameters.width + glyph.rectangle.tl[0]] = 0;
+        self.tex_cache[y * self.parameters.width + glyph.rectangle.tl[0] + glyph_width - 1] = 0;
     }
 
     //Blur
@@ -862,7 +855,7 @@ fn flush(self: *Self) !void {
 
 ///Adds a white rectangle to the atlas
 fn addWhiteRect(self: *Self, width: usize, height: usize) !void {
-    var rect_pos = try self.atlas.addRect(width, height);
+    var rect_pos = try self.atlas.getRect(width, height);
 
     for (0..height) |y| {
         const start_pos = rect_pos[0] + y * self.parameters.width;
@@ -943,7 +936,7 @@ pub fn deinit(self: *Self) void {
     //Free the scratch buffer
     self.allocator.free(self.scratch_buffer);
 
-    self.atlas.deinit(self.allocator);
+    self.atlas.deinit();
 
     self.allocator.free(self.tex_cache);
 
