@@ -27,10 +27,8 @@ pub fn init(self: *Self, gfx: *Gfx, allocator: std.mem.Allocator) !void {
 
     self.context = try Fontstash.create(allocator, Fontstash.Parameters{
         .zero_position = .top_left,
-        // .width = 4096,
-        // .height = 4096,
-        .width = 128,
-        .height = 128,
+        .width = 4096,
+        .height = 4096,
         .user_ptr = self,
         .impl_create_texture = create,
         .impl_update_texture = update,
