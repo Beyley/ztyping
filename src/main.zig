@@ -110,6 +110,9 @@ pub fn main() !void {
 
     var imgui_io = c.igGetIO();
 
+    //Enable keyboard nav
+    imgui_io.*.ConfigFlags |= c.ImGuiConfigFlags_NavEnableKeyboard;
+
     //Create a font config
     var font_config = c.ImFontConfig_ImFontConfig();
     //Mark that the atlas does *not* own the font data
