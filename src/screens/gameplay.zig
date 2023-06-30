@@ -921,10 +921,11 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
         if (posX > 640 + circle_r) continue;
 
         const note_color = if (lyric.hit_result != null) switch (lyric.hit_result.?) {
-            .poor => Gfx.ColorF{ 0.3, 0.3, 0.3, 0.3 },
-            else => Gfx.BlueF,
+            .excellent => excellent_color,
+            .good => good_color,
+            .fair => fair_color,
+            .poor => poor_color,
         } else Gfx.RedF;
-        // const note_color = if (lyric.hit_result != null and lyric.hit_result.? == .poor) Gfx.ColorF{ 0.3, 0.3, 0.3, 0.3 } else Gfx.RedF;
 
         //Draw the note circle itself
         try render_state.renderer.reserveTexQuadPxSize(
