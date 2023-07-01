@@ -24,7 +24,7 @@ pub const c = @cImport({
     }
 });
 
-pub fn main() !void {
+fn runGame() !void {
     //The scale of the window
     const scale = 2;
 
@@ -308,5 +308,26 @@ pub fn main() !void {
             try screen_stack.load(new_screen, gfx, &state);
             screen.screen_push = null;
         }
+    }
+}
+
+pub fn main() !void {
+    if (builtin.mode == .Debug) {
+        try runGame();
+    } else {
+        runGame() catch |err| {
+            const error_str = "Unhandled error has occurred! Please report this to https://github.com/Beyley/ztyping/issues\nError details: ";
+
+            if (err == std.mem.Allocator.Error.OutOfMemory) {
+                _ = c.SDL_ShowSimpleMessageBox(0, "Unhandled Error!", error_str ++ "OutOfMemory", null);
+            } else {
+                var fmt = try std.mem.concatWithSentinel(std.heap.c_allocator, u8, &.{ error_str, @errorName(err) }, 0);
+                defer std.heap.c_allocator.free(fmt);
+
+                _ = c.SDL_ShowSimpleMessageBox(0, "Unhandled Error!", fmt, null);
+            }
+
+            return err;
+        };
     }
 }
