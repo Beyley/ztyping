@@ -87,7 +87,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
     _ = gfx;
     self.allocator = allocator;
 
-    var data = allocator.create(GameplayData) catch @panic("OOM");
+    var data = try allocator.create(GameplayData);
 
     data.* = .{
         .music = &self.state.current_map.?,
@@ -104,7 +104,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
     var dir = try std.fs.openDirAbsolute(data.music.fumen.fumen_folder, .{});
     defer dir.close();
     //Get the real path of the audio file
-    var full_audio_path = dir.realpathAlloc(allocator, data.music.fumen.audio_path) catch @panic(":(");
+    var full_audio_path = try dir.realpathAlloc(allocator, data.music.fumen.audio_path);
     defer allocator.free(full_audio_path);
 
     //Create a sentinel-ending array for the path
