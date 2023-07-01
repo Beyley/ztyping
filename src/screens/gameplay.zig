@@ -775,17 +775,31 @@ fn checkForMissedNotes(data: *GameplayData) void {
     var current_note = data.music.fumen.lyrics[data.active_note];
     //The next note the user *could* hit
     var next_note: ?Fumen.Lyric = if (data.active_note < data.music.fumen.lyrics.len - 1) data.music.fumen.lyrics[data.active_note + 1] else null;
-    _ = current_note;
 
     //If the user should miss the current note
-    if (missCheck(data, next_note)) {
+    if (missCheck(data, current_note, next_note)) {
         return missNote(data);
     }
 }
 
 ///Whether the user is in a state to miss the current note
-fn missCheck(data: *GameplayData, next_note: ?Fumen.Lyric) bool {
-    //TODO: take into account typing cutoffs
+fn missCheck(data: *GameplayData, current_note: Fumen.Lyric, next_note: ?Fumen.Lyric) bool {
+    for (data.music.fumen.lyric_cutoffs) |cutoff| {
+        //If the current note is *after* this cutoff,
+        if (cutoff.time < current_note.time) {
+            //Skip it
+            continue;
+        }
+
+        //If the current time is past this cutoff, and the note has no hit result, then miss
+        if (data.current_time > cutoff.time) {
+            return true;
+        }
+        //Else, we are not past the cutoff
+        else {
+            break;
+        }
+    }
 
     if (next_note) |next| {
         //If the user is past the next note, then return that they should miss it
