@@ -49,6 +49,8 @@ const GameplayData = struct {
     ///The current kanji lyric on display
     current_lyric_kanji: ?usize = null,
 
+    animation_timers: AnimationTimers,
+
     //things Actually Relavent to the gameplay
 
     ///Get the actively playing music
@@ -72,6 +74,10 @@ const GameplayData = struct {
     accuracy_text_color: Gfx.ColorF = .{ 1, 1, 1, 1 },
 };
 
+const AnimationTimers = struct {
+    accuracy_text: std.time.Timer,
+};
+
 pub var Gameplay = Screen{
     .render = renderScreen,
     .init = initScreen,
@@ -91,6 +97,9 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
 
     data.* = .{
         .music = &self.state.current_map.?,
+        .animation_timers = .{
+            .accuracy_text = try std.time.Timer.start(),
+        },
     };
 
     //Reset the hit status for all the lyrics before the game starts
@@ -432,14 +441,6 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
             }
         }
     }
-
-    // if (matched) |matched_match| {
-    //     std.debug.print("found match {s}\n", .{matched_match.conversion.romaji});
-    // }
-
-    // if (matched_next) |matched_match| {
-    //     std.debug.print("found match_next {s}\n", .{matched_match.conversion.romaji});
-    // }
 }
 
 fn handleTypedRomaji(data: *GameplayData, typed: []const u8) !void {
@@ -479,6 +480,9 @@ fn handleNoteFirstChar(data: *GameplayData, note: *Fumen.Lyric) void {
         .fair => fair_color,
         .poor => poor_color,
     };
+
+    //Reset the animation timer for accuracy_text
+    data.animation_timers.accuracy_text.reset();
 }
 
 fn hitNote(data: *GameplayData) void {
@@ -840,9 +844,27 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
         },
     };
 
+    //Get the accuracy timer in seconds, note we divide in 2 stagets to help remove floating point inaccuracies
+    var accuracy_text_timer = @as(f32, @floatFromInt(data.animation_timers.accuracy_text.read() / std.time.ns_per_ms)) / std.time.ms_per_s;
+
+    var accuracy_text_offset: f32 = 0;
+    if (accuracy_text_timer < 0.05) {
+        accuracy_text_offset = (0.05 - accuracy_text_timer) / 0.05 * 10;
+    }
+
+    if (accuracy_text_timer > 0.6) {
+        //Set the color to 0 if we are after the point it is fully faded out, to skip all that math
+        state.color[3] = 0;
+    } else if (accuracy_text_timer > 0.5) {
+        //Get the time since we started fading out
+        const time_since_start_fade = (accuracy_text_timer - 0.5);
+        //Fade out linearly from time 0.5 to 0.6
+        state.color[3] = @max(0, 1.0 - time_since_start_fade * 10);
+    }
+
     var metrics = render_state.fontstash.verticalMetrics(state);
     try render_state.fontstash.drawText(
-        .{ accuracy_x, accuracy_y + metrics.line_height },
+        .{ accuracy_x, accuracy_y + metrics.line_height + accuracy_text_offset },
         data.accuracy_text,
         state,
     );
@@ -859,12 +881,12 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
         );
 
         try render_state.fontstash.drawText(
-            .{ accuracy_x + 35, accuracy_y + metrics.line_height },
+            .{ accuracy_x + 35, accuracy_y + metrics.line_height + accuracy_text_offset },
             buf[buf.len - digits ..],
             .{
                 .font = Fontstash.Mincho,
                 .size = Fontstash.ptToPx(36),
-                .color = data.accuracy_text_color,
+                .color = state.color,
                 .alignment = .{
                     .horizontal = .left,
                 },
