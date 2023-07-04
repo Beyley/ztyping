@@ -163,15 +163,6 @@ pub const fair_color: Gfx.ColorF = .{ 0, 0.5, 1, 1 };
 ///The color to display for a poor hit
 pub const poor_color: Gfx.ColorF = .{ 0.5, 0.5, 0.5, 1 };
 
-///The color to display for an excellent hit
-pub const excellent_color_b: Gfx.ColorB = .{ 255, 255, 0, 255 };
-///The color to display for a good hit
-pub const good_color_b: Gfx.ColorB = .{ 0, 255, 0, 255 };
-///The color to display for a fair hit
-pub const fair_color_b: Gfx.ColorB = .{ 0, 128, 255, 255 };
-///The color to display for a poor hit
-pub const poor_color_b: Gfx.ColorB = .{ 128, 128, 128, 255 };
-
 ///The score for an excellent hit
 pub const excellent_score = 1500;
 ///The score for a good hit
