@@ -665,8 +665,8 @@ fn getQuad(
     var y_offset = glyph.y_offset + 1;
     //Inset the rect
     var rect = RectangleF{
-        .tl = Gfx.vector2UToF(glyph.rectangle.tl) + Gfx.Vector2{ 1, 1 },
-        .br = Gfx.vector2UToF(glyph.rectangle.br) - Gfx.Vector2{ 1, 1 },
+        .tl = Gfx.vector2UToF(glyph.rectangle.tl) + Gfx.Vector2One,
+        .br = Gfx.vector2UToF(glyph.rectangle.br) - Gfx.Vector2One,
     };
 
     var quad = switch (self.parameters.zero_position) {

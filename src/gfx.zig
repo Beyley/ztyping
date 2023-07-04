@@ -14,6 +14,9 @@ pub const ColorF = @Vector(4, f32);
 ///RGBA u8 color
 pub const ColorB = @Vector(4, u8);
 
+pub const Vector2One = @splat(2, @as(f32, 1));
+pub const Vector2Zero = @splat(2, @as(f32, 0));
+
 pub fn vector2FToU(orig: Vector2) Vector2u {
     return .{
         @intFromFloat(orig[0]),
@@ -67,7 +70,7 @@ pub fn colorBToF(orig: ColorB) ColorF {
         @floatFromInt(orig[3]),
     };
 
-    f /= ColorF{ 255.0, 255.0, 255.0, 255.0 };
+    f /= @splat(4, @as(f32, 255));
 
     return f;
 }

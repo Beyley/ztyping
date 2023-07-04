@@ -69,10 +69,7 @@ pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: Fon
     internal_state.size *= self.gfx.scale;
 
     _ = try self.context.drawText(
-        position * Gfx.Vector2{
-            self.gfx.scale,
-            self.gfx.scale,
-        },
+        position * @splat(2, self.gfx.scale),
         text,
         internal_state,
     );
@@ -90,7 +87,7 @@ const Bounds = extern struct {
 };
 
 pub fn textBounds(self: *Self, text: []const u8, state: Fontstash.State) !Bounds {
-    var bounds = try self.context.textBounds(.{ 0, 0 }, text, state);
+    var bounds = try self.context.textBounds(Gfx.Vector2Zero, text, state);
 
     return .{
         .x1 = bounds.bounds.tl[0],
@@ -202,10 +199,7 @@ fn draw(
 
     var reserved = try self.renderer.reserve(@intCast(positions.len), @intCast(positions.len));
 
-    var scale = Gfx.Vector2{
-        self.gfx.scale,
-        self.gfx.scale,
-    };
+    var scale = @splat(2, self.gfx.scale);
 
     for (0..positions.len) |i| {
         reserved.vtx[i] = Gfx.Vertex{
