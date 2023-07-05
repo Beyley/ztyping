@@ -9,7 +9,7 @@ jobs:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
         mode: [ Debug, ReleaseSafe, ReleaseFast ]
         target: [ native, x86_64-linux-gnu, x86_64-windows-gnu, x86_64-macos, aarch64-macos ]
-    name: ${{ matrix.os }} host building ${{ matrix.mode }} for ${{ matrix.target }}
+    name: ${{ matrix.os }}, ${{ matrix.target }}-${{ matrix.mode }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup
