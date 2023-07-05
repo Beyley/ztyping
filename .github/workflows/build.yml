@@ -1,0 +1,30 @@
+name: Build
+on:
+  push:
+jobs:
+  Build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        mode: [ Debug, ReleaseSafe, ReleaseFast ]
+        target: [ native, x86_64-linux-gnu, x86_64-windows-gnu, x86_64-macos, aarch64-macos ]
+    name: ${{ matrix.os }} host building ${{ matrix.mode }} for ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Setup
+        if:  matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update 
+          sudo apt-get install -y xorg-dev build-essential libudev-dev libasound2 libasound2-dev libpipewire-0.3-0 libpipewire-0.3-dev libjack-jackd2-0 libjack-jackd2-dev libpulse-dev libpulse0
+
+      - uses: actions/checkout@v2
+      - name: Checkout submodules, configure git
+        run: |
+          git submodule update --init --recursive --depth 0 
+          
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@v2
+          
+      - name: Build 
+        run: zig build -Doptimize=${{ matrix.mode }} -Dtarget=${{ matrix.target }}
