@@ -5,11 +5,12 @@ const Gfx = @import("gfx.zig");
 const Fontstash = @import("fontstash.zig");
 
 pub const Lyric = struct {
-    pub const HitResult = enum {
-        excellent,
-        good,
-        fair,
-        poor,
+    //A valid hit result for the note, the explicit numbers are to match up with the stat gauge
+    pub const HitResult = enum(usize) {
+        excellent = 0,
+        good = 1,
+        fair = 2,
+        poor = 3,
     };
 
     text: [:0]const u8,

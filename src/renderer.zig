@@ -155,6 +155,49 @@ pub inline fn reserveTexQuadPxSize(
     try self.reserveTexQuad(tex_name, position, size / tex_size, col);
 }
 
+pub inline fn reserveSolidBox(
+    self: *Self,
+    position: Gfx.Vector2,
+    size: Gfx.Vector2,
+    col: Gfx.ColorF,
+) !void {
+    const tex_name = "white";
+
+    const uvs = comptime Gfx.getTexUVsFromAtlasPadding(tex_name, 1);
+
+    var reserved = try self.reserve(4, 6);
+    reserved.copyIn(&.{
+        Gfx.Vertex{
+            .position = position,
+            .tex_coord = uvs.tl,
+            .vertex_col = col,
+        },
+        Gfx.Vertex{
+            .position = position + (Gfx.Vector2{ size[0], 0 }),
+            .tex_coord = uvs.tr,
+            .vertex_col = col,
+        },
+        Gfx.Vertex{
+            .position = position + (Gfx.Vector2{ 0, size[1] }),
+            .tex_coord = uvs.bl,
+            .vertex_col = col,
+        },
+        Gfx.Vertex{
+            .position = position + size,
+            .tex_coord = uvs.br,
+            .vertex_col = col,
+        },
+    }, &.{
+        0 + reserved.idx_offset,
+        2 + reserved.idx_offset,
+        1 + reserved.idx_offset,
+        1 + reserved.idx_offset,
+        2 + reserved.idx_offset,
+        3 + reserved.idx_offset,
+    });
+    // try self.reserveTexQuadPxSize("white", position, size, col);
+}
+
 pub inline fn reserveTexQuad(
     self: *Self,
     comptime tex_name: []const u8,

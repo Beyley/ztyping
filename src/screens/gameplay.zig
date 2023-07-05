@@ -51,6 +51,8 @@ const GameplayData = struct {
 
     animation_timers: AnimationTimers,
 
+    gauge_data: GaugeData,
+
     //things Actually Relavent to the gameplay
 
     ///Get the actively playing music
@@ -72,6 +74,68 @@ const GameplayData = struct {
     accuracy_text: [:0]const u8 = "",
     ///The color of the accuracy text
     accuracy_text_color: Gfx.ColorF = .{ 1, 1, 1, 1 },
+};
+
+const IdHitResult = enum(usize) {
+    excellent,
+    good,
+    fair,
+    poor,
+    pass,
+};
+
+const GaugeData = struct {
+    //Gauge
+
+    gauge: i32,
+    gauge_max: i32,
+    gauge_last_count: i32,
+    gauge_new_count: i32,
+    gauge_last_lost: i32,
+
+    //Stat gauge
+
+    //The currently drawn length of the gauge
+    lengths: [4]f64,
+    draw_x: [4]f64,
+    //Velocity of the currently drawn length of the gauge
+    draw_v: [4]f64,
+    //Length on screen equivalent to length 1
+    rate: f64,
+    //Intensity of the light illuminating each gauge
+    lights: [4]f64,
+    colours: [4][2]Gfx.ColorF,
+
+    pub fn statIncrement(self: *GaugeData, hit_result: Fumen.Lyric.HitResult) void {
+        //Increment the lengths
+        self.lengths[@intFromEnum(hit_result)] += 1;
+        //Set the light to 1
+        self.lights[@intFromEnum(hit_result)] = 1;
+    }
+
+    pub fn init() GaugeData {
+        return .{
+            //Gauge
+            .gauge = 0,
+            .gauge_max = 0,
+            .gauge_last_count = 0,
+            .gauge_new_count = 0,
+            .gauge_last_lost = 0,
+
+            //Stat gauge
+            .lengths = [4]f64{ 0, 0, 0, 0 },
+            .draw_x = [4]f64{ 0, 0, 0, 0 },
+            .draw_v = [4]f64{ 0, 0, 0, 0 },
+            .lights = [4]f64{ 0, 0, 0, 0 },
+            .rate = 20,
+            .colours = [4][2]Gfx.ColorF{
+                [2]Gfx.ColorF{ excellent_color, excellent_color_2 },
+                [2]Gfx.ColorF{ good_color, good_color_2 },
+                [2]Gfx.ColorF{ fair_color, fair_color_2 },
+                [2]Gfx.ColorF{ poor_color, poor_color_2 },
+            },
+        };
+    }
 };
 
 const AnimationTimers = struct {
@@ -100,6 +164,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
         .animation_timers = .{
             .accuracy_text = try std.time.Timer.start(),
         },
+        .gauge_data = GaugeData.init(),
     };
 
     //Reset the hit status for all the lyrics before the game starts
@@ -171,6 +236,11 @@ pub const good_color: Gfx.ColorF = .{ 0, 1, 0, 1 };
 pub const fair_color: Gfx.ColorF = .{ 0, 0.5, 1, 1 };
 ///The color to display for a poor hit
 pub const poor_color: Gfx.ColorF = .{ 0.5, 0.5, 0.5, 1 };
+
+pub const excellent_color_2: Gfx.ColorF = .{ 1, 1, 0.5, 1 };
+pub const good_color_2: Gfx.ColorF = .{ 0.5, 1, 0.5, 1 };
+pub const fair_color_2: Gfx.ColorF = .{ 0.5, 0.75, 1, 1 };
+pub const poor_color_2: Gfx.ColorF = .{ 0.75, 0.75, 0.75, 1 };
 
 ///The score for an excellent hit
 pub const excellent_score = 1500;
@@ -481,6 +551,8 @@ fn handleNoteFirstChar(data: *GameplayData, note: *Fumen.Lyric) void {
         .poor => poor_color,
     };
 
+    data.gauge_data.statIncrement(note.pending_hit_result.?);
+
     //Reset the animation timer for accuracy_text
     data.animation_timers.accuracy_text.reset();
 }
@@ -663,6 +735,8 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
     try drawKanjiLyrics(render_state, data);
 
+    try drawStatGauge(render_state, data);
+
     try drawScoreUi(render_state, data);
 
     try render_state.renderer.end();
@@ -806,6 +880,108 @@ fn missCheck(data: *GameplayData, current_note: Fumen.Lyric, next_note: ?Fumen.L
     return false;
 }
 
+const gauge_x = 90;
+const gauge_y = 455;
+const gauge_width = gauge_segment_width * gauge_count;
+const gauge_height = 10;
+const gauge_segment_width = 5;
+const gauge_segment_width_padding = 4;
+const gauge_segment_height_padding = 2;
+
+const gauge_count = 100;
+
+fn drawGauge(render_state: Screen.RenderState, data: *GameplayData, is_result: bool) !void {
+    _ = data;
+    _ = render_state;
+
+    var y0 = if (is_result) 355 else gauge_y;
+
+    var y1 = y0 + gauge_height;
+    _ = y1;
+}
+
+const stat_gauge_x = Screen.display_width - 10;
+const stat_gauge_y = 10;
+const stat_gauge_width = 400;
+const stat_gauge_height = 40;
+
+fn drawStatGauge(render_state: Screen.RenderState, data: *GameplayData) !void {
+    var y: f32 = stat_gauge_y;
+    var single_bar_height: f32 = stat_gauge_height / 4;
+
+    for (&data.gauge_data.draw_x, &data.gauge_data.draw_v, &data.gauge_data.lengths) |*x, *velocity, length| {
+        //Add a little bit of velocity, depending on the amount we need to change
+        velocity.* += 0.12 * (length - x.*);
+        x.* += velocity.*;
+        //Slow the velocity down
+        velocity.* *= 0.7;
+    }
+
+    var rate: f32 = 20;
+    while (true) {
+        var flag = true;
+
+        for (data.gauge_data.lengths) |length| {
+            if (length * rate > stat_gauge_width) {
+                flag = false;
+                break;
+            }
+        }
+
+        if (flag) {
+            break;
+        }
+
+        //Slow the rate down a bit, until it does not exceed the width of the gauge
+        rate *= 0.75;
+    }
+    data.gauge_data.rate += (rate - data.gauge_data.rate) * 0.2;
+
+    //Render a solid box around the stat gauge
+    try render_state.renderer.reserveSolidBox(.{ stat_gauge_x - stat_gauge_width, y }, .{ stat_gauge_width, stat_gauge_height }, .{ 0.25, 0.25, 0.25, 0.5 });
+
+    for (data.gauge_data.lengths, data.gauge_data.colours, 0..) |length, colour, i| {
+        try drawBar(render_state, @floatCast(length * data.gauge_data.rate), y + @as(f32, @floatFromInt(i)) * single_bar_height, single_bar_height, colour[0]);
+    }
+
+    for (&data.gauge_data.lights, &data.gauge_data.colours, 0..) |*light, colour, i| {
+        try drawLight(render_state, @floatCast(light.*), y + @as(f32, @floatFromInt(i)) * single_bar_height, single_bar_height, colour[1]);
+
+        //Lower the amount of light by 0.85
+        light.* *= 0.85;
+    }
+}
+
+fn drawBar(render_state: Screen.RenderState, val: f32, y: f32, h: f32, color: Gfx.ColorF) !void {
+    var display_color: Gfx.ColorF = color;
+    //Set opacity to 7/8
+    display_color[3] = 0.875;
+
+    var rounded_val = @floor(val);
+
+    var val_fractional = val - rounded_val;
+
+    try render_state.renderer.reserveSolidBox(.{ stat_gauge_x - rounded_val, y }, .{ rounded_val, h }, display_color);
+    //Multiply opacity by the fractional part of the number
+    display_color[3] *= val_fractional;
+    try render_state.renderer.reserveSolidBox(.{ stat_gauge_x - rounded_val - 1, y }, .{ 1, h }, display_color);
+}
+
+fn drawLight(render_state: Screen.RenderState, light: f32, y: f32, h: f32, color: Gfx.ColorF) !void {
+    var display_color: Gfx.ColorF = color;
+    display_color[3] = 0.75 * light;
+
+    //Set the display light to 4x the set light
+    var display_light = light * 4;
+
+    //Cap the display light to 1
+    display_light = @min(1, display_light);
+
+    //TODO: give this a nice name, and figure out what the hell it does
+    var dh = @round(h * 0.5 * (1 - display_light) * (1 - display_light));
+    try render_state.renderer.reserveSolidBox(.{ stat_gauge_x - stat_gauge_width, y + dh }, .{ stat_gauge_width, h - dh }, display_color);
+}
+
 const accuracy_x = circle_x - circle_r;
 const accuracy_y = 90;
 
@@ -909,10 +1085,10 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
 
         switch (beat_line.type) {
             .bar => {
-                try render_state.renderer.reserveTexQuad("white", .{ posX, posY + y0_bar }, .{ 1, y1_bar - y0_bar }, Gfx.WhiteF);
+                try render_state.renderer.reserveTexQuadPxSize("white", .{ posX, posY + y0_bar }, .{ 1, y1_bar - y0_bar }, Gfx.WhiteF);
             },
             .beat => {
-                try render_state.renderer.reserveTexQuad("white", .{ posX, posY + y0_beat }, .{ 1, y1_beat - y0_beat }, .{ 0.5, 0.5, 0.5, 1 });
+                try render_state.renderer.reserveTexQuadPxSize("white", .{ posX, posY + y0_beat }, .{ 1, y1_beat - y0_beat }, .{ 0.5, 0.5, 0.5, 1 });
             },
         }
     }

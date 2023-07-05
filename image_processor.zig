@@ -166,7 +166,11 @@ pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void 
                     }
                 }
             },
-            else => return error.UnknownImageFormat,
+            else => {
+                std.debug.print("Unknown image format {s} for {s}!\n", .{ @tagName(packed_image.image.image.pixels), packed_image.image.name });
+
+                return error.UnknownImageFormat;
+            },
         }
     }
 

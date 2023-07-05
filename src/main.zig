@@ -276,6 +276,7 @@ fn runGame() !void {
             .renderer = &renderer,
             .fontstash = fontstash,
             .render_pass_encoder = &render_pass_encoder,
+            .game_state = &state,
         });
 
         if (builtin.mode == .Debug) {

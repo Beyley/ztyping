@@ -1090,7 +1090,16 @@ pub const UVs = struct {
 
 const Atlas = @import("content/atlas.zig");
 pub fn getTexUVsFromAtlas(comptime name: []const u8) UVs {
-    const info = @field(Atlas, name);
+    return getTexUVsFromAtlasPadding(name, 0);
+}
+
+pub fn getTexUVsFromAtlasPadding(comptime name: []const u8, comptime padding: comptime_float) UVs {
+    var info = @field(Atlas, name);
+
+    info.x += padding;
+    info.y += padding;
+    info.w -= padding * 2;
+    info.h -= padding * 2;
 
     return .{
         .tl = .{

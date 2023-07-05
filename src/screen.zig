@@ -20,6 +20,7 @@ pub const RenderState = struct {
     renderer: *Renderer,
     fontstash: *Fontstash,
     render_pass_encoder: *Gfx.RenderPassEncoder,
+    game_state: *GameState,
 };
 
 close_screen: bool = false,
