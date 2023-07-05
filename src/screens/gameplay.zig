@@ -911,10 +911,10 @@ fn drawStatGauge(render_state: Screen.RenderState, data: *GameplayData) !void {
 
     for (&data.gauge_data.draw_x, &data.gauge_data.draw_v, &data.gauge_data.lengths) |*x, *velocity, length| {
         //Add a little bit of velocity, depending on the amount we need to change
-        velocity.* += 0.12 * (length - x.*);
+        velocity.* += 0.12 * (length - x.*) * render_state.game_state.delta_time * 350;
         x.* += velocity.*;
         //Slow the velocity down
-        velocity.* *= 0.7;
+        velocity.* *= 0.7 * render_state.game_state.delta_time * 250;
     }
 
     var rate: f32 = 20;
@@ -940,8 +940,8 @@ fn drawStatGauge(render_state: Screen.RenderState, data: *GameplayData) !void {
     //Render a solid box around the stat gauge
     try render_state.renderer.reserveSolidBox(.{ stat_gauge_x - stat_gauge_width, y }, .{ stat_gauge_width, stat_gauge_height }, .{ 0.25, 0.25, 0.25, 0.5 });
 
-    for (data.gauge_data.lengths, data.gauge_data.colours, 0..) |length, colour, i| {
-        try drawBar(render_state, @floatCast(length * data.gauge_data.rate), y + @as(f32, @floatFromInt(i)) * single_bar_height, single_bar_height, colour[0]);
+    for (data.gauge_data.draw_x, data.gauge_data.colours, 0..) |x, colour, i| {
+        try drawBar(render_state, @floatCast(x * data.gauge_data.rate), y + @as(f32, @floatFromInt(i)) * single_bar_height, single_bar_height, colour[0]);
     }
 
     for (&data.gauge_data.lights, &data.gauge_data.colours, 0..) |*light, colour, i| {
