@@ -208,12 +208,12 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
 pub fn deinit(self: *Self) void {
     self.projection_matrix_buffer.deinit();
     self.bind_group_layouts.deinit();
-    c.wgpuPipelineLayoutDrop(self.render_pipeline_layout);
+    c.wgpuPipelineLayoutRelease(self.render_pipeline_layout);
     self.render_pipeline.deinit();
     if (self.swap_chain) |_| {
         self.swap_chain.?.deinit();
     }
-    c.wgpuShaderModuleDrop(self.shader);
+    c.wgpuShaderModuleRelease(self.shader);
     self.device.deinit();
     self.adapter.deinit();
     self.surface.deinit();
@@ -227,7 +227,7 @@ pub const RenderPipeline = struct {
     c: c.WGPURenderPipeline,
 
     pub fn deinit(self: *RenderPipeline) void {
-        c.wgpuRenderPipelineDrop(self.c.?);
+        c.wgpuRenderPipelineRelease(self.c.?);
 
         self.c = null;
     }
@@ -272,7 +272,7 @@ pub const BindGroup = struct {
     c: c.WGPUBindGroup,
 
     pub fn deinit(self: *BindGroup) void {
-        c.wgpuBindGroupDrop(self.c);
+        c.wgpuBindGroupRelease(self.c);
 
         self.c = null;
     }
@@ -287,8 +287,8 @@ pub const Texture = struct {
 
     ///De-inits the texture, freeing its resources
     pub fn deinit(self: *Texture) void {
-        c.wgpuTextureViewDrop(self.view);
-        c.wgpuTextureDrop(self.tex);
+        c.wgpuTextureViewRelease(self.view);
+        c.wgpuTextureRelease(self.tex);
         if (self.bind_group) |_| {
             self.bind_group.?.deinit();
         }
@@ -336,7 +336,7 @@ pub const BindGroupLayout = struct {
     c: c.WGPUBindGroupLayout,
 
     pub fn deinit(self: *BindGroupLayout) void {
-        c.wgpuBindGroupLayoutDrop(self.c.?);
+        c.wgpuBindGroupLayoutRelease(self.c.?);
 
         self.c = null;
     }
@@ -390,7 +390,7 @@ pub const SwapChain = struct {
     c: c.WGPUSwapChain,
 
     pub fn deinit(self: *SwapChain) void {
-        c.wgpuSwapChainDrop(self.c);
+        c.wgpuSwapChainRelease(self.c);
 
         self.c = null;
     }
@@ -408,7 +408,7 @@ pub const Surface = struct {
     c: c.WGPUSurface,
 
     pub fn deinit(self: *Surface) void {
-        c.wgpuSurfaceDrop(self.c);
+        c.wgpuSurfaceRelease(self.c);
 
         self.c = null;
     }
@@ -422,7 +422,7 @@ pub const Instance = struct {
     c: c.WGPUInstance,
 
     pub fn deinit(self: *Instance) void {
-        c.wgpuInstanceDrop(self.c);
+        c.wgpuInstanceRelease(self.c);
 
         self.c = null;
     }
@@ -522,7 +522,7 @@ pub const Adapter = struct {
     c: c.WGPUAdapter,
 
     pub fn deinit(self: *Adapter) void {
-        c.wgpuAdapterDrop(self.c);
+        c.wgpuAdapterRelease(self.c);
 
         self.c = null;
     }
@@ -539,6 +539,8 @@ pub const Adapter = struct {
                 .nextInChain = null,
                 .label = "Default Queue",
             },
+            .deviceLostCallback = deviceLost,
+            .deviceLostUserdata = null,
             .nextInChain = null,
         }, handleDeviceCallback, @ptrCast(&device));
 
@@ -586,7 +588,7 @@ pub const Device = struct {
     c: c.WGPUDevice,
 
     pub fn deinit(self: *Device) void {
-        c.wgpuDeviceDrop(self.c);
+        c.wgpuDeviceRelease(self.c);
 
         self.c = null;
     }
@@ -993,7 +995,7 @@ pub const Buffer = struct {
     size: u64,
 
     pub fn deinit(self: *Buffer) void {
-        c.wgpuBufferDrop(self.c);
+        c.wgpuBufferRelease(self.c);
 
         self.c = null;
     }
@@ -1017,7 +1019,6 @@ pub fn createInstance() !Instance {
 
 pub fn setErrorCallbacks(self: *Self) void {
     c.wgpuDeviceSetUncapturedErrorCallback(self.device.c, uncapturedError, null);
-    c.wgpuDeviceSetDeviceLostCallback(self.device.c, deviceLost, null);
 
     std.debug.print("setup wgpu device callbacks\n", .{});
 }

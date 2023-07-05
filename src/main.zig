@@ -299,7 +299,7 @@ fn runGame() !void {
 
         gfx.swap_chain.?.swapChainPresent();
 
-        c.wgpuTextureViewDrop(next_texture);
+        c.wgpuTextureViewRelease(next_texture);
 
         if (screen.close_screen) {
             _ = screen_stack.pop();
