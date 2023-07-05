@@ -948,7 +948,7 @@ fn drawStatGauge(render_state: Screen.RenderState, data: *GameplayData) !void {
         try drawLight(render_state, @floatCast(light.*), y + @as(f32, @floatFromInt(i)) * single_bar_height, single_bar_height, colour[1]);
 
         //Lower the amount of light by 0.85
-        light.* *= 0.85;
+        light.* *= 1 - ((1 - 0.95) * (render_state.game_state.delta_time * 250));
     }
 }
 
@@ -977,9 +977,9 @@ fn drawLight(render_state: Screen.RenderState, light: f32, y: f32, h: f32, color
     //Cap the display light to 1
     display_light = @min(1, display_light);
 
-    //TODO: give this a nice name, and figure out what the hell it does
-    var dh = @round(h * 0.5 * (1 - display_light) * (1 - display_light));
-    try render_state.renderer.reserveSolidBox(.{ stat_gauge_x - stat_gauge_width, y + dh }, .{ stat_gauge_width, h - dh }, display_color);
+    //The amount to change the height of the light as it fades out
+    var delta_height = @round(h * 0.5 * (1 - display_light) * (1 - display_light)) * 4;
+    try render_state.renderer.reserveSolidBox(.{ stat_gauge_x - stat_gauge_width, y + delta_height / 2 }, .{ stat_gauge_width, h - delta_height }, display_color);
 }
 
 const accuracy_x = circle_x - circle_r;
