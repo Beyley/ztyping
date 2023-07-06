@@ -32,7 +32,6 @@ pub fn build(b: *std.Build) !void {
         exe.linkFramework("Metal");
         exe.linkFramework("QuartzCore");
         exe.linkFramework("Foundation");
-        // exe.linkFramework("CoreFoundation");
 
         exe.linkSystemLibrary("objc");
     }

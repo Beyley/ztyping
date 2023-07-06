@@ -988,12 +988,12 @@ const accuracy_y = 90;
 fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
     //Draw the score
     var buf: [8]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0 };
-    _ = std.fmt.formatIntBuf(
+    var used = std.fmt.formatIntBuf(
         &buf,
         data.score.accuracy_score + data.score.typing_score,
         10,
         .upper,
-        .{ .width = 8, .fill = '0' },
+        .{},
     );
 
     var state: Fontstash.Fontstash.State = .{
@@ -1002,12 +1002,13 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
         .color = Gfx.WhiteF,
         .alignment = .{
             .horizontal = .right,
+            .vertical = .top,
         },
     };
 
     try render_state.fontstash.drawText(
-        .{ x_score, y_score - render_state.fontstash.verticalMetrics(state).line_height },
-        &buf,
+        .{ x_score, y_score },
+        buf[0..used],
         state,
     );
 
