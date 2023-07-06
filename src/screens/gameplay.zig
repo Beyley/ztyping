@@ -854,8 +854,8 @@ fn checkForMissedNotes(data: *GameplayData) void {
 ///Whether the user is in a state to miss the current note
 fn missCheck(data: *GameplayData, current_note: Fumen.Lyric, next_note: ?Fumen.Lyric) bool {
     for (data.music.fumen.lyric_cutoffs) |cutoff| {
-        //If the current note is *after* this cutoff,
-        if (cutoff.time < current_note.time) {
+        //If the current note is after or equal to this cutoff,
+        if (current_note.time >= cutoff.time) {
             //Skip it
             continue;
         }
@@ -881,7 +881,7 @@ fn missCheck(data: *GameplayData, current_note: Fumen.Lyric, next_note: ?Fumen.L
 }
 
 const gauge_x = 90;
-const gauge_y = 455;
+const gauge_y = Screen.display_height - 25;
 const gauge_width = gauge_segment_width * gauge_count;
 const gauge_height = 10;
 const gauge_segment_width = 5;
