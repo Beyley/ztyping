@@ -53,6 +53,9 @@ const GameplayData = struct {
 
     gauge_data: GaugeData,
 
+    ///The interpolated score to draw on the screen
+    draw_score: f64 = 0,
+
     //things Actually Relavent to the gameplay
 
     ///Get the actively playing music
@@ -986,33 +989,34 @@ const accuracy_x = circle_x - circle_r;
 const accuracy_y = 90;
 
 fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
+    const combined_score: f64 = @floatFromInt(data.score.accuracy_score + data.score.typing_score);
+    data.draw_score += (render_state.game_state.delta_time * 25 * (combined_score - data.draw_score));
+
     //Draw the score
     var buf: [8]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0 };
     var used = std.fmt.formatIntBuf(
         &buf,
-        data.score.accuracy_score + data.score.typing_score,
+        @as(u64, @intFromFloat(@ceil(data.draw_score))),
         10,
         .upper,
         .{},
     );
 
-    var state: Fontstash.Fontstash.State = .{
-        .font = Fontstash.Mincho,
-        .size = Fontstash.ptToPx(36),
-        .color = Gfx.WhiteF,
-        .alignment = .{
-            .horizontal = .right,
-            .vertical = .top,
-        },
-    };
-
     try render_state.fontstash.drawText(
         .{ x_score, y_score },
         buf[0..used],
-        state,
+        .{
+            .font = Fontstash.Mincho,
+            .size = Fontstash.ptToPx(36),
+            .color = Gfx.WhiteF,
+            .alignment = .{
+                .horizontal = .right,
+                .vertical = .top,
+            },
+        },
     );
 
-    state = .{
+    var state = .{
         .font = Fontstash.Mincho,
         .size = Fontstash.ptToPx(36),
         .color = data.accuracy_text_color,
