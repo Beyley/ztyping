@@ -647,7 +647,7 @@ const y_score = 70;
 // https://github.com/toslunar/UTyping/blob/1b2eff072bda776ae4d7091f39d0c440f45d2727/UTyping.cpp#L2768
 inline fn getDrawPosX(time_diff: f64) f32 {
     //return X_CIRCLE + (int)(-timeDiff * (CIRCLE_SPEED * m_challenge.speed()));
-    return @as(f32, @floatCast(circle_x + (-time_diff * (circle_speed * 1.0))));
+    return @floatCast(circle_x + (-time_diff * (circle_speed * 1.0)));
 }
 
 const scale_function = 60;
