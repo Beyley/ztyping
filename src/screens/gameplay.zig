@@ -79,22 +79,22 @@ const GameplayData = struct {
     accuracy_text_color: Gfx.ColorF = .{ 1, 1, 1, 1 },
 };
 
-const IdHitResult = enum(usize) {
-    excellent,
-    good,
-    fair,
-    poor,
-    pass,
-};
-
 const GaugeData = struct {
     //Gauge
 
-    gauge: i32,
-    gauge_max: i32,
-    gauge_last_count: i32,
-    gauge_new_count: i32,
-    gauge_last_lost: i32,
+    gauge: isize,
+    gauge_max: isize,
+    gauge_last_count: isize,
+    gauge_new_count: isize,
+    gauge_last_lost: isize,
+
+    excellent_count: usize = 0,
+    good_count: usize = 0,
+    fair_count: usize = 0,
+    poor_count: usize = 0,
+    clear_count: usize = 0,
+
+    note_count: usize,
 
     //Stat gauge
 
@@ -109,6 +109,14 @@ const GaugeData = struct {
     lights: [4]f64,
     colours: [4][2]Gfx.ColorF,
 
+    const GaugeZone = enum {
+        failed,
+        red,
+        yellow,
+        blue,
+        clear,
+    };
+
     pub fn statIncrement(self: *GaugeData, hit_result: Fumen.Lyric.HitResult) void {
         //Increment the lengths
         self.lengths[@intFromEnum(hit_result)] += 1;
@@ -116,14 +124,117 @@ const GaugeData = struct {
         self.lights[@intFromEnum(hit_result)] = 1;
     }
 
-    pub fn init() GaugeData {
+    pub fn updateGauge(self: *GaugeData, data: *GameplayData) void {
+        const count = data.active_note;
+
+        if (count > self.gauge_last_count) {
+            var lost: isize = @intCast(count - self.clear_count);
+            var t = lost - self.gauge_last_lost;
+            self.gauge_last_lost = lost;
+            while (t > 0) : (t -= 1) {
+                switch (self.getGaugeZone()) {
+                    .red => self.gauge -= 50,
+                    .yellow => self.gauge -= 100,
+                    .blue => self.gauge -= @intCast(100 + (self.note_count / 2)),
+                    .clear => self.gauge -= @intCast(100 + self.note_count),
+                    else => {},
+                }
+            }
+
+            t = @as(isize, @intCast(count)) - self.gauge_last_count;
+            self.gauge_last_count = @intCast(count);
+
+            t -= self.gauge_new_count;
+            if (t < 0) {
+                self.gauge_new_count = -t;
+            } else {
+                while (t > 0) : (t -= 1) {
+                    switch (self.getGaugeZone()) {
+                        .red => self.gauge -= 100,
+                        .yellow => self.gauge -= 150,
+                        .blue => self.gauge -= 200,
+                        .clear => self.gauge -= @intCast(200 + self.note_count),
+                        else => {},
+                    }
+                }
+                self.gauge_new_count = 0;
+            }
+        }
+
+        if (self.gauge <= 0) {
+            self.gauge = 0;
+
+            //TODO: fail, if failing is enabled
+        }
+    }
+
+    pub fn gaugeIncrement(self: *GaugeData, hit_result: Fumen.Lyric.HitResult) void {
+        const gauge_zone = self.getGaugeZone();
+        switch (hit_result) {
+            .excellent => {
+                switch (gauge_zone) {
+                    .red => self.gauge += 200,
+                    .yellow => self.gauge += 200,
+                    .blue => self.gauge += 150,
+                    .clear => self.gauge += 100,
+                    else => {},
+                }
+            },
+            .good => {
+                switch (gauge_zone) {
+                    .red => self.gauge += 100,
+                    .yellow => self.gauge += 100,
+                    .blue => self.gauge += 75,
+                    .clear => self.gauge += 50,
+                    else => {},
+                }
+            },
+            .fair => {},
+            .poor => {
+                switch (gauge_zone) {
+                    .red => self.gauge -= 50,
+                    .yellow => self.gauge -= 100,
+                    .blue => self.gauge -= 150,
+                    .clear => self.gauge -= @intCast(150 + self.note_count),
+                    else => {},
+                }
+            },
+        }
+        self.gauge_new_count += 1;
+        self.gauge = @min(self.gauge, self.gauge_max);
+        self.clear_count += 1;
+
+        if (self.gauge <= 0) {
+            self.gauge = 0;
+
+            //TODO: fail, if failing is enabled
+        }
+    }
+
+    fn getGaugeZone(self: *GaugeData) GaugeZone {
+        if (self.gauge == 0) {
+            return .failed;
+        } else if (self.gauge <= self.note_count * gauge_red_zone) {
+            return .red;
+        } else if (self.gauge <= self.note_count * gauge_yellow_zone) {
+            return .yellow;
+        } else if (self.gauge <= self.note_count * gauge_clear_zone) {
+            return .blue;
+        } else {
+            return .clear;
+        }
+    }
+
+    pub fn init(note_count: usize) GaugeData {
         return .{
             //Gauge
-            .gauge = 0,
-            .gauge_max = 0,
+            .gauge = @intCast(note_count * 25),
+            .gauge_max = @intCast(note_count * gauge_count),
             .gauge_last_count = 0,
             .gauge_new_count = 0,
             .gauge_last_lost = 0,
+
+            .note_count = note_count,
 
             //Stat gauge
             .lengths = [4]f64{ 0, 0, 0, 0 },
@@ -167,7 +278,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
         .animation_timers = .{
             .accuracy_text = try std.time.Timer.start(),
         },
-        .gauge_data = GaugeData.init(),
+        .gauge_data = GaugeData.init(self.state.current_map.?.fumen.lyrics.len),
     };
 
     //Reset the hit status for all the lyrics before the game starts
@@ -266,6 +377,9 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
     if (data.phase != .main) {
         return;
     }
+
+    //Defer updateGauge to happen at the end of scope
+    defer data.gauge_data.updateGauge(data);
 
     // std.debug.print("user wrote {s}\n", .{typed_char});
 
@@ -554,6 +668,14 @@ fn handleNoteFirstChar(data: *GameplayData, note: *Fumen.Lyric) void {
         .poor => poor_color,
     };
 
+    switch (note.pending_hit_result.?) {
+        .excellent => data.gauge_data.excellent_count += 1,
+        .good => data.gauge_data.good_count += 1,
+        .fair => data.gauge_data.fair_count += 1,
+        .poor => data.gauge_data.poor_count += 1,
+    }
+
+    data.gauge_data.gaugeIncrement(note.pending_hit_result.?);
     data.gauge_data.statIncrement(note.pending_hit_result.?);
 
     //Reset the animation timer for accuracy_text
@@ -738,6 +860,8 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
     try drawKanjiLyrics(render_state, data);
 
+    try drawGauge(render_state, data, false);
+
     try drawStatGauge(render_state, data);
 
     try drawScoreUi(render_state, data);
@@ -765,6 +889,14 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
         inline for (@typeInfo(Score).Struct.fields) |field| {
             handleDebugType(data.score, field.name, field.type, {});
+        }
+
+        c.igSeparator();
+
+        c.igText("Gauge Data");
+
+        inline for (@typeInfo(GaugeData).Struct.fields) |field| {
+            handleDebugType(data.gauge_data, field.name, field.type, {});
         }
 
         c.igEnd();
@@ -836,6 +968,8 @@ fn missNote(data: *GameplayData) void {
         data.phase = .finished;
         std.debug.print("note missed, game finished\n", .{});
     }
+
+    data.gauge_data.updateGauge(data);
 }
 
 fn checkForMissedNotes(data: *GameplayData) void {
@@ -888,19 +1022,62 @@ const gauge_y = Screen.display_height - 25;
 const gauge_width = gauge_segment_width * gauge_count;
 const gauge_height = 10;
 const gauge_segment_width = 5;
-const gauge_segment_width_padding = 4;
-const gauge_segment_height_padding = 2;
+const gauge_width_padding = 4;
+const gauge_height_padding = 2;
 
 const gauge_count = 100;
+const gauge_red_zone = 15;
+const gauge_yellow_zone = 45;
+const gauge_clear_zone = 75;
 
 fn drawGauge(render_state: Screen.RenderState, data: *GameplayData, is_result: bool) !void {
-    _ = data;
-    _ = render_state;
+    const y: f32 = if (is_result) 355 else gauge_y;
 
-    var y0 = if (is_result) 355 else gauge_y;
+    const count = @divTrunc(data.gauge_data.gauge + @as(isize, @intCast(data.music.fumen.lyrics.len)) - 1, @as(isize, @intCast(data.music.fumen.lyrics.len)));
 
-    var y1 = y0 + gauge_height;
-    _ = y1;
+    //Render the background
+    try render_state.renderer.reserveSolidBox(
+        .{ gauge_x - gauge_width_padding, y - gauge_height_padding },
+        .{ gauge_width + gauge_width_padding * 2, gauge_height + gauge_height_padding * 2 },
+        .{ 0.0627, 0.0627, 0.0627, 0.5 },
+    );
+
+    for (0..gauge_count) |i| {
+        const x: f32 = @floatFromInt(gauge_x + gauge_segment_width * i);
+
+        const color = getGaugeColor(i, count);
+
+        if (i < count) {
+            var overflowing_color: Gfx.ColorF = color;
+            overflowing_color[3] = color[3] * (3 / 16);
+
+            try render_state.renderer.reserveSolidBox(
+                .{ x + 1, y - 1 },
+                .{ gauge_segment_width - 2, gauge_height + 1 },
+                overflowing_color,
+            );
+        }
+
+        try render_state.renderer.reserveSolidBox(
+            .{ x + 1, y },
+            .{ gauge_segment_width - 2, gauge_height },
+            color,
+        );
+    }
+}
+
+fn getGaugeColor(pos: usize, count: isize) Gfx.ColorF {
+    const alpha: f32 = if (pos >= count) 0.25 else 1;
+
+    if (pos < gauge_red_zone) {
+        return .{ 1, 0.125, 0, alpha };
+    } else if (pos < gauge_yellow_zone) {
+        return .{ 0.878, 1, 0, alpha };
+    } else if (pos < gauge_clear_zone) {
+        return .{ 0, 0.25, 1, alpha };
+    } else {
+        return .{ 1, 1, 1, alpha };
+    }
 }
 
 const stat_gauge_x = Screen.display_width - 10;
