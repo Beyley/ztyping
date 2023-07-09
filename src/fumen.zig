@@ -82,6 +82,7 @@ lyric_cutoffs: []const LyricCutoff,
 lyrics_kanji: []const LyricKanji,
 beat_lines: []const BeatLine,
 fumen_folder: []const u8,
+time_length: f64,
 
 allocator: std.mem.Allocator,
 
@@ -117,6 +118,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
         .beat_lines = &.{},
         .fumen_folder = &.{},
         .lyric_cutoffs = &.{},
+        .time_length = 0,
     };
 
     var iconv = IConv.ziconv_open("Shift_JIS", "UTF-8");
@@ -227,6 +229,8 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
                 if (lyrics_kanji.items.len > 0) {
                     lyrics_kanji.items[lyrics_kanji.items.len - 1].time_end = time;
                 }
+
+                self.time_length = time;
 
                 try lyric_cutoffs.append(.{ .time = time });
             },

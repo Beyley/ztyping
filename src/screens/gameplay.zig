@@ -866,6 +866,8 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
     try drawScoreUi(render_state, data);
 
+    try drawElapsedTime(render_state, data);
+
     try render_state.renderer.end();
     try render_state.renderer.draw(render_state.render_pass_encoder);
 
@@ -945,6 +947,23 @@ fn handleDebugType(data: anytype, comptime name: []const u8, comptime T: type, c
         },
         else => {},
     }
+}
+
+const time_x = gauge_x;
+const time_y = 445;
+const time_width = gauge_width;
+const time_height = 4;
+
+const time_color: Gfx.ColorF = .{ 0.25, 0.75, 1, 1 };
+const time_color_2: Gfx.ColorF = .{ 0.75, 0.75, 0.75, 1 };
+
+fn drawElapsedTime(render_state: RenderState, data: *GameplayData) !void {
+    const time = std.math.clamp(data.current_time / data.music.fumen.time_length, 0, 1);
+
+    const pos: f32 = @floatCast(gauge_width * time);
+
+    try render_state.renderer.reserveSolidBox(.{ time_x, time_y }, .{ pos, time_height }, time_color);
+    try render_state.renderer.reserveSolidBox(.{ time_x + pos - 3, time_y }, .{ 6, time_height }, time_color_2);
 }
 
 ///Causes the game to process a full miss on the current note
