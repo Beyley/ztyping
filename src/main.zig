@@ -10,6 +10,7 @@ const Fontstash = @import("fontstash.zig");
 const Music = @import("music.zig");
 const GameState = @import("game_state.zig");
 const Convert = @import("convert.zig");
+const Config = @import("config.zig");
 
 pub const c = @cImport({
     @cInclude("SDL2/SDL.h");
@@ -25,8 +26,7 @@ pub const c = @cImport({
 });
 
 fn runGame() !void {
-    //The scale of the window
-    const scale = 2;
+    var config = try Config.readConfig();
 
     const use_gpa = std.debug.runtime_safety;
 
@@ -69,7 +69,7 @@ fn runGame() !void {
     std.debug.print("Initialized SDL\n", .{});
 
     //Create the window
-    const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 640 * scale, 480 * scale, c.SDL_WINDOW_SHOWN) orelse {
+    const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, @intFromFloat(640 * config.window_scale), @intFromFloat(480 * config.window_scale), c.SDL_WINDOW_SHOWN) orelse {
         std.debug.print("SDL window creation failed! err:{s}\n", .{c.SDL_GetError()});
         return error.CreateWindowFailure;
     };
@@ -97,10 +97,10 @@ fn runGame() !void {
     try bass.init(.default, null, .{}, bass_window_ptr);
     defer bass.deinit();
 
-    try bass.setConfig(.global_stream_volume, 0.1 * 10000);
+    try bass.setConfig(.global_stream_volume, @intFromFloat(config.volume * 10000));
 
     //Initialize our graphics
-    var gfx: Gfx = try Gfx.init(window, scale);
+    var gfx: Gfx = try Gfx.init(window, config.window_scale);
     defer gfx.deinit();
 
     var imgui_context = c.igCreateContext(null);
