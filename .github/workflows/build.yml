@@ -27,4 +27,9 @@ jobs:
         uses: goto-bus-stop/setup-zig@v2
           
       - name: Build 
+        if: matrix.os == 'windows-latest'
+        run: zig build -Doptimize=${{ matrix.mode }} -Dtarget=${{ matrix.target }} -j1
+          
+      - name: Build 
+        if: matrix.os != 'windows-latest'
         run: zig build -Doptimize=${{ matrix.mode }} -Dtarget=${{ matrix.target }}
