@@ -868,6 +868,8 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
     try drawElapsedTime(render_state, data);
 
+    try drawCurrentLyricText(render_state, data);
+
     try render_state.renderer.end();
     try render_state.renderer.draw(render_state.render_pass_encoder);
 
@@ -947,6 +949,36 @@ fn handleDebugType(data: anytype, comptime name: []const u8, comptime T: type, c
         },
         else => {},
     }
+}
+
+const big_lyric_x = circle_x - circle_r;
+const big_lyirc_y = 350;
+
+fn drawCurrentLyricText(render_state: RenderState, data: *GameplayData) !void {
+    //Only draw the current lyric text during the main phase
+    if (data.phase != .main) {
+        return;
+    }
+
+    const current_note = data.music.fumen.lyrics[data.active_note];
+
+    //If we are not within the typing window of the note, dont display its text
+    if (current_note.time - poor_window > data.current_time) {
+        return;
+    }
+
+    //TODO: smoothly move the characters after they are typed, this is something UTyping does with CEffectStr
+    //      so we should probably create a similar datatype to replicate that behaviour
+    try render_state.fontstash.drawText(.{ big_lyric_x, big_lyirc_y }, current_note.text[data.typed_hiragana.len..], .{
+        .font = Fontstash.Mincho,
+        .size = Fontstash.ptToPx(36),
+    });
+
+    //TODO: see above TODO
+    try render_state.fontstash.drawText(.{ big_lyric_x, big_lyirc_y + 50 }, data.typed_romaji, .{
+        .font = Fontstash.Mincho,
+        .size = Fontstash.ptToPx(36),
+    });
 }
 
 const time_x = gauge_x;
