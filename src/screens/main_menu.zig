@@ -79,7 +79,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
     try render_state.fontstash.renderer.begin();
 
-    try render_state.fontstash.drawText(
+    _ = try render_state.fontstash.drawText(
         .{ Screen.display_width / 2, Screen.display_height / 3 },
         "ztyping",
         .{
@@ -92,7 +92,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
         },
     );
 
-    try render_state.fontstash.drawText(
+    _ = try render_state.fontstash.drawText(
         .{ Screen.display_width - 10, Screen.display_height - 10 },
         "(c)2023 Beyley",
         .{
@@ -105,7 +105,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
         },
     );
 
-    try render_state.fontstash.drawText(
+    _ = try render_state.fontstash.drawText(
         .{ Screen.display_width / 2, Screen.display_height * 2 / 3 },
         "Press Enter key.",
         .{
@@ -128,7 +128,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     };
 
     var metrics = render_state.fontstash.verticalMetrics(state);
-    try render_state.fontstash.drawText(
+    _ = try render_state.fontstash.drawText(
         .{ 30, 375 + metrics.line_height },
         "名前を入力してください :",
         state,
@@ -146,7 +146,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
         metrics = render_state.fontstash.verticalMetrics(fs_state);
         try data.name.append(0);
-        try render_state.fontstash.drawText(
+        _ = try render_state.fontstash.drawText(
             .{ 60, 400 + metrics.line_height * 2 },
             data.name.items[0..(data.name.items.len - 1) :0],
             fs_state,
@@ -163,7 +163,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
         };
 
         metrics = render_state.fontstash.verticalMetrics(state);
-        try render_state.fontstash.drawText(
+        _ = try render_state.fontstash.drawText(
             .{ 60, 400 + metrics.line_height * 2 },
             "（未設定）",
             state,

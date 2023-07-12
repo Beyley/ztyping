@@ -64,15 +64,16 @@ pub fn verticalMetrics(self: *Self, state: Fontstash.State) struct { ascender: f
     };
 }
 
-pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: Fontstash.State) !void {
+///Returns the bottom right position of the last quad in the string
+pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: Fontstash.State) !Gfx.Vector2 {
     var internal_state = state;
     internal_state.size *= self.gfx.scale;
 
-    _ = try self.context.drawText(
+    return try self.context.drawText(
         position * @splat(2, self.gfx.scale),
         text,
         internal_state,
-    );
+    ) / @splat(2, self.gfx.scale);
 }
 
 pub fn ptToPx(pt: f32) f32 {

@@ -55,7 +55,7 @@ pub const LyricKanji = struct {
                 },
             };
 
-            try render_state.fontstash.drawText(
+            _ = try render_state.fontstash.drawText(
                 .{ acc_x, y },
                 part.text,
                 state,

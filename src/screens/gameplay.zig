@@ -849,7 +849,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
             },
         };
 
-        try render_state.fontstash.drawText(
+        _ = try render_state.fontstash.drawText(
             .{ 50, 370 - render_state.fontstash.verticalMetrics(state).line_height },
             "Press any key to start.",
             state,
@@ -869,6 +869,30 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     try drawElapsedTime(render_state, data);
 
     try drawCurrentLyricText(render_state, data);
+
+    const info_x = 160;
+    const info_y = 10;
+
+    const state: Fontstash.Fontstash.State = .{
+        .font = Fontstash.Gothic,
+        .size = Fontstash.ptToPx(16),
+        .alignment = .{
+            .vertical = .top,
+            .horizontal = .right,
+        },
+    };
+
+    var buf: [16]u8 = undefined;
+    const written = std.fmt.formatIntBuf(&buf, data.score.max_combo, 10, .lower, .{});
+
+    const spacing = 3;
+
+    const size2 = try render_state.fontstash.textBounds(buf[0..written], state);
+    const size3 = try render_state.fontstash.textBounds("コンボ", state);
+
+    _ = try render_state.fontstash.drawText(.{ info_x + size2.x1 + size3.x1 - spacing * 2, info_y }, "最大", state);
+    _ = try render_state.fontstash.drawText(.{ info_x + size3.x1 - spacing, info_y }, buf[0..written], state);
+    _ = try render_state.fontstash.drawText(.{ info_x, info_y }, "コンボ", state);
 
     try render_state.renderer.end();
     try render_state.renderer.draw(render_state.render_pass_encoder);
@@ -967,18 +991,20 @@ fn drawCurrentLyricText(render_state: RenderState, data: *GameplayData) !void {
         return;
     }
 
+    const state: Fontstash.Fontstash.State = .{
+        .font = Fontstash.Mincho,
+        .size = Fontstash.ptToPx(36),
+        .alignment = .{
+            .vertical = .top,
+        },
+    };
+
     //TODO: smoothly move the characters after they are typed, this is something UTyping does with CEffectStr
     //      so we should probably create a similar datatype to replicate that behaviour
-    try render_state.fontstash.drawText(.{ big_lyric_x, big_lyirc_y }, current_note.text[data.typed_hiragana.len..], .{
-        .font = Fontstash.Mincho,
-        .size = Fontstash.ptToPx(36),
-    });
+    _ = try render_state.fontstash.drawText(.{ big_lyric_x, big_lyirc_y }, current_note.text[data.typed_hiragana.len..], state);
 
     //TODO: see above TODO
-    try render_state.fontstash.drawText(.{ big_lyric_x, big_lyirc_y + 50 }, data.typed_romaji, .{
-        .font = Fontstash.Mincho,
-        .size = Fontstash.ptToPx(36),
-    });
+    _ = try render_state.fontstash.drawText(.{ big_lyric_x, big_lyirc_y + 40 }, data.typed_romaji, state);
 }
 
 const time_x = gauge_x;
@@ -1230,7 +1256,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
         .{},
     );
 
-    try render_state.fontstash.drawText(
+    _ = try render_state.fontstash.drawText(
         .{ x_score, y_score },
         buf[0..used],
         .{
@@ -1250,6 +1276,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
         .color = data.accuracy_text_color,
         .alignment = .{
             .horizontal = .left,
+            .vertical = .top,
         },
     };
 
@@ -1260,6 +1287,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
     if (accuracy_text_timer < 0.05) {
         accuracy_text_offset = (0.05 - accuracy_text_timer) / 0.05 * 10;
     }
+    accuracy_text_offset -= 6;
 
     if (accuracy_text_timer > 0.6) {
         //Set the color to 0 if we are after the point it is fully faded out, to skip all that math
@@ -1272,7 +1300,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
     }
 
     var metrics = render_state.fontstash.verticalMetrics(state);
-    try render_state.fontstash.drawText(
+    _ = try render_state.fontstash.drawText(
         .{ accuracy_x, accuracy_y + metrics.line_height + accuracy_text_offset },
         data.accuracy_text,
         state,
@@ -1289,7 +1317,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
             .{ .width = 8, .fill = '0' },
         );
 
-        try render_state.fontstash.drawText(
+        _ = try render_state.fontstash.drawText(
             .{ accuracy_x + 35, accuracy_y + metrics.line_height + accuracy_text_offset },
             buf[buf.len - digits ..],
             .{
@@ -1298,6 +1326,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
                 .color = state.color,
                 .alignment = .{
                     .horizontal = .left,
+                    .vertical = .top,
                 },
             },
         );
@@ -1418,7 +1447,7 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
         }
 
         //Draw the text inside of the notes
-        try render_state.fontstash.drawText(
+        _ = try render_state.fontstash.drawText(
             .{
                 posX,
                 posY + circle_y + render_state.fontstash.verticalMetrics(state).line_height - 3,
@@ -1428,7 +1457,7 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
         );
 
         //Draw the text below the notes
-        try render_state.fontstash.drawText(
+        _ = try render_state.fontstash.drawText(
             .{ posX, lyrics_y + posY },
             lyric.text,
             .{
@@ -1453,7 +1482,7 @@ fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) !void 
 
     const next_string = "Next: ";
 
-    try render_state.fontstash.drawText(
+    _ = try render_state.fontstash.drawText(
         .{ lyrics_kanji_x, lyrics_kanji_next_y },
         next_string,
         .{

@@ -829,6 +829,8 @@ pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: Sta
 
     var iter = std.unicode.Utf8Iterator{ .bytes = text, .i = 0 };
 
+    var return_size: Gfx.Vector2 = draw_position;
+
     var previous_glyph_index: ?usize = null;
     var next: ?u21 = iter.nextCodepoint();
     while (next != null) : (next = iter.nextCodepoint()) {
@@ -849,11 +851,14 @@ pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: Sta
         self.addVertex(quad.rect.tl, quad.tex.tl, state.color);
         self.addVertex(.{ quad.rect.tl[0], quad.rect.br[1] }, .{ quad.tex.tl[0], quad.tex.br[1] }, state.color);
         self.addVertex(quad.rect.br, quad.tex.br, state.color);
+
+        //Increment the draw position
+        return_size = quad.rect.br;
     }
 
     try self.flush();
 
-    return draw_position;
+    return return_size;
 }
 
 inline fn addVertex(self: *Self, pos: Gfx.Vector2, tex: Gfx.Vector2, col: Gfx.ColorF) void {
