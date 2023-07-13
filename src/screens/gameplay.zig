@@ -1356,7 +1356,7 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
     }
 
     //Draw all the typing cutoffs
-    for (0..data.music.fumen.lyric_cutoffs) |j| {
+    for (0..data.music.fumen.lyric_cutoffs.len) |j| {
         var i = data.music.fumen.lyric_cutoffs.len - 1 - j;
 
         var lyric_cutoff = data.music.fumen.lyric_cutoffs[i];
