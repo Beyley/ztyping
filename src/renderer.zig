@@ -25,7 +25,10 @@ recorded_buffers: std.ArrayList(RenderBuffer),
 queued_buffers: std.ArrayList(RenderBuffer),
 recording_buffer: ?RenderBuffer = null,
 //The in-progress CPU side buffers that get uploaded to the GPU upon a call to dump()
-cpu_vtx: []Gfx.Vertex,
+cpu_vtx_raw: []u8,
+cpu_vtx_positions: []Gfx.Vector2,
+cpu_vtx_tex_coords: []Gfx.Vector2,
+cpu_vtx_colors: []Gfx.ColorF,
 cpu_idx: []IndexType,
 
 pub fn init(allocator: std.mem.Allocator, gfx: *Gfx, texture: Gfx.Texture) !Self {
@@ -37,13 +40,19 @@ pub fn init(allocator: std.mem.Allocator, gfx: *Gfx, texture: Gfx.Texture) !Self
         .recorded_buffers = undefined,
         .allocator = undefined,
         .queued_buffers = undefined,
-        .cpu_vtx = undefined,
+        .cpu_vtx_raw = undefined,
+        .cpu_vtx_positions = undefined,
+        .cpu_vtx_tex_coords = undefined,
+        .cpu_vtx_colors = undefined,
         .cpu_idx = undefined,
     };
     self.allocator = self.arena_allocator.allocator();
     self.recorded_buffers = std.ArrayList(RenderBuffer).init(self.allocator);
     self.queued_buffers = std.ArrayList(RenderBuffer).init(self.allocator);
-    self.cpu_vtx = try self.allocator.alloc(Gfx.Vertex, vtx_per_buf);
+    self.cpu_vtx_raw = try self.allocator.alloc(u8, vtx_buf_size);
+    self.cpu_vtx_positions = @as([*]Gfx.Vector2, @alignCast(@ptrCast(self.cpu_vtx_raw.ptr)))[0..vtx_per_buf];
+    self.cpu_vtx_tex_coords = @as([*]Gfx.Vector2, @alignCast(@ptrCast(self.cpu_vtx_raw.ptr)))[vtx_per_buf .. vtx_per_buf * 2];
+    self.cpu_vtx_colors = @as([*]Gfx.ColorF, @alignCast(@ptrCast(self.cpu_vtx_raw[@sizeOf(Gfx.Vector2) * 2 * vtx_per_buf ..])))[0..vtx_per_buf];
     self.cpu_idx = try self.allocator.alloc(IndexType, idx_per_buf);
 
     //I think quad_per_buf * 3 is a good amount of tris for most 2d scenes
@@ -59,12 +68,13 @@ pub fn init(allocator: std.mem.Allocator, gfx: *Gfx, texture: Gfx.Texture) !Self
 
 const quad_per_buf = 5000;
 const vtx_per_buf = quad_per_buf * 4;
+const vtx_buf_size = (@sizeOf(Gfx.Vector2) + @sizeOf(Gfx.Vector2) + @sizeOf(Gfx.ColorF)) * vtx_per_buf;
 const idx_per_buf = quad_per_buf * 6;
 const IndexType = u16;
 
 fn createRenderBuffer(self: *Self) !void {
     try self.queued_buffers.append(RenderBuffer{
-        .vtx_buf = try self.gfx.device.createBuffer(Gfx.Vertex, vtx_per_buf, .vertex),
+        .vtx_buf = try self.gfx.device.createBuffer(u8, vtx_buf_size, .vertex),
         .idx_buf = try self.gfx.device.createBuffer(IndexType, idx_per_buf, .index),
     });
 }
@@ -116,8 +126,8 @@ fn dump(self: *Self) !void {
     if (self.recording_buffer) |recording_buffer| {
         //If it was used,
         if (recording_buffer.used_idx != 0) {
-            //Write the CPU buffer to the GPU buffer, slicing only the data we need to write, the rest of the buffer is left untouched
-            self.gfx.queue.writeBuffer(recording_buffer.vtx_buf, 0, Gfx.Vertex, self.cpu_vtx[0..recording_buffer.used_vtx]);
+            //Write the CPU buffers to the GPU buffer
+            self.gfx.queue.writeBuffer(recording_buffer.vtx_buf, 0, u8, self.cpu_vtx_raw);
             self.gfx.queue.writeBuffer(recording_buffer.idx_buf, 0, IndexType, self.cpu_idx[0..recording_buffer.used_idx]);
 
             //Add to the recorded buffers
@@ -133,12 +143,16 @@ fn dump(self: *Self) !void {
 }
 
 pub const ReservedData = struct {
-    vtx: []Gfx.Vertex,
+    vtx_pos: []Gfx.Vector2,
+    vtx_tex: []Gfx.Vector2,
+    vtx_col: []Gfx.ColorF,
     idx: []IndexType,
     idx_offset: u16,
 
-    pub fn copyIn(self: ReservedData, vtx: []const Gfx.Vertex, idx: []const IndexType) void {
-        @memcpy(self.vtx, vtx);
+    pub fn copyIn(self: ReservedData, pos: []const Gfx.Vector2, tex: []const Gfx.Vector2, col: []const Gfx.ColorF, idx: []const IndexType) void {
+        @memcpy(self.vtx_pos, pos);
+        @memcpy(self.vtx_tex, tex);
+        @memcpy(self.vtx_col, col);
         @memcpy(self.idx, idx);
     }
 };
@@ -167,26 +181,17 @@ pub inline fn reserveSolidBox(
 
     var reserved = try self.reserve(4, 6);
     reserved.copyIn(&.{
-        Gfx.Vertex{
-            .position = position,
-            .tex_coord = uvs.tl,
-            .vertex_col = col,
-        },
-        Gfx.Vertex{
-            .position = position + (Gfx.Vector2{ size[0], 0 }),
-            .tex_coord = uvs.tr,
-            .vertex_col = col,
-        },
-        Gfx.Vertex{
-            .position = position + (Gfx.Vector2{ 0, size[1] }),
-            .tex_coord = uvs.bl,
-            .vertex_col = col,
-        },
-        Gfx.Vertex{
-            .position = position + size,
-            .tex_coord = uvs.br,
-            .vertex_col = col,
-        },
+        position,
+        position + (Gfx.Vector2{ size[0], 0 }),
+        position + (Gfx.Vector2{ 0, size[1] }),
+        position + size,
+    }, &.{
+        uvs.tl,
+        uvs.tr,
+        uvs.bl,
+        uvs.br,
+    }, &.{
+        col, col, col, col,
     }, &.{
         0 + reserved.idx_offset,
         2 + reserved.idx_offset,
@@ -195,7 +200,6 @@ pub inline fn reserveSolidBox(
         2 + reserved.idx_offset,
         3 + reserved.idx_offset,
     });
-    // try self.reserveTexQuadPxSize("white", position, size, col);
 }
 
 pub inline fn reserveTexQuad(
@@ -210,26 +214,17 @@ pub inline fn reserveTexQuad(
 
     var reserved = try self.reserve(4, 6);
     reserved.copyIn(&.{
-        Gfx.Vertex{
-            .position = position,
-            .tex_coord = uvs.tl,
-            .vertex_col = col,
-        },
-        Gfx.Vertex{
-            .position = position + (Gfx.Vector2{ size[0], 0 } * scale),
-            .tex_coord = uvs.tr,
-            .vertex_col = col,
-        },
-        Gfx.Vertex{
-            .position = position + (Gfx.Vector2{ 0, size[1] } * scale),
-            .tex_coord = uvs.bl,
-            .vertex_col = col,
-        },
-        Gfx.Vertex{
-            .position = position + (size * scale),
-            .tex_coord = uvs.br,
-            .vertex_col = col,
-        },
+        position,
+        position + (Gfx.Vector2{ size[0], 0 } * scale),
+        position + (Gfx.Vector2{ 0, size[1] } * scale),
+        position + (size * scale),
+    }, &.{
+        uvs.tl,
+        uvs.tr,
+        uvs.bl,
+        uvs.br,
+    }, &.{
+        col, col, col, col,
     }, &.{
         0 + reserved.idx_offset,
         2 + reserved.idx_offset,
@@ -269,9 +264,13 @@ pub fn reserve(self: *Self, vtx_count: u64, idx_count: u64) !ReservedData {
     self.recording_buffer.?.used_vtx += vtx_count;
     self.recording_buffer.?.used_idx += idx_count;
 
+    const old_used_vtx = self.recording_buffer.?.used_vtx - vtx_count;
+
     //Return the 2 slices of data
     return .{
-        .vtx = self.cpu_vtx[self.recording_buffer.?.used_vtx - vtx_count .. self.recording_buffer.?.used_vtx],
+        .vtx_pos = self.cpu_vtx_positions[old_used_vtx..self.recording_buffer.?.used_vtx],
+        .vtx_tex = self.cpu_vtx_tex_coords[old_used_vtx..self.recording_buffer.?.used_vtx],
+        .vtx_col = self.cpu_vtx_colors[old_used_vtx..self.recording_buffer.?.used_vtx],
         .idx = self.cpu_idx[self.recording_buffer.?.used_idx - idx_count .. self.recording_buffer.?.used_idx],
         .idx_offset = @intCast(self.recording_buffer.?.used_vtx - vtx_count),
     };
@@ -289,7 +288,9 @@ pub fn draw(self: *Self, encoder: *Gfx.RenderPassEncoder) !void {
     for (self.recorded_buffers.items) |recorded_buffera| {
         var recorded_buffer: RenderBuffer = recorded_buffera;
 
-        encoder.setVertexBuffer(0, recorded_buffer.vtx_buf, 0, recorded_buffer.vtx_buf.size);
+        encoder.setVertexBuffer(0, recorded_buffer.vtx_buf, 0, @sizeOf(Gfx.Vector2) * vtx_per_buf);
+        encoder.setVertexBuffer(1, recorded_buffer.vtx_buf, @sizeOf(Gfx.Vector2) * vtx_per_buf, @sizeOf(Gfx.Vector2) * vtx_per_buf);
+        encoder.setVertexBuffer(2, recorded_buffer.vtx_buf, @sizeOf(Gfx.Vector2) * 2 * vtx_per_buf, @sizeOf(Gfx.ColorF) * vtx_per_buf);
         encoder.setIndexBuffer(recorded_buffer.idx_buf, IndexType, 0, recorded_buffer.idx_buf.size);
         encoder.drawIndexed(@intCast(recorded_buffer.used_idx), 1, 0, 0, 0);
     }

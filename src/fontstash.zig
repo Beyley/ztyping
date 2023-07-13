@@ -200,14 +200,15 @@ fn draw(
 
     var reserved = try self.renderer.reserve(@intCast(positions.len), @intCast(positions.len));
 
-    var scale = @splat(2, self.gfx.scale);
+    const scale = @splat(2, self.gfx.scale);
 
-    for (0..positions.len) |i| {
-        reserved.vtx[i] = Gfx.Vertex{
-            .position = positions[i] / scale,
-            .tex_coord = tex_coords[i],
-            .vertex_col = colors[i],
-        };
+    @memcpy(reserved.vtx_pos, positions);
+    @memcpy(reserved.vtx_tex, tex_coords);
+    @memcpy(reserved.vtx_col, colors);
+
+    for (reserved.vtx_pos, 0..) |*position, i| {
+        //TODO: SIMD this smarter
+        position.* /= scale;
 
         reserved.idx[@intCast(i)] = @intCast(i + reserved.idx_offset);
     }

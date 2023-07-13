@@ -767,29 +767,39 @@ pub const Device = struct {
                 .entryPoint = "vs_main",
                 .constantCount = 0,
                 .constants = null,
-                .bufferCount = 1,
-                .buffers = &c.WGPUVertexBufferLayout{
-                    .arrayStride = @sizeOf(Vertex),
-                    .stepMode = c.WGPUVertexStepMode_Vertex,
-                    .attributeCount = 3,
-                    .attributes = @as([]const c.WGPUVertexAttribute, &.{
-                        c.WGPUVertexAttribute{
+                .bufferCount = 3,
+                .buffers = @as([]const c.WGPUVertexBufferLayout, &.{
+                    c.WGPUVertexBufferLayout{
+                        .arrayStride = @sizeOf(Vector2),
+                        .stepMode = c.WGPUVertexStepMode_Vertex,
+                        .attributeCount = 1,
+                        .attributes = &c.WGPUVertexAttribute{
                             .format = c.WGPUVertexFormat_Float32x2,
-                            .offset = @offsetOf(Vertex, "position"),
+                            .offset = 0,
                             .shaderLocation = 0,
                         },
-                        c.WGPUVertexAttribute{
+                    },
+                    c.WGPUVertexBufferLayout{
+                        .arrayStride = @sizeOf(Vector2),
+                        .stepMode = c.WGPUVertexStepMode_Vertex,
+                        .attributeCount = 1,
+                        .attributes = &c.WGPUVertexAttribute{
                             .format = c.WGPUVertexFormat_Float32x2,
-                            .offset = @offsetOf(Vertex, "tex_coord"),
+                            .offset = 0,
                             .shaderLocation = 1,
                         },
-                        c.WGPUVertexAttribute{
+                    },
+                    c.WGPUVertexBufferLayout{
+                        .arrayStride = @sizeOf(ColorF),
+                        .stepMode = c.WGPUVertexStepMode_Vertex,
+                        .attributeCount = 1,
+                        .attributes = &c.WGPUVertexAttribute{
                             .format = c.WGPUVertexFormat_Float32x4,
-                            .offset = @offsetOf(Vertex, "vertex_col"),
+                            .offset = 0,
                             .shaderLocation = 2,
                         },
-                    }).ptr,
-                },
+                    },
+                }).ptr,
             },
             .fragment = &c.WGPUFragmentState{
                 .module = shader,
@@ -1001,11 +1011,11 @@ pub const Buffer = struct {
     }
 };
 
-pub const Vertex = extern struct {
-    position: Vector2,
-    tex_coord: Vector2,
-    vertex_col: ColorF,
-};
+// pub const Vertex = extern struct {
+// position: Vector2,
+// tex_coord: Vector2,
+// vertex_col: ColorF,
+// };
 
 pub fn createInstance() !Instance {
     var instance = c.wgpuCreateInstance(&c.WGPUInstanceDescriptor{
