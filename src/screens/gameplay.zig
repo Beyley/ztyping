@@ -1447,6 +1447,8 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
             bounds = try render_state.fontstash.textBounds(lyric.text, state);
         }
 
+        size = @max(size, 5);
+
         //Draw the text inside of the notes
         _ = try render_state.fontstash.drawText(
             .{
