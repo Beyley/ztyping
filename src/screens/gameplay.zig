@@ -98,8 +98,9 @@ const GaugeData = struct {
 
     //Stat gauge
 
-    //The currently drawn length of the gauge
+    //The real length of the gauge
     lengths: [4]f64,
+    //The width its currently being drawn at
     draw_x: [4]f64,
     //Velocity of the currently drawn length of the gauge
     draw_v: [4]f64,
@@ -1168,10 +1169,10 @@ fn drawStatGauge(render_state: Screen.RenderState, data: *GameplayData) !void {
 
     for (&data.gauge_data.draw_x, &data.gauge_data.draw_v, &data.gauge_data.lengths) |*x, *velocity, length| {
         //Add a little bit of velocity, depending on the amount we need to change
-        velocity.* += 0.12 * (length - x.*) * render_state.game_state.delta_time * 350;
+        velocity.* += 0.12 * (length - x.*) * render_state.game_state.delta_time * 60;
         x.* += velocity.*;
         //Slow the velocity down
-        velocity.* *= 0.7 * render_state.game_state.delta_time * 250;
+        velocity.* *= 0.7 * render_state.game_state.delta_time * 60;
     }
 
     var rate: f32 = 20;
