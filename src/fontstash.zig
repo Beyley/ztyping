@@ -70,10 +70,10 @@ pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: Fon
     internal_state.size *= self.gfx.scale;
 
     return try self.context.drawText(
-        position * @splat(2, self.gfx.scale),
+        position * @as(Gfx.Vector2, @splat(self.gfx.scale)),
         text,
         internal_state,
-    ) / @splat(2, self.gfx.scale);
+    ) / @as(Gfx.Vector2, @splat(self.gfx.scale));
 }
 
 pub fn ptToPx(pt: f32) f32 {
@@ -200,7 +200,7 @@ fn draw(
 
     var reserved = try self.renderer.reserve(@intCast(positions.len), @intCast(positions.len));
 
-    const scale = @splat(2, self.gfx.scale);
+    const scale: Gfx.Vector2 = @splat(self.gfx.scale);
 
     @memcpy(reserved.vtx_pos, positions);
     @memcpy(reserved.vtx_tex, tex_coords);

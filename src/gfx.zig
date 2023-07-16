@@ -14,8 +14,8 @@ pub const ColorF = @Vector(4, f32);
 ///RGBA u8 color
 pub const ColorB = @Vector(4, u8);
 
-pub const Vector2One = @splat(2, @as(f32, 1));
-pub const Vector2Zero = @splat(2, @as(f32, 0));
+pub const Vector2One: Vector2 = @splat(@as(f32, 1));
+pub const Vector2Zero: Vector2 = @splat(@as(f32, 0));
 
 pub fn vector2FToU(orig: Vector2) Vector2u {
     return .{
@@ -70,7 +70,7 @@ pub fn colorBToF(orig: ColorB) ColorF {
         @floatFromInt(orig[3]),
     };
 
-    f /= @splat(4, @as(f32, 255));
+    f /= @splat(@as(f32, 255));
 
     return f;
 }
@@ -510,6 +510,7 @@ pub const Instance = struct {
             .nextInChain = null,
             .powerPreference = c.WGPUPowerPreference_HighPerformance,
             .forceFallbackAdapter = false,
+            .backendType = c.WGPUBackendType_Undefined,
         }, handleAdapterCallback, @ptrCast(&adapter));
 
         std.debug.print("got adapter {*}\n", .{adapter.?});

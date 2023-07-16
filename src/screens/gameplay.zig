@@ -273,6 +273,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
     self.allocator = allocator;
 
     var data = try allocator.create(GameplayData);
+    errdefer allocator.destroy(data);
 
     data.* = .{
         .music = &self.state.current_map.?,

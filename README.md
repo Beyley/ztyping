@@ -23,7 +23,7 @@ Does not compile
 ## Setup the environment
 Install the Zig `0.11.x` from [`https://ziglang.org/`](https://ziglang.org/) (or your favourite package manager)
 <br>
-Latest tested working version is `0.11.0-dev.3978+711b4e93e`, any newer versions may or may not work
+Latest tested working version is `0.11.0-dev.4000+3022c525e`, any newer versions may or may not work
 
 ## Extras
 

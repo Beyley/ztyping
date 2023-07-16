@@ -69,14 +69,21 @@ fn runGame() !void {
     std.debug.print("Initialized SDL\n", .{});
 
     //Create the window
-    const window = c.SDL_CreateWindow("ztyping", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, @intFromFloat(640 * config.window_scale), @intFromFloat(480 * config.window_scale), c.SDL_WINDOW_SHOWN) orelse {
+    const window = c.SDL_CreateWindow(
+        "ztyping",
+        c.SDL_WINDOWPOS_UNDEFINED,
+        c.SDL_WINDOWPOS_UNDEFINED,
+        @intFromFloat(640 * config.window_scale),
+        @intFromFloat(480 * config.window_scale),
+        c.SDL_WINDOW_SHOWN,
+    ) orelse {
         std.debug.print("SDL window creation failed! err:{s}\n", .{c.SDL_GetError()});
         return error.CreateWindowFailure;
     };
     defer c.SDL_DestroyWindow(window);
     std.debug.print("Created SDL window\n", .{});
 
-    var bass_window_ptr: ?*anyopaque = null;
+    var bass_window_ptr: usize = 0;
 
     if (builtin.os.tag == .windows) {
         var info: c.SDL_SysWMinfo = undefined;
@@ -90,7 +97,7 @@ fn runGame() !void {
         //If the window is using the Windows backend
         if (info.subsystem == c.SDL_SYSWM_WINDOWS) {
             //Set the bass window ptr to the HWND
-            bass_window_ptr = info.info.win.window;
+            bass_window_ptr = @intFromPtr(info.info.win.window);
         }
     }
 
