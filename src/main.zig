@@ -60,6 +60,8 @@ fn runGame() !void {
         .counter_curr = 0,
     };
 
+    _ = c.SDL_SetHint("SDL_WINDOWS_DPI_SCALING", "1");
+
     //Initialize SDL
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
         std.debug.print("SDL init failed! err:{s}\n", .{c.SDL_GetError()});
@@ -75,7 +77,7 @@ fn runGame() !void {
         c.SDL_WINDOWPOS_UNDEFINED,
         @intFromFloat(640 * config.window_scale),
         @intFromFloat(480 * config.window_scale),
-        c.SDL_WINDOW_SHOWN,
+        c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_ALLOW_HIGHDPI,
     ) orelse {
         std.debug.print("SDL window creation failed! err:{s}\n", .{c.SDL_GetError()});
         return error.CreateWindowFailure;
@@ -83,14 +85,19 @@ fn runGame() !void {
     defer c.SDL_DestroyWindow(window);
     std.debug.print("Created SDL window\n", .{});
 
+    var fx: c_int = undefined;
+    c.SDL_GL_GetDrawableSize(window, &fx, null);
+
+    const dpi_scale = @as(f32, @floatFromInt(fx)) / (640 * config.window_scale);
+
+    config.window_scale *= dpi_scale;
+
     var bass_window_ptr: usize = 0;
 
     if (builtin.os.tag == .windows) {
         var info: c.SDL_SysWMinfo = undefined;
         c.SDL_GetVersion(&info.version);
-        var result = c.SDL_GetWindowWMInfo(window, &info);
-
-        if (result == c.SDL_FALSE) {
+        if (c.SDL_GetWindowWMInfo(window, &info) == c.SDL_FALSE) {
             return error.UnableToRetrieveWindowWMInfo;
         }
 
