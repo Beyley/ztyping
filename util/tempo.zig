@@ -37,6 +37,7 @@ pub fn main() !void {
         count += 1;
 
         const delta = a / ((count - 1) * count * (count + 1) / 6);
-        try std.fmt.format(stdout, "{d}\n", .{60 / delta});
+        try std.fmt.format(stdout, "tempo: {d}s\n", .{delta});
+        try std.fmt.format(stdout, "bpm: {d}\n", .{60 / delta});
     }
 }
