@@ -174,7 +174,7 @@ pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void 
         }
     }
 
-    const output_content_folder = try std.mem.concat(allocator, u8, &.{ root_path, "src/content/" });
+    const output_content_folder = try std.mem.concat(allocator, u8, &.{ root_path, "game/content/" });
     defer allocator.free(output_content_folder);
 
     const output_atlas_image = try std.mem.concat(allocator, u8, &.{ output_content_folder, "atlas.qoi" });

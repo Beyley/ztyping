@@ -12,7 +12,7 @@ pub fn build(b: *std.Build) !void {
 
     const exe = b.addExecutable(.{
         .name = "ztyping",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = .{ .path = "game/main.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -26,8 +26,8 @@ pub fn build(b: *std.Build) !void {
         exe.addFrameworkPath(root_path ++ "libs/system-sdk/macos12/System/Library/Frameworks");
         exe.addLibraryPath(root_path ++ "libs/system-sdk/macos12/usr/lib");
 
-        exe.addIncludePath(root_path ++ "src/osx");
-        exe.addCSourceFile(root_path ++ "src/osx/osx_helper.mm", &.{"-fobjc-arc"});
+        exe.addIncludePath(root_path ++ "game/osx");
+        exe.addCSourceFile(root_path ++ "game/osx/osx_helper.mm", &.{"-fobjc-arc"});
 
         exe.linkFramework("Metal");
         exe.linkFramework("QuartzCore");
@@ -36,8 +36,8 @@ pub fn build(b: *std.Build) !void {
         exe.linkSystemLibrary("objc");
     }
 
-    exe.addCSourceFile(root_path ++ "src/stb/impl_stb_truetype.c", &.{});
-    exe.addIncludePath(root_path ++ "src/stb");
+    exe.addCSourceFile(root_path ++ "libs/stb/impl_stb_truetype.c", &.{});
+    exe.addIncludePath(root_path ++ "libs/stb");
 
     if (target.isLinux() and !target.isNative()) {
         exe.addIncludePath(root_path ++ "libs/system-sdk/linux/include");
