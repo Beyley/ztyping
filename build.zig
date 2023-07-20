@@ -17,6 +17,8 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
+    b.installArtifact(exe);
+
     //Link libc and libc++, libc++ for wgpu
     exe.linkLibC();
     exe.linkLibCpp();
@@ -169,15 +171,27 @@ pub fn build(b: *std.Build) !void {
         exe.step.dependOn(process_images_step);
     } //process assets
 
-    b.installArtifact(exe);
+    const tempo = b.addExecutable(.{
+        .name = "tempo",
+        .root_source_file = .{ .path = root_path ++ "util/tempo.zig" },
+    });
+    b.installArtifact(tempo);
 
-    const run_cmd = b.addRunArtifact(exe);
-    run_cmd.step.dependOn(b.getInstallStep());
+    const tempo_cmd = b.addRunArtifact(tempo);
+    tempo_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {
-        run_cmd.addArgs(args);
+        tempo_cmd.addArgs(args);
     }
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_cmd.step);
+    const tempo_step = b.step("tempo", "");
+    tempo_step.dependOn(&tempo_cmd.step);
+
+    const run_game_cmd = b.addRunArtifact(exe);
+    run_game_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        run_game_cmd.addArgs(args);
+    }
+    const run_game_step = b.step("run", "Run the app");
+    run_game_step.dependOn(&run_game_cmd.step);
 }
 
 fn root() []const u8 {
