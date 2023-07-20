@@ -1448,6 +1448,7 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
             bounds = try render_state.fontstash.textBounds(lyric.text, state);
         }
 
+        //Make sure the text size is at least 5
         size = @max(size, 5);
 
         //Draw the text inside of the notes
@@ -1473,6 +1474,34 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
                 },
             },
         );
+
+        if (lyric.hit_result == null) {
+            //Draw the possible romaji below the notes
+            //Create a variable to store how many we have drawn
+            var rendered_romaji: usize = 0;
+            //Iterate over all conversions
+            for (render_state.game_state.convert.conversions) |conversion| {
+                //Get the text that has yet to be typed
+                const to_type = if (i == data.active_note) lyric.text[data.typed_hiragana.len..] else lyric.text;
+
+                if (std.mem.startsWith(u8, to_type, conversion.hiragana)) {
+                    rendered_romaji += 1;
+
+                    _ = try render_state.fontstash.drawText(
+                        .{ posX, lyrics_y + posY + 32 * @as(f32, @floatFromInt(rendered_romaji)) },
+                        conversion.romaji,
+                        .{
+                            .font = Fontstash.Gothic,
+                            .size = Fontstash.ptToPx(26),
+                            .color = .{ 0.5, 0.5, 0.5, 1 },
+                            .alignment = .{
+                                .horizontal = .center,
+                            },
+                        },
+                    );
+                }
+            }
+        }
     }
 
     try render_state.renderer.reserveTexQuadPxSize("note", .{ circle_x - circle_r, circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
