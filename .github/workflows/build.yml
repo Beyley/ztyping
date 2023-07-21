@@ -33,3 +33,10 @@ jobs:
       - name: Build 
         if: matrix.os != 'windows-latest'
         run: zig build -Doptimize=${{ matrix.mode }} -Dtarget=${{ matrix.target }}
+
+      - name: Upload
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          path: zig-out/bin
+          name: ${{ matrix.target }} - ${{ matrix.mode }}
