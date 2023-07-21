@@ -28,7 +28,7 @@ fn stripNewline(line: []u8) []u8 {
 
 const ItemType = enum {
     ///0
-    separator,
+    typing_cutoff,
     ///1
     lyric,
     ///2
@@ -152,6 +152,7 @@ pub fn main() !void {
                 //Skip hashtags
             },
             '@' => {
+                //
                 try processCommand(line[1..], &info);
             },
             '\'' => {
@@ -212,13 +213,13 @@ pub fn main() !void {
 
                             info.base_half = false;
                         },
-                        '*' => { //separator, lyric, and kanji lyric
-                            try time_array.append(.{ info.time, .separator });
+                        '*' => { //typing_cutoff, lyric, and kanji lyric
+                            try time_array.append(.{ info.time, .typing_cutoff });
                             try time_array.append(.{ info.time, .lyirc_and_kanji_lyric });
                             try timeAdd(&info, &time_array);
                         },
-                        '%' => { //separator + kanji lyric
-                            try time_array.append(.{ info.time, .separator });
+                        '%' => { //typing_cutoff + kanji lyric
+                            try time_array.append(.{ info.time, .typing_cutoff });
                             try time_array.append(.{ info.time, .kanji_lyric });
                             try timeAdd(&info, &time_array);
                         },
@@ -229,8 +230,8 @@ pub fn main() !void {
                         '-' => { //blank space
                             try timeAdd(&info, &time_array);
                         },
-                        '/' => { //separator
-                            try time_array.append(.{ info.time, .separator });
+                        '/' => { //typing_cutoff
+                            try time_array.append(.{ info.time, .typing_cutoff });
                             try timeAdd(&info, &time_array);
                         },
                         else => {
@@ -245,7 +246,8 @@ pub fn main() !void {
         }
     }
 
-    try time_array.append(.{ info.time, .separator });
+    //Append a typing cutoff after the end of the song
+    try time_array.append(.{ info.time, .typing_cutoff });
 
     var lyric_itr = SliceIterator([]const u8).new(lyrics_array.items);
     var kanji_lyric_itr = SliceIterator([]const u8).new(kanji_lyircs_array.items);
@@ -253,7 +255,7 @@ pub fn main() !void {
     var flag = true;
     for (time_array.items) |item| {
         switch (item[1]) {
-            .separator => {
+            .typing_cutoff => {
                 if (!flag) {
                     try std.fmt.format(writer, "/{d}\n", .{item[0]});
                 }
