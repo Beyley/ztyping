@@ -18,7 +18,7 @@ jobs:
           sudo apt-get update 
           sudo apt-get install -y xorg-dev build-essential libudev-dev libasound2 libasound2-dev libpipewire-0.3-0 libpipewire-0.3-dev libjack-jackd2-0 libjack-jackd2-dev libpulse-dev libpulse0
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Checkout submodules, configure git
         run: |
           git submodule update --init --recursive --depth 0 
