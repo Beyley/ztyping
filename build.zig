@@ -174,6 +174,8 @@ pub fn build(b: *std.Build) !void {
     const tempo = b.addExecutable(.{
         .name = "tempo",
         .root_source_file = .{ .path = root_path ++ "util/tempo.zig" },
+        .target = target,
+        .optimize = optimize,
     });
     b.installArtifact(tempo);
 
@@ -181,6 +183,8 @@ pub fn build(b: *std.Build) !void {
     const fumen_compile = b.addExecutable(.{
         .name = "fumen_compile",
         .root_source_file = .{ .path = root_path ++ "util/fumen_compile.zig" },
+        .target = target,
+        .optimize = optimize,
     });
     fumen_compile.addModule("clap", clap.module("clap"));
     b.installArtifact(fumen_compile);
