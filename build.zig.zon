@@ -10,5 +10,9 @@
             .url = "https://github.com/zigimg/zigimg/archive/814064a8935dceee99adb11f2b17871b84f75a2b.tar.gz",
             .hash = "122080a54f041da9e47b6ace70d1a3190cccc6456e4f8540bdd2732a3ab744ba3855",
         },
+        .clap = .{
+            .url = "https://github.com/Hejsil/zig-clap/archive/bdb5853b678d68f342ec65b04a6785af522ca6c9.tar.gz",
+            .hash = "12202af04ec78191f2018458a7be29f54e0d9118f7688e7a226857acf754d68b8473",
+        },
     },
 }

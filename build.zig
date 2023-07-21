@@ -177,6 +177,22 @@ pub fn build(b: *std.Build) !void {
     });
     b.installArtifact(tempo);
 
+    const clap = b.dependency("clap", .{});
+    const fumen_compile = b.addExecutable(.{
+        .name = "fumen_compile",
+        .root_source_file = .{ .path = root_path ++ "util/fumen_compile.zig" },
+    });
+    fumen_compile.addModule("clap", clap.module("clap"));
+    b.installArtifact(fumen_compile);
+
+    const fumen_compile_cmd = b.addRunArtifact(fumen_compile);
+    fumen_compile_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        fumen_compile_cmd.addArgs(args);
+    }
+    const fumen_compile_step = b.step("fumen_compile", "Run the fumen compiler");
+    fumen_compile_step.dependOn(&fumen_compile_cmd.step);
+
     const tempo_cmd = b.addRunArtifact(tempo);
     tempo_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {
