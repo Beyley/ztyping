@@ -35,7 +35,7 @@ jobs:
         run: zig build -Doptimize=${{ matrix.mode }} -Dtarget=${{ matrix.target }}
 
       - name: Upload
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.target != 'native'
         uses: actions/upload-artifact@v3
         with:
           path: zig-out/bin
