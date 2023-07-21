@@ -10,9 +10,6 @@
 [submodule "libs/cimgui"]
 	path = libs/cimgui
 	url = https://github.com/Beyley/cimgui
-[submodule "libs/zigimg"]
-	path = libs/zigimg
-	url = https://github.com/zigimg/zigimg
 [submodule "libs/iconv-zig"]
 	path = libs/iconv-zig
 	url = https://github.com/Beyley/iconv-zig

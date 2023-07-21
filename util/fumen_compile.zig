@@ -150,15 +150,18 @@ pub fn main() !void {
                 var iter = std.mem.tokenizeAny(u8, line[1..], " \t\n");
 
                 while (iter.next()) |lyric| {
-                    try lyrics_array.append(allocator.dupe(u8, lyric));
+                    try lyrics_array.append(try allocator.dupe(u8, lyric));
                 }
             },
             '"' => {
                 var iter = std.mem.tokenizeAny(u8, line[1..], " \t\n");
 
                 while (iter.next()) |lyric_kanji| {
-                    try kanji_lyircs_array.append(allocator.dupe(u8, lyric_kanji));
+                    try kanji_lyircs_array.append(try allocator.dupe(u8, lyric_kanji));
                 }
+            },
+            else => |char| {
+                std.debug.print("UNHANDLED CHAR {c}\n", .{char});
             },
         }
     }
