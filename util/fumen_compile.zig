@@ -16,8 +16,8 @@ const Info = struct {
     base_pos: usize,
     base_half: bool,
     time: f64,
-    beat_nu: usize,
-    beat_de: usize,
+    beat_numerator: usize,
+    beat_denominator: usize,
     beat_int: usize,
     beat_frac: f64,
 };
@@ -86,8 +86,8 @@ pub fn main() !void {
         .base_pos = 0,
         .base_half = false,
         .time = 0.0,
-        .beat_nu = 0,
-        .beat_de = 0,
+        .beat_numerator = 0,
+        .beat_denominator = 0,
         .beat_int = 0,
         .beat_frac = 0,
     };
@@ -144,31 +144,36 @@ pub fn main() !void {
         }
 
         switch (line[0]) {
+            //Marks the end of the map
             'e' => {
                 //Break out of the loop
                 break :loop;
             },
+            //Comment
             '#' => {
-                //Skip hashtags
+                //Skip lines which start with hashtags
             },
+            //Just a command to process (legacy/undocumented?)
             '@' => {
-                //
+                //Process a command
                 try processCommand(line[1..], &info);
             },
+            //Set of lyrics
             '\'' => {
-                var iter = std.mem.tokenizeAny(u8, line[1..], " \t\n");
+                //Tokenize the line to split up all the lyrics
+                var iter = std.mem.tokenizeAny(u8, line[1..], " \t");
 
+                //Iterate over all lyrics
                 while (iter.next()) |lyric| {
+                    //Append the lyrics to the array
                     try lyrics_array.append(try allocator.dupe(u8, lyric));
                 }
             },
+            //Kanji lyric
             '"' => {
-                var iter = std.mem.tokenizeAny(u8, line[1..], "\t\n");
-
-                while (iter.next()) |lyric_kanji| {
-                    try kanji_lyircs_array.append(try allocator.dupe(u8, lyric_kanji));
-                }
+                try kanji_lyircs_array.append(try allocator.dupe(u8, line[1..]));
             },
+            //If its anything else, we need special handling
             else => {
                 var i: usize = 0;
                 while (i < line.len) : (i += 1) {
@@ -190,6 +195,7 @@ pub fn main() !void {
 
                             try processCommand(line[si + 1 .. i], &info);
                         },
+                        //End of command, invalid as it should be handled by the start of command handler
                         ']' => {
                             return error.UnexpectedEndBracket;
                         },
@@ -213,27 +219,33 @@ pub fn main() !void {
 
                             info.base_half = false;
                         },
-                        '*' => { //typing_cutoff, lyric, and kanji lyric
+                        //Part of the timing information, contains a typing cutoff, then both a lyric cutoff and kanji lyric
+                        '*' => {
                             try time_array.append(.{ info.time, .typing_cutoff });
                             try time_array.append(.{ info.time, .lyirc_and_kanji_lyric });
                             try timeAdd(&info, &time_array);
                         },
-                        '%' => { //typing_cutoff + kanji lyric
+                        //Part of the timing information, contains a typing cutoff, then a kanji lyric
+                        '%' => {
                             try time_array.append(.{ info.time, .typing_cutoff });
                             try time_array.append(.{ info.time, .kanji_lyric });
                             try timeAdd(&info, &time_array);
                         },
-                        '+' => { //lyric
+                        //Part of the timing information, only a lyric
+                        '+' => {
                             try time_array.append(.{ info.time, .lyric });
                             try timeAdd(&info, &time_array);
                         },
-                        '-' => { //blank space
+                        //Part of the timing information, indicates nothing at this time
+                        '-' => {
                             try timeAdd(&info, &time_array);
                         },
-                        '/' => { //typing_cutoff
+                        //Part of the timing information, indicates a typing cutoff
+                        '/' => {
                             try time_array.append(.{ info.time, .typing_cutoff });
                             try timeAdd(&info, &time_array);
                         },
+                        //Other character handling
                         else => {
                             //If we encounter a non-whitespace character, then throw a warning, else, ignore
                             if (!std.ascii.isWhitespace(char)) {
@@ -249,34 +261,48 @@ pub fn main() !void {
     //Append a typing cutoff after the end of the song
     try time_array.append(.{ info.time, .typing_cutoff });
 
+    //Create an iterator over the lyrics and kanji lyrics arrays
     var lyric_itr = SliceIterator([]const u8).new(lyrics_array.items);
     var kanji_lyric_itr = SliceIterator([]const u8).new(kanji_lyircs_array.items);
 
-    var flag = true;
+    //Flag for whether or not to write a typing cutoff, so we dont write unnessesary cutoffs
+    var skip_typing_cutoff = true;
     for (time_array.items) |item| {
         switch (item[1]) {
             .typing_cutoff => {
-                if (!flag) {
+                //If we should not skip a typing cutoff, write a typing cutoff
+                if (!skip_typing_cutoff) {
                     try std.fmt.format(writer, "/{d}\n", .{item[0]});
                 }
 
-                flag = true;
+                //Mark to skip all next typing cutoffs
+                skip_typing_cutoff = true;
             },
+            //Gameplay lyric
             .lyric => {
                 try std.fmt.format(writer, "+{d} {s}\n", .{ item[0], lyric_itr.next() orelse unreachable });
+                //Mark that a note has happened, so a typing cutoff can happen again
+                skip_typing_cutoff = false;
             },
+            //Kanji lyric
             .kanji_lyric => {
                 try std.fmt.format(writer, "*{d} {s}\n", .{ item[0], kanji_lyric_itr.next() orelse unreachable });
-                flag = false;
+                //Mark that a kanji lyric has happened, so a typing cutoff can happen again,
+                //Note that this is used to end kanji lyrics, alongside stopping you from typing a note
+                skip_typing_cutoff = false;
             },
+            //Both gameplay lyric and kanji lyric
             .lyirc_and_kanji_lyric => {
                 try std.fmt.format(writer, "*{d} {s}\n", .{ item[0], kanji_lyric_itr.next() orelse unreachable });
                 try std.fmt.format(writer, "+{d} {s}\n", .{ item[0], lyric_itr.next() orelse unreachable });
-                flag = false;
+                //Mark that a lyric has happened, so a typing cutoff can happen again
+                skip_typing_cutoff = false;
             },
+            //Beat line
             .beat_line => {
                 try std.fmt.format(writer, "-{d}\n", .{item[0]});
             },
+            //Bar line
             .bar_line => {
                 try std.fmt.format(writer, "={d}\n", .{item[0]});
             },
@@ -303,21 +329,21 @@ fn timeAdd(info: *Info, time_array: *TimeArray) !void {
 
     var d_time = length * info.speed;
 
-    if (info.beat_de > 0) {
-        var d_beat = length * @as(f64, @floatFromInt(info.beat_de));
+    if (info.beat_denominator > 0) {
+        var d_beat = length * @as(f64, @floatFromInt(info.beat_denominator));
 
         while (info.beat_frac + d_beat > -0.001) {
             try time_array.append(.{
-                info.time - info.speed * (info.beat_frac / @as(f64, @floatFromInt(info.beat_de))),
+                info.time - info.speed * (info.beat_frac / @as(f64, @floatFromInt(info.beat_denominator))),
                 if (info.beat_int == 0) ItemType.bar_line else ItemType.beat_line,
             });
 
-            info.time += info.speed / @as(f64, @floatFromInt(info.beat_de));
-            d_time -= info.speed / @as(f64, @floatFromInt(info.beat_de));
+            info.time += info.speed / @as(f64, @floatFromInt(info.beat_denominator));
+            d_time -= info.speed / @as(f64, @floatFromInt(info.beat_denominator));
 
             info.beat_int += 1;
 
-            info.beat_int %= info.beat_nu;
+            info.beat_int %= info.beat_numerator;
             d_beat -= 1;
         }
         info.beat_frac += d_beat;
@@ -327,12 +353,15 @@ fn timeAdd(info: *Info, time_array: *TimeArray) !void {
 
 fn processCommand(cmd: []const u8, info: *Info) !void {
     switch (cmd[0]) {
+        //Sets the tempo
         't' => {
             try setSpeed(info, cmd[1..]);
         },
+        //Sets the base of the following lyrics
         'b', 'l' => {
             try setBase(info, cmd[1..]);
         },
+        //Sets the beat
         'B' => {
             try setBeat(info, cmd[1..]);
         },
@@ -346,18 +375,23 @@ fn processCommand(cmd: []const u8, info: *Info) !void {
     }
 }
 
+///Sets the speed of the song, in the format of `d=bpm` where BPM gets divided by divisor, then converted to seconds per beat
 fn setSpeed(info: *Info, speed: []const u8) !void {
     var iter = std.mem.tokenizeAny(u8, speed, "= \t\n");
 
-    var k: f64 = @floatFromInt(try std.fmt.parseInt(usize, iter.next() orelse return error.MissingTimeSignature, 0));
-    var t = try std.fmt.parseFloat(f64, iter.next() orelse return error.MissingBPM);
+    //Parse out the BPM and BPM divisor
+    var bpm_divsor: f64 = @floatFromInt(try std.fmt.parseInt(usize, iter.next() orelse return error.MissingTimeSignature, 0));
+    var bpm = try std.fmt.parseFloat(f64, iter.next() orelse return error.MissingBPM);
 
-    if (k <= 0) return error.InvalidTimeSignature;
-    if (t <= 0) return error.InvalidBPM;
+    //Validate BPM and BPM divisor are within valid ranges
+    if (bpm_divsor <= 0) return error.InvalidTimeSignature;
+    if (bpm <= 0) return error.InvalidBPM;
 
-    info.speed = 60 / (t / k);
+    //Sets the speed to the tempo in miliseconds, with the BPM divided by the divisor
+    info.speed = 60 / (bpm / bpm_divsor);
 }
 
+///Sets the base of the notes
 fn setBase(info: *Info, base: []const u8) !void {
     info.base.clearRetainingCapacity();
 
@@ -377,26 +411,34 @@ fn setBase(info: *Info, base: []const u8) !void {
     }
 }
 
+///Sets the time signature of the following notes
 fn setBeat(info: *Info, beat: []const u8) !void {
+    //Tokenize the time signature
     var iter = std.mem.tokenizeAny(u8, beat, ":/ \t\n");
 
-    var nu = try std.fmt.parseInt(usize, iter.next() orelse return error.MissingBeatNu, 0);
+    //Parse out the numerator
+    info.beat_numerator = try std.fmt.parseInt(usize, iter.next() orelse return error.MissingBeatNu, 0);
 
     //Specifying zero cancells the time signature
-    if (nu == 0) {
-        info.beat_nu = 0;
-        info.beat_de = 0;
+    if (info.beat_numerator == 0) {
+        info.beat_numerator = 0;
+        info.beat_denominator = 0;
         info.beat_frac = 0;
         info.beat_int = 0;
+        return;
     }
 
-    var de = try std.fmt.parseInt(usize, iter.next() orelse return error.MissingBeatDe, 0);
+    //Parse out the denominator
+    info.beat_denominator = try std.fmt.parseInt(usize, iter.next() orelse return error.MissingBeatDe, 0);
 
-    if (de == 0) {
-        return error.InvalidDe;
+    //Validate the beat denominator
+    if (info.beat_denominator == 0) {
+        return error.InvalidTimeSignatureDenominator;
     }
 
+    //Get the last item in the time signature command
     if (iter.next()) |d_str| {
+        //TODO: what the fuck does this do
         var d = try std.fmt.parseFloat(f64, d_str);
 
         //The integer part of the beat
@@ -404,13 +446,10 @@ fn setBeat(info: *Info, beat: []const u8) !void {
         //The float part of the beat
         info.beat_frac = d - @as(f64, @floatFromInt(info.beat_int));
     } else {
-        //If you dont set the position, its on beat 0
         info.beat_frac = 0;
         info.beat_int = 0;
     }
 
-    info.beat_de = de;
-    info.beat_nu = nu;
-
-    info.beat_int %= info.beat_nu;
+    //Modulo the beat int based on the beat numerator
+    info.beat_int %= info.beat_numerator;
 }
