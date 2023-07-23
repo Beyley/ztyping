@@ -308,6 +308,9 @@ pub fn main() !void {
             },
         }
     }
+
+    //Flush the buffered writer
+    try buffered_writer.flush();
 }
 
 ///Adds the amount of time of one note to the global time counter
