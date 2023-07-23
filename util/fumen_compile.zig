@@ -310,25 +310,36 @@ pub fn main() !void {
     }
 }
 
+///Adds the amount of time of one note to the global time counter
 fn timeAdd(info: *Info, time_array: *TimeArray) !void {
+    //If the speed is negative,
     if (info.speed <= 0) {
+        //Something has gone wrong
         return error.InvalidSpeed;
     }
 
+    //If there are no bases,
     if (info.base.items.len == 0) {
-        return error.InvalidBase;
+        //Something has gone wrong
+        return error.MissingBaseValue;
     }
 
+    //Get the time length of the current base
     var length = 1 / @as(f64, @floatFromInt(info.base.items[info.base_pos]));
+    //Increment the current base we are working on
     info.base_pos += 1;
+    //Once we reach the end of the base, reset it
     info.base_pos %= info.base.items.len;
 
+    //Halve the base length if required
     if (info.base_half) {
         length /= 2;
     }
 
+    //Get the time of each note by multiplying it by speed
     var d_time = length * info.speed;
 
+    //If the beat denominator is specified
     if (info.beat_denominator > 0) {
         var d_beat = length * @as(f64, @floatFromInt(info.beat_denominator));
 
@@ -351,6 +362,7 @@ fn timeAdd(info: *Info, time_array: *TimeArray) !void {
     info.time += d_time;
 }
 
+///Processes a command sent to the compiler, which effects the current state
 fn processCommand(cmd: []const u8, info: *Info) !void {
     switch (cmd[0]) {
         //Sets the tempo
@@ -361,14 +373,16 @@ fn processCommand(cmd: []const u8, info: *Info) !void {
         'b', 'l' => {
             try setBase(info, cmd[1..]);
         },
-        //Sets the beat
+        //Sets the time signature
         'B' => {
-            try setBeat(info, cmd[1..]);
+            try setTimeSignature(info, cmd[1..]);
         },
+        //A rest for some amount of time
         'r' => {
-            //Increment the time in the info by the amount specified in the rest command
+            //Increment the time counter by the amount specified in the command
             info.time += try std.fmt.parseFloat(f64, cmd[1..]);
         },
+        //Unhandled command, lets print a warning
         else => {
             std.debug.print("UNHANDLED COMMAND {s}\n", .{cmd});
         },
@@ -391,28 +405,36 @@ fn setSpeed(info: *Info, speed: []const u8) !void {
     info.speed = 60 / (bpm / bpm_divsor);
 }
 
-///Sets the base of the notes
+///Sets the base of the notes, aka the length of time between each note in the source file, as a divisor of BPM
 fn setBase(info: *Info, base: []const u8) !void {
+    //Clear the current base array
     info.base.clearRetainingCapacity();
 
+    //Tokenize the base string
     var iter = std.mem.tokenizeAny(u8, base, ", \t\n");
+    //Every token
     while (iter.next()) |item| {
-        var k = try std.fmt.parseInt(usize, item, 0);
+        //Parse the base from the token
+        var base_value = try std.fmt.parseInt(usize, item, 0);
 
-        if (k <= 0) {
+        //Verify the value is valid
+        if (base_value <= 0) {
             return error.InvalidBaseValue;
         }
 
-        try info.base.append(k);
+        //Append the base value to the list of base values
+        try info.base.append(base_value);
     }
 
+    //If there are no base values,
     if (info.base.items.len == 0) {
+        //Something has gone wrong
         return error.EmptyBase;
     }
 }
 
 ///Sets the time signature of the following notes
-fn setBeat(info: *Info, beat: []const u8) !void {
+fn setTimeSignature(info: *Info, beat: []const u8) !void {
     //Tokenize the time signature
     var iter = std.mem.tokenizeAny(u8, beat, ":/ \t\n");
 
