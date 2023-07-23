@@ -11,12 +11,19 @@ const param_str =
 ;
 
 const Info = struct {
+    ///The speed of the song, based on tempo
     speed: f64,
+    ///The list of bases we are going to be using
     base: std.ArrayList(usize),
+    ///Which base value we are going to use next
     base_pos: usize,
+    ///Whether to half the time between some notes
     base_half: bool,
+    ///The current time of the fumen
     time: f64,
+    ///Every nth beat line becomes a bar line
     beat_numerator: usize,
+    ///How many beat lines there are per full "speed" amount
     beat_denominator: usize,
     beat_int: usize,
     beat_frac: f64,
