@@ -77,7 +77,6 @@ pub fn main() !void {
     defer file.close();
 
     var buffered_reader = std.io.bufferedReader(file.reader());
-
     var reader = buffered_reader.reader();
 
     var info = Info{
@@ -129,7 +128,8 @@ pub fn main() !void {
     defer output_file.close();
 
     //Get the writer for the output file
-    var writer = output_file.writer();
+    var buffered_writer = std.io.bufferedWriter(output_file.writer());
+    var writer = buffered_writer.writer();
 
     //Write the path of the music file
     try std.fmt.format(writer, "@{s}\n", .{stripNewline(try reader.readUntilDelimiterOrEof(&buf, '\n') orelse return error.UnexpectedEOF)});
@@ -341,6 +341,7 @@ fn timeAdd(info: *Info, time_array: *TimeArray) !void {
 
     //If the beat denominator is specified
     if (info.beat_denominator > 0) {
+        //Multiply the beat length by the denominator, this specifies how many beats per bar there are
         var d_beat = length * @as(f64, @floatFromInt(info.beat_denominator));
 
         while (info.beat_frac + d_beat > -0.001) {
