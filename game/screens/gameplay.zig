@@ -1475,7 +1475,7 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
             },
         );
 
-        if (lyric.hit_result == null) {
+        if (lyric.hit_result == null and render_state.game_state.config.display_romaji) {
             //Draw the possible romaji below the notes
             //Create a variable to store how many we have drawn
             var rendered_romaji: usize = 0;

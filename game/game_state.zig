@@ -3,6 +3,7 @@ const std = @import("std");
 const Music = @import("music.zig");
 const AudioTracker = @import("audio_tracker.zig");
 const Convert = @import("convert.zig");
+const Config = @import("config.zig");
 
 const Self = @This();
 
@@ -14,3 +15,4 @@ convert: Convert,
 delta_time: f64,
 counter_freq: f64,
 counter_curr: u64,
+config: Config,

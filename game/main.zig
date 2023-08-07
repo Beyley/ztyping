@@ -26,8 +26,6 @@ pub const c = @cImport({
 });
 
 fn runGame() !void {
-    var config = try Config.readConfig();
-
     const use_gpa = std.debug.runtime_safety;
 
     var gpa = std.heap.GeneralPurposeAllocator(.{ .stack_trace_frames = 10 }){};
@@ -58,6 +56,7 @@ fn runGame() !void {
         .delta_time = 0,
         .counter_freq = 0,
         .counter_curr = 0,
+        .config = try Config.readConfig(),
     };
 
     _ = c.SDL_SetHint("SDL_WINDOWS_DPI_SCALING", "1");
@@ -75,8 +74,8 @@ fn runGame() !void {
         "ztyping",
         c.SDL_WINDOWPOS_UNDEFINED,
         c.SDL_WINDOWPOS_UNDEFINED,
-        @intFromFloat(640 * config.window_scale),
-        @intFromFloat(480 * config.window_scale),
+        @intFromFloat(640 * state.config.window_scale),
+        @intFromFloat(480 * state.config.window_scale),
         c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_ALLOW_HIGHDPI,
     ) orelse {
         std.debug.print("SDL window creation failed! err:{s}\n", .{c.SDL_GetError()});
@@ -88,9 +87,9 @@ fn runGame() !void {
     var fx: c_int = undefined;
     c.SDL_GL_GetDrawableSize(window, &fx, null);
 
-    const dpi_scale = @as(f32, @floatFromInt(fx)) / (640 * config.window_scale);
+    const dpi_scale = @as(f32, @floatFromInt(fx)) / (640 * state.config.window_scale);
 
-    config.window_scale *= dpi_scale;
+    state.config.window_scale *= dpi_scale;
 
     var bass_window_ptr: usize = 0;
 
@@ -111,10 +110,10 @@ fn runGame() !void {
     try bass.init(.default, null, .{}, bass_window_ptr);
     defer bass.deinit();
 
-    try bass.setConfig(.global_stream_volume, @intFromFloat(config.volume * 10000));
+    try bass.setConfig(.global_stream_volume, @intFromFloat(state.config.volume * 10000));
 
     //Initialize our graphics
-    var gfx: Gfx = try Gfx.init(window, config.window_scale);
+    var gfx: Gfx = try Gfx.init(window, state.config.window_scale);
     defer gfx.deinit();
 
     var imgui_context = c.igCreateContext(null);

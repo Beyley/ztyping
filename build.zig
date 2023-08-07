@@ -24,12 +24,12 @@ pub fn build(b: *std.Build) !void {
     exe.linkLibCpp();
 
     if (target.isDarwin()) {
-        exe.addIncludePath(root_path ++ "libs/system-sdk/macos12/usr/include");
-        exe.addFrameworkPath(root_path ++ "libs/system-sdk/macos12/System/Library/Frameworks");
-        exe.addLibraryPath(root_path ++ "libs/system-sdk/macos12/usr/lib");
+        exe.addIncludePath(.{ .path = root_path ++ "libs/system-sdk/macos12/usr/include" });
+        exe.addFrameworkPath(.{ .path = root_path ++ "libs/system-sdk/macos12/System/Library/Frameworks" });
+        exe.addLibraryPath(.{ .path = root_path ++ "libs/system-sdk/macos12/usr/lib" });
 
-        exe.addIncludePath(root_path ++ "game/osx");
-        exe.addCSourceFile(root_path ++ "game/osx/osx_helper.mm", &.{"-fobjc-arc"});
+        exe.addIncludePath(.{ .path = root_path ++ "game/osx" });
+        exe.addCSourceFile(.{ .file = .{ .path = root_path ++ "game/osx/osx_helper.mm" }, .flags = &.{"-fobjc-arc"} });
 
         exe.linkFramework("Metal");
         exe.linkFramework("QuartzCore");
@@ -38,12 +38,12 @@ pub fn build(b: *std.Build) !void {
         exe.linkSystemLibrary("objc");
     }
 
-    exe.addCSourceFile(root_path ++ "libs/stb/impl_stb_truetype.c", &.{});
-    exe.addIncludePath(root_path ++ "libs/stb");
+    exe.addCSourceFile(.{ .file = .{ .path = root_path ++ "libs/stb/impl_stb_truetype.c" }, .flags = &.{} });
+    exe.addIncludePath(.{ .path = root_path ++ "libs/stb" });
 
     if (target.isLinux() and !target.isNative()) {
-        exe.addIncludePath(root_path ++ "libs/system-sdk/linux/include");
-        exe.addLibraryPath(b.fmt(root_path ++ "libs/system-sdk/linux/lib/{s}", .{try target.linuxTriple(b.allocator)}));
+        exe.addIncludePath(.{ .path = root_path ++ "libs/system-sdk/linux/include" });
+        exe.addLibraryPath(.{ .path = b.fmt(root_path ++ "libs/system-sdk/linux/lib/{s}", .{try target.linuxTriple(b.allocator)}) });
     }
 
     { //zig-bass
@@ -53,7 +53,7 @@ pub fn build(b: *std.Build) !void {
         bass.linkBass(exe);
         bass.installBass(b, target);
 
-        exe.addIncludePath(root_path ++ "libs/zig-bass/src");
+        exe.addIncludePath(.{ .path = root_path ++ "libs/zig-bass/src" });
     } //zig-bass
 
     { //zmath
@@ -93,7 +93,7 @@ pub fn build(b: *std.Build) !void {
             if (target.getOsTag() == .windows) {
                 @panic("TODO"); //we need to force dynamic linking here.
             } else {
-                exe.addObjectFile(wgpu_lib);
+                exe.addObjectFile(.{ .path = wgpu_lib });
             }
         } else {
             var wgpu_bin_path = std.ArrayList(u8).init(b.allocator);
@@ -106,7 +106,7 @@ pub fn build(b: *std.Build) !void {
 
             var wgpu_bin_path_slice = try wgpu_bin_path.toOwnedSlice();
 
-            exe.addLibraryPath(wgpu_bin_path_slice);
+            exe.addLibraryPath(.{ .path = wgpu_bin_path_slice });
             exe.linkSystemLibrary("wgpu_native");
 
             if (target.isWindows()) {
@@ -122,7 +122,7 @@ pub fn build(b: *std.Build) !void {
             exe.linkSystemLibrary("d3dcompiler_47");
         }
 
-        exe.addIncludePath("libs/wgpu-native/ffi");
+        exe.addIncludePath(.{ .path = "libs/wgpu-native/ffi" });
     } //wgpu
 
     { //cimgui
@@ -130,7 +130,7 @@ pub fn build(b: *std.Build) !void {
 
         cimgui_lib.installLibraryHeaders(sdl_lib);
         cimgui_lib.linkLibrary(sdl_lib);
-        exe.addIncludePath("libs/cimgui/");
+        exe.addIncludePath(.{ .path = "libs/cimgui/" });
 
         exe.linkLibrary(cimgui_lib);
     } //cimgui

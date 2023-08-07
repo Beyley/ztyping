@@ -1012,12 +1012,6 @@ pub const Buffer = struct {
     }
 };
 
-// pub const Vertex = extern struct {
-// position: Vector2,
-// tex_coord: Vector2,
-// vertex_col: ColorF,
-// };
-
 pub fn createInstance() !Instance {
     var instance = c.wgpuCreateInstance(&c.WGPUInstanceDescriptor{
         .nextInChain = null,

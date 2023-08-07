@@ -3,16 +3,16 @@
     .version = "0.0.0",
     .dependencies = .{
         .SDL2 = .{
-            .url = "https://github.com/Beyley/SDL/archive/d88c98b9c0c39a2a4cf724db00e42bd3aeeb83a4.tar.gz",
-            .hash = "12203b8910747b6bcf74925433d17511e2398e9ff454ff01438c83abad35dbd27ea9",
+            .url = "https://github.com/Beyley/SDL/archive/c8c3eb4b9d9874bd543a06ef9fe8c67b3ddf26a5.tar.gz",
+            .hash = "122020f16bb6ce71fc9b2696a820b0738a84adfaea7aef8ea15db4112ca8a6e75b1f",
         },
         .zigimg = .{
             .url = "https://github.com/zigimg/zigimg/archive/814064a8935dceee99adb11f2b17871b84f75a2b.tar.gz",
             .hash = "122080a54f041da9e47b6ace70d1a3190cccc6456e4f8540bdd2732a3ab744ba3855",
         },
         .clap = .{
-            .url = "https://github.com/Hejsil/zig-clap/archive/bdb5853b678d68f342ec65b04a6785af522ca6c9.tar.gz",
-            .hash = "12202af04ec78191f2018458a7be29f54e0d9118f7688e7a226857acf754d68b8473",
+            .url = "https://github.com/Hejsil/zig-clap/archive/f49b94700e0761b7514abdca0e4f0e7f3f938a93.tar.gz",
+            .hash = "1220f48518ce22882e102255ed3bcdb7aeeb4891f50b2cdd3bd74b5b2e24d3149ba2",
         },
     },
 }
