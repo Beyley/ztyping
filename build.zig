@@ -130,6 +130,8 @@ pub fn build(b: *std.Build) !void {
 
         cimgui_lib.installLibraryHeaders(sdl_lib);
         cimgui_lib.linkLibrary(sdl_lib);
+        try cimgui_lib.lib_paths.appendSlice(sdl_lib.lib_paths.items);
+
         exe.addIncludePath(.{ .path = "libs/cimgui/" });
 
         exe.linkLibrary(cimgui_lib);
