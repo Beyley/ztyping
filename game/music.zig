@@ -108,11 +108,6 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
     self.ranking_file_name = ranking_file_name.?;
 
     //i hate the look of this so much
-    errdefer allocator.free(self.title);
-    errdefer allocator.free(self.ranking_file_name);
-    errdefer allocator.free(self.fumen_file_name);
-    errdefer allocator.free(self.author);
-    errdefer allocator.free(self.artist);
     errdefer {
         for (self.comment) |comment| {
             allocator.free(comment);

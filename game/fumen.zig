@@ -141,6 +141,8 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.f
     var beat_lines = std.ArrayList(BeatLine).init(allocator);
     errdefer beat_lines.deinit();
 
+    errdefer if (self.audio_path.len != 0) allocator.free(self.audio_path);
+
     while (true) {
         var orig_line: []u8 = try file.reader().readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(u32)) orelse break;
         defer allocator.free(orig_line);
