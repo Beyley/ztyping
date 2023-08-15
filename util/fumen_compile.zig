@@ -30,6 +30,9 @@ const Info = struct {
 };
 
 fn stripNewline(line: []u8) []u8 {
+    if (line.len == 0) {
+        return line;
+    }
     return if (line[line.len - 1] == '\r') line[0 .. line.len - 1] else line;
 }
 
@@ -226,7 +229,7 @@ pub fn main() !void {
 
                             info.base_half = false;
                         },
-                        //Part of the timing information, contains a typing cutoff, then both a lyric cutoff and kanji lyric
+                        //Part of the timing information, contains a typing cutoff, then both a hiragana and kanji lyric
                         '*' => {
                             try time_array.append(.{ info.time, .typing_cutoff });
                             try time_array.append(.{ info.time, .lyirc_and_kanji_lyric });
