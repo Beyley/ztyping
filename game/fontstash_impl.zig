@@ -802,6 +802,104 @@ pub fn textBounds(
     };
 }
 
+const WriteError = anyerror;
+pub const WriterContext = struct {
+    ///The current draw position of the text
+    draw_position: Gfx.Vector2,
+    ///The state the text should use to draw
+    state: State,
+    ///The current bounds of the text drawn
+    bounds: RectangleF = .{ .tl = .{ 0, 0 }, .br = .{ 0, 0 } },
+    ///Whether or not to actually draw the text to the screen
+    draw: bool,
+    ///internal field used for the font
+    _font: *Font = undefined,
+    ///internal field used as a pointer to Fontstash, set by Fontstash.writer()
+    _fontstash: *Self = undefined,
+    ///internal field for caching scale
+    _scale: f32 = undefined,
+};
+
+pub const Writer = std.io.Writer(*WriterContext, WriteError, write);
+
+pub fn write(context: *WriterContext, text: []const u8) WriteError!usize {
+    const self = context._fontstash;
+    const state = context.state;
+
+    var iter = std.unicode.Utf8Iterator{ .bytes = text, .i = 0 };
+
+    var min = context.bounds.tl;
+    var max = context.bounds.br;
+
+    var previous_glyph_index: ?usize = null;
+    while (iter.nextCodepoint()) |codepoint| {
+        var glyph = try self.getGlyph(context._font, codepoint, state);
+
+        var quad = self.getQuad(
+            context._font,
+            previous_glyph_index,
+            glyph,
+            context._scale,
+            state.spacing,
+            &context.draw_position[0],
+            &context.draw_position[1],
+        );
+
+        if (context.draw) {
+            if (self.vertex_count + 6 > vertex_count) {
+                try self.flush();
+            }
+
+            self.addVertex(quad.rect.tl, quad.tex.tl, state.color);
+            self.addVertex(quad.rect.br, quad.tex.br, state.color);
+            self.addVertex(.{ quad.rect.br[0], quad.rect.tl[1] }, .{ quad.tex.br[0], quad.tex.tl[1] }, state.color);
+
+            self.addVertex(quad.rect.tl, quad.tex.tl, state.color);
+            self.addVertex(.{ quad.rect.tl[0], quad.rect.br[1] }, .{ quad.tex.tl[0], quad.tex.br[1] }, state.color);
+            self.addVertex(quad.rect.br, quad.tex.br, state.color);
+        }
+
+        if (quad.rect.tl[0] < min[0]) min[0] = quad.rect.tl[0];
+        if (quad.rect.br[0] > max[0]) max[0] = quad.rect.br[0];
+        switch (self.parameters.zero_position) {
+            .top_left => {
+                if (quad.rect.tl[1] < min[1]) min[1] = quad.rect.tl[1];
+                if (quad.rect.br[1] > max[1]) max[1] = quad.rect.br[1];
+            },
+            .bottom_left => {
+                if (quad.rect.br[1] < min[1]) min[1] = quad.rect.br[1];
+                if (quad.rect.tl[1] > max[1]) max[1] = quad.rect.tl[1];
+            },
+        }
+    }
+
+    context.bounds.tl = min;
+    context.bounds.br = max;
+
+    try self.flush();
+
+    return text.len;
+}
+
+///Creates a new writer, `context` *must* stay alive as long as the writer!
+pub fn writer(self: *Self, context: *WriterContext) !Writer {
+    context._fontstash = self;
+    context._font = self.fonts.get(context.state.font) orelse return error.MissingFont;
+    context._scale = c.stbtt_ScaleForPixelHeight(&context._font.font, context.state.size);
+
+    //Align vertically
+    context.draw_position[1] += self.getVerticalAlignment(context._font.*, context.state);
+
+    if (context.state.alignment.horizontal != .left) {
+        @panic("Horizontal alignment is not supported with the writer!");
+    }
+
+    //Set the initial bounds
+    context.bounds = .{ .tl = context.draw_position, .br = context.draw_position };
+
+    return .{ .context = context };
+}
+
 ///Draws the specified text with the specified state
 pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: State) !Gfx.Vector2 {
     var draw_position = position;
