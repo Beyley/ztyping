@@ -30,6 +30,8 @@ render: *const fn (*Self, RenderState) anyerror!void,
 char: ?*const fn (*Self, []const u8) anyerror!void = null,
 key_down: ?*const fn (*Self, c.SDL_Keysym) anyerror!void = null,
 init: *const fn (*Self, std.mem.Allocator, Gfx) anyerror!void,
+///Called when the screen is re-entered (eg. the screen higher on the stack closes)
+reenter: ?*const fn (*Self) anyerror!void = null,
 deinit: *const fn (*Self) void,
 data: *anyopaque,
 allocator: std.mem.Allocator,

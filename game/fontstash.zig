@@ -12,6 +12,14 @@ pub const Fontstash = @import("fontstash_impl.zig");
 pub const Mincho = "mincho";
 pub const Gothic = "gothic";
 
+pub const Normal: Fontstash.State = .{
+    .font = Gothic,
+    .size = 16,
+    .alignment = .{
+        .vertical = .top,
+    },
+};
+
 gfx: *Gfx,
 renderer: Renderer,
 context: *Fontstash,

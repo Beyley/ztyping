@@ -3,6 +3,10 @@ const std = @import("std");
 const IConv = @import("iconv.zig");
 const Fumen = @import("fumen.zig");
 
+const Gfx = @import("gfx.zig");
+const Screen = @import("screen.zig");
+const Fontstash = @import("fontstash.zig");
+
 const Self = @This();
 
 title: [:0]const u8,
@@ -164,4 +168,160 @@ pub fn readUTypingList(allocator: std.mem.Allocator) ![]Self {
     }
 
     return try music_list.toOwnedSlice();
+}
+
+const title_x = 40;
+const title_y = (30 - 30 / 2);
+const num_x = (Screen.display_width - 25);
+const num_y = (60 - 44);
+const artist_y = num_y;
+const level_x = (Screen.display_width - 270);
+const level_y = (60 - 22);
+const author_x_f = (Screen.display_width - 30);
+const author_y_f = level_y;
+
+const achievement_x = (title_x - 25);
+const achievement_y = (30 - 24 / 2);
+
+pub fn draw(
+    self: Self,
+    render_state: Screen.RenderState,
+    y: f32,
+    brightness: f32,
+    music_idx: usize,
+    music_count: usize,
+) !void {
+    const title_state = Fontstash.Fontstash.State{
+        .font = Fontstash.Mincho,
+        .size = Fontstash.ptToPx(30),
+        .alignment = .{
+            .vertical = .top,
+        },
+    };
+
+    const scaleVec = @as(Gfx.Vector2, @splat(render_state.gfx.scale));
+
+    const color = Gfx.ColorF{ brightness, brightness, brightness, 1 };
+    const title_width = (try render_state.fontstash.textBounds(self.title, title_state)).x2;
+
+    const width_num: f32 = blk: { //draw right-aligned text for the index
+        var context = Fontstash.Fontstash.WriterContext{
+            .draw = false,
+            .draw_position = .{ 0, 0 },
+            .state = Fontstash.Normal,
+        };
+        context.state.size *= render_state.gfx.scale;
+
+        var writer = try render_state.fontstash.context.writer(&context);
+        try std.fmt.format(writer, "{d}/{d}", .{ music_idx + 1, music_count });
+        var bounds = context.bounds;
+        //Adjust for resolution
+        bounds.br /= @splat(render_state.gfx.scale);
+        bounds.tl /= @splat(render_state.gfx.scale);
+        context.draw_position = Gfx.Vector2{ num_x - bounds.br[0], num_y + y } * scaleVec;
+        context.draw = true;
+        context.state.color = color;
+        writer = try render_state.fontstash.context.writer(&context);
+        try std.fmt.format(writer, "{d}/{d}", .{ music_idx + 1, music_count });
+        break :blk bounds.br[0];
+    };
+
+    { //artist
+        const width = (try render_state.fontstash.textBounds(self.artist, Fontstash.Normal)).x2;
+        var x = (Screen.display_width - 150) - width * 2 / 3;
+
+        var width_l = x - (title_x + title_width);
+        var width_r = (num_x - width_num) - (x + width);
+
+        if (width_l <= 20 or width_r <= 20) {
+            x += (width_r - width_l) / 4;
+        }
+
+        if (width_l < 0 or width_l + width_r <= 0) {
+            x = title_x + title_width;
+        } else if (width_r < 0) {
+            x += width_r;
+        }
+
+        var state = Fontstash.Normal;
+        state.color = color;
+        _ = try render_state.fontstash.drawText(.{ x, y + artist_y }, self.artist, state);
+    }
+
+    { //fumen author
+        var fumen_author_color = color * @as(Gfx.ColorF, @splat(2)) / @as(Gfx.ColorF, @splat(3));
+        fumen_author_color[3] = 1;
+
+        var context = Fontstash.Fontstash.WriterContext{
+            .draw = false,
+            .draw_position = .{ 0, 0 },
+            .state = Fontstash.Normal,
+        };
+        context.state.size *= render_state.gfx.scale;
+
+        var writer = try render_state.fontstash.context.writer(&context);
+        try std.fmt.format(writer, "(譜面作成　{s})", .{self.author});
+        var bounds = context.bounds;
+        //Adjust for resolution
+        bounds.br /= @splat(render_state.gfx.scale);
+        bounds.tl /= @splat(render_state.gfx.scale);
+        context.draw_position = Gfx.Vector2{ author_x_f - bounds.br[0], author_y_f + y } * scaleVec;
+        context.draw = true;
+        context.state.color = fumen_author_color;
+        writer = try render_state.fontstash.context.writer(&context);
+        try std.fmt.format(writer, "(譜面作成　{s})", .{self.author});
+    }
+
+    { //difficulty
+        for (0..5) |i| {
+            const star_color = if (self.level <= i) blk: {
+                var tmp = color / @as(Gfx.ColorF, @splat(2));
+                tmp[3] = 1;
+                break :blk tmp;
+            } else Gfx.ColorF{ brightness, brightness, 0, 1 };
+            const str = if (self.level <= i) "☆" else "★";
+
+            var state = Fontstash.Normal;
+            state.color = star_color;
+            _ = try render_state.fontstash.drawText(
+                .{ level_x + 16 * @as(f32, @floatFromInt(i)), level_y + y },
+                str,
+                state,
+            );
+        }
+    }
+
+    { //achievement
+        //TODO
+    }
+
+    var state = title_state;
+    state.color = color;
+    _ = try render_state.fontstash.drawText(.{ title_x, title_y + y }, self.title, state);
+}
+
+pub fn drawRanking(
+    music: Self,
+    render_state: Screen.RenderState,
+    pos: Gfx.Vector2,
+    ranking_pos: usize,
+    rank_len: usize,
+) !void {
+    _ = music;
+    _ = rank_len;
+    _ = ranking_pos;
+    _ = pos;
+    _ = render_state;
+}
+
+pub fn drawComment(music: Self, render_state: Screen.RenderState, pos: Gfx.Vector2) !void {
+    _ = music;
+    _ = pos;
+    _ = render_state;
+}
+
+pub fn drawPlayData(music: Self, render_state: Screen.RenderState, pos: Gfx.Vector2) !void {
+    _ = music;
+    _ = pos;
+    _ = render_state;
 }

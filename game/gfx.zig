@@ -13,6 +13,8 @@ pub const Vector2i = @Vector(2, isize);
 pub const ColorF = @Vector(4, f32);
 ///RGBA u8 color
 pub const ColorB = @Vector(4, u8);
+///A rectangle with its bounds specified as u32
+pub const RectU = @Vector(4, u32);
 
 pub const Vector2One: Vector2 = @splat(@as(f32, 1));
 pub const Vector2Zero: Vector2 = @splat(@as(f32, 0));
@@ -118,6 +120,7 @@ projection_matrix_buffer: Buffer = undefined,
 projection_matrix_bind_group: BindGroup = undefined,
 sampler: c.WGPUSampler = null,
 scale: f32 = 1.0,
+viewport: RectU = undefined,
 
 pub fn init(window: *c.SDL_Window, scale: f32) !Self {
     var self: Self = Self{
@@ -202,6 +205,14 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
     }) orelse return Error.UnableToCreateSampler;
     std.debug.print("got sampler {*}\n", .{self.sampler.?});
 
+    { //Update the viewport
+        var width: c_int = undefined;
+        var height: c_int = undefined;
+        c.SDL_GL_GetDrawableSize(window, &width, &height);
+
+        self.viewport = RectU{ 0, 0, @intCast(width), @intCast(height) };
+    }
+
     return self;
 }
 
@@ -265,6 +276,10 @@ pub const RenderPassEncoder = struct {
 
     pub fn drawIndexed(self: RenderPassEncoder, index_count: u32, instance_count: u32, first_index: u32, base_vertex: i32, first_instance: u32) void {
         c.wgpuRenderPassEncoderDrawIndexed(self.c.?, index_count, instance_count, first_index, base_vertex, first_instance);
+    }
+
+    pub fn setScissor(self: RenderPassEncoder, rect: RectU) void {
+        c.wgpuRenderPassEncoderSetScissorRect(self.c.?, rect[0], rect[1], rect[2], rect[3]);
     }
 };
 

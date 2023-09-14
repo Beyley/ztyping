@@ -48,6 +48,9 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
     var data = self.getData(MainMenuData);
 
     try data.name.appendSlice(typed_char);
+
+    //Set the name slice
+    self.state.name = data.name.items;
 }
 
 pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
@@ -68,6 +71,12 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             }
         },
         c.SDLK_RETURN => {
+            //If they did not enter a name, mark them as a guest
+            if (data.name.items.len == 0) {
+                try data.name.appendSlice("(guest)");
+                self.state.name = data.name.items;
+            }
+
             self.screen_push = &SongSelect.SongSelect;
         },
         else => {},
@@ -145,13 +154,11 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
         };
 
         metrics = render_state.fontstash.verticalMetrics(fs_state);
-        try data.name.append(0);
         _ = try render_state.fontstash.drawText(
             .{ 60, 400 + metrics.line_height * 2 },
-            data.name.items[0..(data.name.items.len - 1) :0],
+            data.name.items[0..(data.name.items.len)],
             fs_state,
         );
-        _ = data.name.pop();
     } else {
         state = .{
             .font = Fontstash.Mincho,

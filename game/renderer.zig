@@ -11,6 +11,7 @@ const RenderBuffer = struct {
     idx_buf: Gfx.Buffer,
     used_vtx: u64 = 0,
     used_idx: u64 = 0,
+    scissor: Gfx.RectU,
     ///Recording periods that this buffer has been stuck in the queue without being re-used
     recording_periods_since_used: usize = 0,
 };
@@ -30,6 +31,7 @@ cpu_vtx_positions: []Gfx.Vector2,
 cpu_vtx_tex_coords: []Gfx.Vector2,
 cpu_vtx_colors: []Gfx.ColorF,
 cpu_idx: []IndexType,
+current_scissor: Gfx.RectU,
 
 pub fn init(allocator: std.mem.Allocator, gfx: *Gfx, texture: Gfx.Texture) !Self {
     var self: Self = Self{
@@ -45,6 +47,7 @@ pub fn init(allocator: std.mem.Allocator, gfx: *Gfx, texture: Gfx.Texture) !Self
         .cpu_vtx_tex_coords = undefined,
         .cpu_vtx_colors = undefined,
         .cpu_idx = undefined,
+        .current_scissor = gfx.viewport,
     };
     self.allocator = self.arena_allocator.allocator();
     self.recorded_buffers = std.ArrayList(RenderBuffer).init(self.allocator);
@@ -76,6 +79,7 @@ fn createRenderBuffer(self: *Self) !void {
     try self.queued_buffers.append(RenderBuffer{
         .vtx_buf = try self.gfx.device.createBuffer(u8, vtx_buf_size, .vertex),
         .idx_buf = try self.gfx.device.createBuffer(IndexType, idx_per_buf, .index),
+        .scissor = self.gfx.viewport,
     });
 }
 
@@ -102,6 +106,9 @@ pub fn begin(self: *Self) !void {
 
     //Mark that we have started recording
     self.started = true;
+
+    //Reset the cached scissor to the current viewport
+    self.current_scissor = self.gfx.viewport;
 }
 
 ///Ends the recording period, prepares for calling draw()
@@ -115,6 +122,36 @@ pub fn end(self: *Self) !void {
 
     //Mark that we have finished recording
     self.started = false;
+}
+
+pub fn setScissor(self: *Self, rect: Gfx.RectU) !void {
+    //If the scissor is the same, then dont do anything
+    const eql = rect == self.current_scissor;
+    if (eql[0] and eql[1] and eql[2] and eql[3]) {
+        return;
+    }
+
+    //Dump the current things to a buffer, since we need to start a new draw call each time the scissor rectangle changes
+    try self.dump();
+
+    //If theres no more queued buffers,
+    if (self.queued_buffers.items.len == 0) {
+        //Create a new render buffer
+        try self.createRenderBuffer();
+    }
+
+    //Pop the latest buffer off the queue
+    self.recording_buffer = self.queued_buffers.pop();
+
+    //Update the current scissor
+    self.current_scissor = rect;
+
+    //Set the current recording buffers scissor to the new one
+    self.recording_buffer.?.scissor = rect;
+}
+
+pub fn resetScissor(self: *Self) !void {
+    try self.setScissor(self.gfx.viewport);
 }
 
 ///Dumps the current recording buffer to the recorded list, or to the unused list, if empty
@@ -258,6 +295,8 @@ pub fn reserve(self: *Self, vtx_count: u64, idx_count: u64) !ReservedData {
 
         //Pop the latest buffer off the queue
         self.recording_buffer = self.queued_buffers.pop();
+
+        self.recording_buffer.?.scissor = self.current_scissor;
     }
 
     //Increment the recording buffer's counts
@@ -285,9 +324,8 @@ pub fn draw(self: *Self, encoder: *Gfx.RenderPassEncoder) !void {
     encoder.setBindGroup(0, self.gfx.projection_matrix_bind_group, &.{});
     encoder.setBindGroup(1, self.texture.bind_group.?, &.{});
 
-    for (self.recorded_buffers.items) |recorded_buffera| {
-        var recorded_buffer: RenderBuffer = recorded_buffera;
-
+    for (self.recorded_buffers.items) |recorded_buffer| {
+        encoder.setScissor(recorded_buffer.scissor);
         encoder.setVertexBuffer(0, recorded_buffer.vtx_buf, 0, @sizeOf(Gfx.Vector2) * vtx_per_buf);
         encoder.setVertexBuffer(1, recorded_buffer.vtx_buf, @sizeOf(Gfx.Vector2) * vtx_per_buf, @sizeOf(Gfx.Vector2) * vtx_per_buf);
         encoder.setVertexBuffer(2, recorded_buffer.vtx_buf, @sizeOf(Gfx.Vector2) * 2 * vtx_per_buf, @sizeOf(Gfx.ColorF) * vtx_per_buf);

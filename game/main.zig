@@ -57,6 +57,7 @@ fn runGame() !void {
         .counter_freq = 0,
         .counter_curr = 0,
         .config = try Config.readConfig(),
+        .name = undefined,
     };
 
     _ = c.SDL_SetHint("SDL_WINDOWS_DPI_SCALING", "1");
@@ -318,6 +319,11 @@ fn runGame() !void {
         if (screen.close_screen) {
             _ = screen_stack.pop();
             screen.close_screen = false;
+
+            const top = screen_stack.top();
+            if (top.reenter) |re_enter| {
+                try re_enter(top);
+            }
         } else if (screen.screen_push) |new_screen| {
             try screen_stack.load(new_screen, gfx, &state);
             screen.screen_push = null;
