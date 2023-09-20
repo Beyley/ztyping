@@ -1,3 +1,4 @@
+const builtin = @import("builtin");
 const std = @import("std");
 
 const c = @import("../main.zig").c;
@@ -294,26 +295,18 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     var data = self.getData(SongSelectData);
 
     var open = true;
-    _ = c.igBegin("Maps", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
-    for (self.state.map_list) |map| {
-        if (c.igButton(map.title, .{ .x = 0, .y = 0 })) {
-            self.state.current_map = map;
-            self.screen_push = &Gameplay.Gameplay;
+    if (builtin.mode == .Debug) {
+        _ = c.igBegin("Test", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+        for (data.draw_info.add_height) |height| {
+            c.igText("height: %f", height);
         }
+        c.igText("wait: %f", data.draw_info.add_height_wait);
+        c.igText("ranking pos: %d", data.draw_info.ranking_pos);
+
+        c.igEnd();
     }
-
-    c.igEnd();
-
-    _ = c.igBegin("Test", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
-
-    for (data.draw_info.add_height) |height| {
-        c.igText("height: %f", height);
-    }
-    c.igText("wait: %f", data.draw_info.add_height_wait);
-    c.igText("ranking pos: %d", data.draw_info.ranking_pos);
-
-    c.igEnd();
 
     try render_state.renderer.begin();
     try render_state.fontstash.renderer.begin();
@@ -449,7 +442,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
         .{ 0.666, 0.666, 0.666, 1 },
     );
 
-    if (data.draw_info.searching) {
+    if (!data.draw_info.searching) {
         _ = try render_state.fontstash.drawText(
             .{ 10, 370 },
             "↑/↓: 曲選択,  F: 検索, 0～4:ソート, R: ランダム,  F5: 再読込,",
