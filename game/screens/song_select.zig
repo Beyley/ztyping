@@ -88,12 +88,10 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
         c.SDLK_f => {
             //TODO: search
         },
-        c.SDLK_UP => {
-            data.draw_info.prev();
-        },
-        c.SDLK_DOWN => {
-            data.draw_info.next();
-        },
+        c.SDLK_UP => data.draw_info.prev(),
+        c.SDLK_DOWN => data.draw_info.next(),
+        c.SDLK_RIGHT => data.draw_info.right(),
+        c.SDLK_LEFT => data.draw_info.left(),
         else => {},
     }
 }
@@ -141,8 +139,11 @@ const DrawInfo = struct {
                 else
                     h_music_info_sub;
 
-                if (height.* == 0 and self.add_height_wait > 0) {
+                //If the add height is basically 0,
+                if (self.add_height[add_height_middle] < 0.01 and self.add_height_wait > 0) {
+                    //Decrement the waiting timer
                     self.add_height_wait -= 1;
+                    //Continue, preventing `height` from being added to
                     continue;
                 }
                 break :blk h;
@@ -301,6 +302,16 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
             self.screen_push = &Gameplay.Gameplay;
         }
     }
+
+    c.igEnd();
+
+    _ = c.igBegin("Test", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+    for (data.draw_info.add_height) |height| {
+        c.igText("height: %f", height);
+    }
+    c.igText("wait: %f", data.draw_info.add_height_wait);
+    c.igText("ranking pos: %d", data.draw_info.ranking_pos);
 
     c.igEnd();
 
