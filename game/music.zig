@@ -66,15 +66,20 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
     errdefer if (fumen_file_name) |fumen_file_name_ptr| allocator.free(fumen_file_name_ptr);
     errdefer if (ranking_file_name) |ranking_file_name_ptr| allocator.free(ranking_file_name_ptr);
 
+    var orig_file = try file.readToEndAlloc(allocator, 10000);
+    defer allocator.free(orig_file);
+
+    var read_file = try iconv.convert(allocator, orig_file);
+    defer allocator.free(read_file);
+
+    var iter = std.mem.split(u8, read_file, "\n");
+
     var i: usize = 0;
-    while (true) {
-        var orig_line = try file.reader().readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(u32)) orelse break;
-        defer allocator.free(orig_line);
+    while (iter.next()) |orig_line| {
+        //Skip blank lines
+        if (orig_line.len == 0) continue;
 
-        var returnless = if (orig_line[orig_line.len - 1] == '\r') orig_line[0 .. orig_line.len - 1] else orig_line;
-
-        var line = try iconv.convert(allocator, returnless);
-        defer allocator.free(line);
+        var line = if (orig_line[orig_line.len - 1] == '\r') orig_line[0 .. orig_line.len - 1] else orig_line;
 
         //If the last char is \r, strip it out
         if (line.len > 0 and line[line.len - 1] == '\r') {
@@ -301,27 +306,34 @@ pub fn draw(
 }
 
 pub fn drawRanking(
-    music: Self,
+    self: Self,
     render_state: Screen.RenderState,
     pos: Gfx.Vector2,
-    ranking_pos: usize,
+    ranking_pos: isize,
     rank_len: usize,
 ) !void {
-    _ = music;
+    _ = self;
     _ = rank_len;
     _ = ranking_pos;
     _ = pos;
     _ = render_state;
 }
 
-pub fn drawComment(music: Self, render_state: Screen.RenderState, pos: Gfx.Vector2) !void {
-    _ = music;
-    _ = pos;
-    _ = render_state;
+pub fn drawComment(self: Self, render_state: Screen.RenderState, pos: Gfx.Vector2) !void {
+    for (self.comment, 0..) |comment, i| {
+        _ = try render_state.fontstash.drawText(
+            Gfx.Vector2{
+                30,
+                2 + 20 * @as(f32, @floatFromInt(i)),
+            } + pos,
+            comment,
+            Fontstash.Normal,
+        );
+    }
 }
 
-pub fn drawPlayData(music: Self, render_state: Screen.RenderState, pos: Gfx.Vector2) !void {
-    _ = music;
+pub fn drawPlayData(self: Self, render_state: Screen.RenderState, pos: Gfx.Vector2) !void {
+    _ = self;
     _ = pos;
     _ = render_state;
 }

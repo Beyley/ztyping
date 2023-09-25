@@ -102,7 +102,7 @@ const ranking_draw_len = 5;
 const ranking_len = 20;
 
 const DrawInfo = struct {
-    ranking_pos: usize,
+    ranking_pos: isize,
     ///Whether we are displaying the rankings or not
     ranking_flag: bool,
 
@@ -544,7 +544,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
 }
 
-fn drawMainRanking(render_state: Screen.RenderState, music: Music, ranking_pos: usize, pos: Gfx.Vector2, height: f32) !void {
+fn drawMainRanking(render_state: Screen.RenderState, music: Music, ranking_pos: isize, pos: Gfx.Vector2, height: f32) !void {
     var yMin = @max(pos[1], 0);
     _ = yMin;
     var yMax = @min(pos[1] + height, 360);
