@@ -252,7 +252,7 @@ const DrawInfo = struct {
 
     pub fn random(self: *DrawInfo, game_state: *GameState) void {
         //Get a random number from 0 - music.len
-        const selection: usize = @intFromFloat(@as(f64, @floatFromInt(game_state.random.next())) / std.math.maxInt(u64));
+        const selection: usize = @intFromFloat(@as(f64, @floatFromInt(game_state.random.next())) / std.math.maxInt(u64) * @as(f64, @floatFromInt(self.music_iter.music.len - 1)));
         //Jump to the random selection
         self.jump(selection);
     }

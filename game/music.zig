@@ -93,7 +93,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
         } else if (i == 2) {
             author = try allocator.dupeZ(u8, line);
         } else if (i == 3) {
-            self.level = try std.fmt.parseUnsigned(u3, line, 0);
+            self.level = try std.fmt.parseUnsigned(u3, line, 10);
 
             //While i dont like this behaviour, it matches UTyping
             if (self.level == 0) {
