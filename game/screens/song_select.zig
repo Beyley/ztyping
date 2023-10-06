@@ -9,11 +9,13 @@ const Gameplay = @import("gameplay.zig");
 const Music = @import("../music.zig");
 const GameState = @import("../game_state.zig");
 const Fontstash = @import("../fontstash.zig");
+const Challenge = @import("../challenge.zig");
 
 const RenderState = Screen.RenderState;
 
 const SongSelectData = struct {
     draw_info: DrawInfo,
+    challenge_info: Challenge.ChallengeInfo,
 };
 
 pub var SongSelect = Screen{
@@ -46,6 +48,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
             .ranking_pos = 0,
             .searching = false,
         },
+        .challenge_info = .{},
     };
 
     self.data = data;
@@ -534,6 +537,172 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     );
 
     //TODO: draw enabled mod names
+    if (data.challenge_info.stealth) {
+        var state = Fontstash.Normal;
+        state.color = .{ 1, 0.125, 0, 1 };
+        _ = try render_state.fontstash.drawText(
+            .{ 130, Screen.display_height - 20 },
+            "[ CStealth ]",
+            state,
+        );
+    } else {
+        if (data.challenge_info.hidden and data.challenge_info.sudden) {
+            var state = Fontstash.Normal;
+            state.color = .{ 1, 0.5, 0, 1 };
+            _ = try render_state.fontstash.drawText(
+                .{ 130, Screen.display_height - 20 },
+                "[ Hid.Sud. ]",
+                state,
+            );
+        } else if (data.challenge_info.hidden) {
+            var state = Fontstash.Normal;
+            state.color = .{ 1, 1, 0, 1 };
+            _ = try render_state.fontstash.drawText(
+                .{ 130, Screen.display_height - 20 },
+                "[ Hidden ]",
+                state,
+            );
+        } else if (data.challenge_info.sudden) {
+            var state = Fontstash.Normal;
+            state.color = .{ 1, 1, 0, 1 };
+            _ = try render_state.fontstash.drawText(
+                .{ 130, Screen.display_height - 20 },
+                "[ Sudden ]",
+                state,
+            );
+        } else {
+            var state = Fontstash.Normal;
+            state.color = .{ 0.25, 0.25, 0.25, 1 };
+            _ = try render_state.fontstash.drawText(
+                .{ 130, Screen.display_height - 20 },
+                "[ Hid.Sud. ]",
+                state,
+            );
+        }
+    }
+
+    {
+        var state = Fontstash.Normal;
+        state.color = if (data.challenge_info.stealth) .{ 1, 0.5, 0, 1 } else .{ 0.25, 0.25, 0.25, 1 };
+        _ = try render_state.fontstash.drawText(
+            .{ 230, Screen.display_height - 20 },
+            "[ LStealth ]",
+            state,
+        );
+    }
+
+    {
+        var state = Fontstash.Normal;
+        if (data.challenge_info.speed > 3) {
+            state.color = .{ 1, 0.125, 0, 1 };
+        } else if (data.challenge_info.speed > 2) {
+            state.color = .{ 1, 0.5, 0, 1 };
+        } else if (data.challenge_info.speed > 1) {
+            state.color = .{ 1, 1, 0, 1 };
+        } else if (data.challenge_info.speed < 1) {
+            state.color = .{ 0.5, 0.5, 1, 1 };
+        } else {
+            state.color = .{ 0.25, 0.25, 0.25, 1 };
+        }
+        state.size *= render_state.gfx.scale;
+        var context: Fontstash.Fontstash.WriterContext = .{
+            .state = state,
+            .draw = true,
+            .draw_position = Gfx.Vector2{ 10, Screen.display_height - 20 } * @as(Gfx.Vector2, @splat(render_state.gfx.scale)),
+        };
+        var writer = try render_state.fontstash.context.writer(&context);
+        try writer.writeAll("[ Speed x");
+        try std.fmt.formatFloatDecimal(data.challenge_info.speed, .{ .precision = 1 }, writer);
+        try writer.writeAll(" ]");
+    }
+
+    {
+        var state = Fontstash.Normal;
+
+        var sign: bool = blk: {
+            if (data.challenge_info.key > 8) {
+                state.color = .{ 1, 0.125, 0, 1 };
+                break :blk true;
+            } else if (data.challenge_info.key > 4) {
+                state.color = .{ 1, 0.5, 0, 1 };
+                break :blk true;
+            } else if (data.challenge_info.key > 0) {
+                state.color = .{ 1, 1, 0, 1 };
+                break :blk true;
+            } else {
+                state.color = .{ 0.5, 1, 0, 1 };
+                break :blk false;
+            }
+        };
+
+        state.size *= render_state.gfx.scale;
+        var context: Fontstash.Fontstash.WriterContext = .{
+            .state = state,
+            .draw = true,
+            .draw_position = Gfx.Vector2{ 330, Screen.display_height - 20 } * @as(Gfx.Vector2, @splat(render_state.gfx.scale)),
+        };
+        var writer = try render_state.fontstash.context.writer(&context);
+
+        if (data.challenge_info.key == 0) {
+            context.state.color = .{ 0.25, 0.25, 0.25, 1 };
+            try std.fmt.format(writer, "[ Key 0 ]", .{});
+        } else {
+            try std.fmt.format(
+                writer,
+                "[ Key {c}{d:.2} ]",
+                .{
+                    @as(u8, if (sign) '+' else '-'),
+                    data.challenge_info.key,
+                },
+            );
+        }
+    }
+
+    {
+        var state = Fontstash.Normal;
+
+        const sct_text = blk: {
+            if (data.challenge_info.sin) {
+                if (data.challenge_info.cos) {
+                    if (data.challenge_info.tan) {
+                        state.color = .{ 1, 0.5, 0, 1 };
+                        break :blk "[sct]";
+                    } else {
+                        state.color = .{ 1, 0.5, 0, 1 };
+                        break :blk "[sc-]";
+                    }
+                } else {
+                    if (data.challenge_info.tan) {
+                        state.color = .{ 1, 0.5, 0, 1 };
+                        break :blk "[s-t]";
+                    } else {
+                        state.color = .{ 1, 1, 0, 1 };
+                        break :blk "[sin]";
+                    }
+                }
+            } else {
+                if (data.challenge_info.cos) {
+                    if (data.challenge_info.tan) {
+                        state.color = .{ 1, 0.5, 0, 1 };
+                        break :blk "[-ct]";
+                    } else {
+                        state.color = .{ 1, 1, 0, 1 };
+                        break :blk "[cos]";
+                    }
+                } else {
+                    if (data.challenge_info.tan) {
+                        state.color = .{ 1, 1, 0, 1 };
+                        break :blk "[tan]";
+                    } else {
+                        state.color = .{ 0.25, 0.25, 0.25, 1 };
+                        break :blk "[sct]";
+                    }
+                }
+            }
+        };
+
+        _ = try render_state.fontstash.drawText(.{ 430, Screen.display_height - 20 }, sct_text, state);
+    }
 
     data.draw_info.step();
 
