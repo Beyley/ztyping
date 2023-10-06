@@ -71,6 +71,10 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .osx_sdk_path = @as([]const u8, root_path ++ "libs/system-sdk/macos12"),
         .linux_sdk_path = @as([]const u8, root_path ++ "libs/system-sdk/linux"),
+        .disable_audio = true,
+        .disable_render = true,
+        .disable_joystick = true,
+        .disable_video_sub_implementations = true,
     });
     const sdl_lib = sdl_pkg.artifact("SDL2");
 
