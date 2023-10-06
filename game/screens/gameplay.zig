@@ -1,6 +1,7 @@
 const std = @import("std");
 const bass = @import("bass");
 const builtin = @import("builtin");
+const fumen_compiler = @import("fumen_compiler");
 
 const c = @import("../main.zig").c;
 
@@ -60,6 +61,10 @@ const GameplayData = struct {
 
     ///Get the actively playing music
     music: *Music,
+
+    ///The current speed of the music
+    speed: f32 = 1,
+    starting_freq: f32,
 
     ///The current note the user is on
     active_note: usize = 0,
@@ -281,6 +286,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
             .accuracy_text = try std.time.Timer.start(),
         },
         .gauge_data = GaugeData.init(self.state.current_map.?.fumen.lyrics.len),
+        .starting_freq = undefined,
     };
 
     //Reset the hit status for all the lyrics before the game starts
@@ -310,6 +316,8 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
             },
         },
     );
+
+    data.starting_freq = try self.state.audio_tracker.music.?.getAttribute(bass.ChannelAttribute.frequency);
 }
 
 pub fn deinitScreen(self: *Screen) void {
@@ -468,7 +476,7 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
             var delta = current_time - current_note.time;
 
             //Get the hit result, using the absolute value
-            var hit_result = deltaToHitResult(@fabs(delta));
+            var hit_result = deltaToHitResult(@abs(delta));
 
             //If the user is past the note, and they are too far away, mark it as poor
             //This allows them to hit notes at any point *after*
@@ -586,7 +594,7 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
         var delta = current_time - next_note.?.time;
 
         //Get the hit result, using the absolute value
-        var hit_result = deltaToHitResult(@fabs(delta));
+        var hit_result = deltaToHitResult(@abs(delta));
 
         // std.debug.print("next \"{s}\"/{d}/{any}\n", .{ matched_for_next_note.conversion.romaji, delta, hit_result });
 
@@ -740,6 +748,47 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             } else {
                 try self.state.audio_tracker.music.?.play(false);
             }
+        },
+        c.SDLK_RETURN => {
+            //Deinit the current fumen information
+            data.music.fumen.deinit();
+
+            //Get the filename of the source file
+            var source_filename = try std.fmt.allocPrint(data.music.allocator, "{s}_src.txt", .{std.fs.path.stem(data.music.fumen_file_name)});
+            defer data.music.allocator.free(source_filename);
+
+            //Open the output dir
+            var out_dir = try std.fs.openDirAbsolute(data.music.folder_path, .{});
+            defer out_dir.close();
+
+            //Open the source file
+            var source_file = try out_dir.openFile(source_filename, .{ .mode = .read_write });
+            defer source_file.close();
+
+            //Run the compiler
+            try fumen_compiler.compile(data.music.allocator, source_file, data.music.folder_path);
+
+            //Open the new fumen file
+            var fumen_file = try out_dir.openFile(data.music.fumen_file_name, .{});
+            defer fumen_file.close();
+
+            //Read the new fumen information from the file
+            data.music.fumen.* = try Fumen.readFromFile(data.music.allocator, fumen_file, out_dir);
+
+            //Reset parts of the game state to let the user replay the map basically
+            data.phase = Phase.main;
+            data.active_note = 0;
+            data.score = .{};
+            data.gauge_data = GaugeData.init(data.music.fumen.lyrics.len);
+            data.current_lyric_kanji = null;
+        },
+        c.SDLK_RIGHTBRACKET => {
+            data.speed += 0.1;
+            try self.state.audio_tracker.music.?.setAttribute(bass.ChannelAttribute.frequency, data.starting_freq * data.speed);
+        },
+        c.SDLK_LEFTBRACKET => {
+            data.speed -= 0.1;
+            try self.state.audio_tracker.music.?.setAttribute(bass.ChannelAttribute.frequency, data.starting_freq * data.speed);
         },
         else => {
             if (data.phase == .ready) {

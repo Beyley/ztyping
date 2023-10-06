@@ -86,7 +86,11 @@ pub fn main() !void {
     const file = try std.fs.openFileAbsolute(file_name, .{});
     defer file.close();
 
-    var buffered_reader = std.io.bufferedReader(file.reader());
+    try compile(allocator, file, dir_name);
+}
+
+pub fn compile(allocator: std.mem.Allocator, input_file: std.fs.File, output_dir_name: []const u8) !void {
+    var buffered_reader = std.io.bufferedReader(input_file.reader());
     var reader = buffered_reader.reader();
 
     var info = Info{
@@ -130,7 +134,7 @@ pub fn main() !void {
     }
 
     //Get the full path of the destination file
-    const dest_name_path = try std.fs.path.resolve(allocator, &.{ dir_name, dest_name });
+    const dest_name_path = try std.fs.path.resolve(allocator, &.{ output_dir_name, dest_name });
     defer allocator.free(dest_name_path);
 
     //Open the output file for writing

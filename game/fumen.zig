@@ -88,7 +88,7 @@ allocator: std.mem.Allocator,
 
 const Self = @This();
 
-pub fn deinit(self: Self) void {
+pub fn deinit(self: *Self) void {
     for (self.lyrics) |lyric| {
         self.allocator.free(lyric.text);
     }
@@ -107,9 +107,11 @@ pub fn deinit(self: Self) void {
     self.allocator.free(self.lyrics_kanji);
     self.allocator.free(self.beat_lines);
     self.allocator.free(self.fumen_folder);
+
+    self.* = undefined;
 }
 
-pub fn readFromFile(allocator: std.mem.Allocator, file: *std.fs.File, dir: std.fs.Dir) !Self {
+pub fn readFromFile(allocator: std.mem.Allocator, file: std.fs.File, dir: std.fs.Dir) !Self {
     var self: Self = .{
         .allocator = allocator,
         .audio_path = &.{},

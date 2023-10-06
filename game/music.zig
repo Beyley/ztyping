@@ -16,8 +16,9 @@ level: u3,
 fumen_file_name: [:0]const u8,
 ranking_file_name: [:0]const u8,
 comment: []const [:0]const u8,
+folder_path: []const u8,
 
-fumen: Fumen,
+fumen: *Fumen,
 
 allocator: std.mem.Allocator,
 
@@ -27,16 +28,21 @@ pub fn deinit(self: *Self) void {
     self.allocator.free(self.author);
     self.allocator.free(self.fumen_file_name);
     self.allocator.free(self.ranking_file_name);
+    self.allocator.free(self.folder_path);
 
     for (self.comment) |comment| {
         self.allocator.free(comment);
     }
 
     self.allocator.free(self.comment);
+
     self.fumen.deinit();
+    self.allocator.destroy(self.fumen);
+
+    self.* = undefined;
 }
 
-pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.fs.File) !Self {
+pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs.File) !Self {
     var self: Self = undefined;
     self.allocator = allocator;
 
@@ -127,13 +133,18 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: *std.f
 
     self.comment = try comments.toOwnedSlice();
 
+    self.folder_path = try path.realpathAlloc(allocator, ".");
+    errdefer allocator.free(self.folder_path);
+
     var fumen_path = try path.realpathAlloc(allocator, self.fumen_file_name);
     defer allocator.free(fumen_path);
 
     var fumen_file = try std.fs.openFileAbsolute(fumen_path, .{});
     defer fumen_file.close();
 
-    self.fumen = try Fumen.readFromFile(allocator, &fumen_file, path);
+    self.fumen = try allocator.create(Fumen);
+    errdefer allocator.destroy(self.fumen);
+    self.fumen.* = try Fumen.readFromFile(allocator, fumen_file, path);
     errdefer self.fumen.deinit();
 
     return self;
@@ -167,7 +178,7 @@ pub fn readUTypingList(allocator: std.mem.Allocator) ![]Self {
         var music_dir = try std.fs.cwd().openDir(std.fs.path.dirname(normalized) orelse "", .{});
         defer music_dir.close();
 
-        var music = try readFromFile(allocator, music_dir, &music_file);
+        var music = try readFromFile(allocator, music_dir, music_file);
 
         try music_list.append(music);
     }

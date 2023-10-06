@@ -191,6 +191,8 @@ pub fn build(b: *std.Build) !void {
     fumen_compile.addModule("clap", clap.module("clap"));
     b.installArtifact(fumen_compile);
 
+    exe.addModule("fumen_compiler", b.addModule("fumen_compiler", .{ .source_file = .{ .path = root_path ++ "util/fumen_compile.zig" } }));
+
     const fumen_compile_cmd = b.addRunArtifact(fumen_compile);
     fumen_compile_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {
