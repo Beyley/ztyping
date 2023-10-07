@@ -27,6 +27,7 @@ pub fn build(b: *std.Build) !void {
         exe.addIncludePath(.{ .path = root_path ++ "libs/system-sdk/macos12/usr/include" });
         exe.addFrameworkPath(.{ .path = root_path ++ "libs/system-sdk/macos12/System/Library/Frameworks" });
         exe.addLibraryPath(.{ .path = root_path ++ "libs/system-sdk/macos12/usr/lib" });
+        b.sysroot = root_path ++ "libs/system-sdk/macos12";
 
         exe.addIncludePath(.{ .path = root_path ++ "game/osx" });
         exe.addCSourceFile(.{ .file = .{ .path = root_path ++ "game/osx/osx_helper.mm" }, .flags = &.{"-fobjc-arc"} });
@@ -74,7 +75,7 @@ pub fn build(b: *std.Build) !void {
         .disable_audio = true,
         .disable_render = true,
         .disable_joystick = true,
-        .disable_video_sub_implementations = true,
+        // .disable_video_sub_implementations = true,
     });
     const sdl_lib = sdl_pkg.artifact("SDL2");
 
@@ -135,6 +136,7 @@ pub fn build(b: *std.Build) !void {
         cimgui_lib.installLibraryHeaders(sdl_lib);
         cimgui_lib.linkLibrary(sdl_lib);
         try cimgui_lib.lib_paths.appendSlice(sdl_lib.lib_paths.items);
+        try cimgui_lib.include_dirs.appendSlice(sdl_lib.include_dirs.items);
 
         exe.addIncludePath(.{ .path = "libs/cimgui/" });
 

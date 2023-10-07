@@ -115,17 +115,32 @@ shader: c.WGPUShaderModule = null,
 bind_group_layouts: BindGroupLayouts = undefined,
 render_pipeline_layout: c.WGPUPipelineLayout = null,
 render_pipeline: RenderPipeline = undefined,
-swap_chain: ?SwapChain = null,
 projection_matrix_buffer: Buffer = undefined,
 projection_matrix_bind_group: BindGroup = undefined,
 sampler: c.WGPUSampler = null,
 scale: f32 = 1.0,
 viewport: RectU = undefined,
+surface_capabilities: c.WGPUSurfaceCapabilities = undefined,
+surface_config: c.WGPUSurfaceConfiguration = undefined,
+
+const PresentMode = enum(c_uint) {
+    fifo = 0,
+    fifo_relaxed = 1,
+    immediate = 2,
+    mailbox = 3,
+};
 
 pub fn init(window: *c.SDL_Window, scale: f32) !Self {
     var self: Self = Self{
         .scale = scale,
     };
+
+    //Update the viewport
+    var width: c_int = undefined;
+    var height: c_int = undefined;
+    c.SDL_GL_GetDrawableSize(window, &width, &height);
+
+    self.viewport = RectU{ 0, 0, @intCast(width), @intCast(height) };
 
     //Create the webgpu instance
     self.instance = try createInstance();
@@ -136,8 +151,48 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
     //Request an adapter
     self.adapter = try self.instance.requestAdapter(self.surface);
 
+    self.surface_capabilities = self.surface.getCapabilities(self.adapter);
+
     //Request a device
     self.device = try self.adapter.requestDevice();
+
+    var present_mode = PresentMode.fifo;
+
+    var properties: c.WGPUAdapterProperties = undefined;
+
+    c.wgpuAdapterGetProperties(self.adapter.c.?, &properties);
+
+    var modes_to_try: []const PresentMode = &.{ .mailbox, .fifo, .immediate };
+
+    //If we are on an iGPU, lets prefer standard vsync over mailbox
+    if (properties.adapterType == c.WGPUAdapterType_IntegratedGPU) {
+        modes_to_try = &.{ .fifo, .mailbox, .immediate };
+    }
+
+    if (self.surface_capabilities.presentModeCount == 0) {
+        return error.YourGpuIsShitWhatTheHell;
+    }
+
+    const supported_modes: []c.WGPUPresentMode = self.surface_capabilities.presentModes[0..self.surface_capabilities.presentModeCount];
+    for (modes_to_try) |mode| {
+        if (std.mem.indexOfPos(c.WGPUPresentMode, supported_modes, 0, &.{@intFromEnum(mode)}) != null) {
+            present_mode = mode;
+        }
+    }
+
+    self.surface_config = .{
+        .device = self.device.c.?,
+        .usage = c.WGPUTextureUsage_RenderAttachment,
+        .format = self.surface_capabilities.formats[0],
+        .presentMode = @intFromEnum(present_mode),
+        .alphaMode = self.surface_capabilities.alphaModes[0],
+        .width = @intCast(width),
+        .height = @intCast(height),
+        .nextInChain = null,
+        .viewFormatCount = 0,
+        .viewFormats = null,
+    };
+    self.surface.configure(self.surface_config);
 
     //Get the queue
     self.queue = try self.device.getQueue();
@@ -161,7 +216,7 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
     self.render_pipeline = try self.device.createRenderPipeline(self.render_pipeline_layout, self.shader, preferred_surface_format);
 
     //Create the swapchain
-    self.swap_chain = try self.device.createSwapChainOptimal(self.adapter, self.surface, window);
+    // self.swap_chain = try self.device.createSwapChainOptimal(self.adapter, self.surface, window);
 
     //Create the projection matrix buffer
     self.projection_matrix_buffer = try self.device.createBuffer(zmath.Mat, 1, .uniform);
@@ -205,14 +260,6 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
     }) orelse return Error.UnableToCreateSampler;
     std.debug.print("got sampler {*}\n", .{self.sampler.?});
 
-    { //Update the viewport
-        var width: c_int = undefined;
-        var height: c_int = undefined;
-        c.SDL_GL_GetDrawableSize(window, &width, &height);
-
-        self.viewport = RectU{ 0, 0, @intCast(width), @intCast(height) };
-    }
-
     return self;
 }
 
@@ -221,9 +268,6 @@ pub fn deinit(self: *Self) void {
     self.bind_group_layouts.deinit();
     c.wgpuPipelineLayoutRelease(self.render_pipeline_layout);
     self.render_pipeline.deinit();
-    if (self.swap_chain) |_| {
-        self.swap_chain.?.deinit();
-    }
     c.wgpuShaderModuleRelease(self.shader);
     self.device.deinit();
     self.adapter.deinit();
@@ -393,29 +437,11 @@ pub const CommandEncoder = struct {
                 },
                 .depthStencilAttachment = null,
                 .occlusionQuerySet = null,
-                .timestampWriteCount = 0,
-                .timestampWrites = null,
+                // .timestampWriteCount = 0,
+                // .timestampWrites = null,
                 .nextInChain = null,
             }) orelse return Error.UnableToBeginRenderPass,
         };
-    }
-};
-
-pub const SwapChain = struct {
-    c: c.WGPUSwapChain,
-
-    pub fn deinit(self: *SwapChain) void {
-        c.wgpuSwapChainRelease(self.c);
-
-        self.c = null;
-    }
-
-    pub fn swapChainPresent(self: SwapChain) void {
-        c.wgpuSwapChainPresent(self.c);
-    }
-
-    pub fn getCurrentSwapChainTexture(self: SwapChain) !c.WGPUTextureView {
-        return c.wgpuSwapChainGetCurrentTextureView(self.c) orelse Error.UnableToGetSwapChainTextureView;
     }
 };
 
@@ -423,13 +449,33 @@ pub const Surface = struct {
     c: c.WGPUSurface,
 
     pub fn deinit(self: *Surface) void {
-        c.wgpuSurfaceRelease(self.c);
+        c.wgpuSurfaceRelease(self.c.?);
 
         self.c = null;
     }
 
     pub fn getPreferredFormat(self: Surface, adapter: Adapter) c.WGPUTextureFormat {
-        return c.wgpuSurfaceGetPreferredFormat(self.c, adapter.c);
+        return c.wgpuSurfaceGetPreferredFormat(self.c.?, adapter.c);
+    }
+
+    pub fn configure(self: Surface, config: c.WGPUSurfaceConfiguration) void {
+        c.wgpuSurfaceConfigure(self.c.?, &config);
+    }
+
+    pub fn getCapabilities(self: Surface, adapter: Adapter) c.WGPUSurfaceCapabilities {
+        var capabilities: c.WGPUSurfaceCapabilities = undefined;
+        c.wgpuSurfaceGetCapabilities(self.c.?, adapter.c.?, &capabilities);
+        return capabilities;
+    }
+
+    pub fn getCurrentTexture(self: Surface) c.WGPUSurfaceTexture {
+        var surface_texture: c.WGPUSurfaceTexture = std.mem.zeroes(c.WGPUSurfaceTexture);
+        c.wgpuSurfaceGetCurrentTexture(self.c.?, &surface_texture);
+        return surface_texture;
+    }
+
+    pub fn present(self: Surface) void {
+        c.wgpuSurfacePresent(self.c.?);
     }
 };
 
@@ -524,7 +570,7 @@ pub const Instance = struct {
             .compatibleSurface = surface.c,
             .nextInChain = null,
             .powerPreference = c.WGPUPowerPreference_HighPerformance,
-            .forceFallbackAdapter = false,
+            .forceFallbackAdapter = 0, //false
             .backendType = c.WGPUBackendType_Undefined,
         }, handleAdapterCallback, @ptrCast(&adapter));
 
@@ -548,8 +594,8 @@ pub const Adapter = struct {
 
         c.wgpuAdapterRequestDevice(self.c, &c.WGPUDeviceDescriptor{
             .label = "Device",
-            .requiredFeaturesCount = 0,
-            .requiredFeatures = null,
+            // .requiredFeaturesCount = 0,
+            // .requiredFeatures = null,
             .requiredLimits = null,
             .defaultQueue = c.WGPUQueueDescriptor{
                 .nextInChain = null,
@@ -609,60 +655,54 @@ pub const Device = struct {
         self.c = null;
     }
 
-    pub fn createSwapChainOptimal(self: Device, adapter: Adapter, surface: Surface, window: *c.SDL_Window) !SwapChain {
-        var properties: c.WGPUAdapterProperties = undefined;
+    // pub fn createSwapChainOptimal(self: Device, adapter: Adapter, surface: Surface, window: *c.SDL_Window) !SwapChain {
+    //     var properties: c.WGPUAdapterProperties = undefined;
 
-        c.wgpuAdapterGetProperties(adapter.c, &properties);
+    //     c.wgpuAdapterGetProperties(adapter.c, &properties);
 
-        var modes_to_try: []const PresentMode = &.{ .mailbox, .fifo, .immediate };
+    //     var modes_to_try: []const PresentMode = &.{ .mailbox, .fifo, .immediate };
 
-        //If we are on an iGPU, lets prefer standard vsync over `mailbox`
-        if (properties.adapterType == c.WGPUAdapterType_IntegratedGPU) {
-            modes_to_try = &.{ .fifo, .mailbox, .immediate };
-        }
+    //     //If we are on an iGPU, lets prefer standard vsync over `mailbox`
+    //     if (properties.adapterType == c.WGPUAdapterType_IntegratedGPU) {
+    //         modes_to_try = &.{ .fifo, .mailbox, .immediate };
+    //     }
 
-        for (modes_to_try, 0..) |mode, i| {
-            std.debug.print("trying to create swapchain with type {s}\n", .{@tagName(mode)});
-            return self.createSwapChain(adapter, surface, window, mode) catch |err| {
-                //If we are on the last mode and it failed, return the error we got
-                if (i == modes_to_try.len - 1) {
-                    return err;
-                }
+    //     for (modes_to_try, 0..) |mode, i| {
+    //         std.debug.print("trying to create swapchain with type {s}\n", .{@tagName(mode)});
+    //         return self.createSwapChain(adapter, surface, window, mode) catch |err| {
+    //             //If we are on the last mode and it failed, return the error we got
+    //             if (i == modes_to_try.len - 1) {
+    //                 return err;
+    //             }
 
-                continue;
-            };
-        }
+    //             continue;
+    //         };
+    //     }
 
-        return Error.UnableToCreateSwapChain;
-    }
+    //     return Error.UnableToCreateSwapChain;
+    // }
 
-    const PresentMode = enum(c_uint) {
-        immediate = 0,
-        mailbox = 1,
-        fifo = 2,
-    };
+    // pub fn createSwapChain(self: Device, adapter: Adapter, surface: Surface, window: *c.SDL_Window, present_mode: PresentMode) !SwapChain {
+    //     var width: c_int = undefined;
+    //     var height: c_int = undefined;
+    //     c.SDL_GL_GetDrawableSize(window, &width, &height);
 
-    pub fn createSwapChain(self: Device, adapter: Adapter, surface: Surface, window: *c.SDL_Window, present_mode: PresentMode) !SwapChain {
-        var width: c_int = undefined;
-        var height: c_int = undefined;
-        c.SDL_GL_GetDrawableSize(window, &width, &height);
+    //     var swap_chain = c.wgpuDeviceCreateSwapChain(self.c, surface.c, &c.WGPUSwapChainDescriptor{
+    //         .usage = c.WGPUTextureUsage_RenderAttachment,
+    //         .format = surface.getPreferredFormat(adapter),
+    //         .presentMode = @intFromEnum(present_mode),
+    //         .nextInChain = null,
+    //         .width = @intCast(width),
+    //         .height = @intCast(height),
+    //         .label = "Swapchain",
+    //     });
 
-        var swap_chain = c.wgpuDeviceCreateSwapChain(self.c, surface.c, &c.WGPUSwapChainDescriptor{
-            .usage = c.WGPUTextureUsage_RenderAttachment,
-            .format = surface.getPreferredFormat(adapter),
-            .presentMode = @intFromEnum(present_mode),
-            .nextInChain = null,
-            .width = @intCast(width),
-            .height = @intCast(height),
-            .label = "Swapchain",
-        });
+    //     if (swap_chain != null) {
+    //         std.debug.print("got swap chain {*} with size {d}x{d}\n", .{ swap_chain.?, width, height });
+    //     }
 
-        if (swap_chain != null) {
-            std.debug.print("got swap chain {*} with size {d}x{d}\n", .{ swap_chain.?, width, height });
-        }
-
-        return .{ .c = swap_chain orelse return Error.UnableToCreateSwapChain };
-    }
+    //     return .{ .c = swap_chain orelse return Error.UnableToCreateSwapChain };
+    // }
 
     pub fn getQueue(self: Device) !Queue {
         return .{ .c = c.wgpuDeviceGetQueue(self.c) orelse return Error.UnableToGetDeviceQueue };
@@ -704,7 +744,7 @@ pub const Device = struct {
                         .binding = 0,
                         .texture = c.WGPUTextureBindingLayout{
                             .nextInChain = null,
-                            .multisampled = false,
+                            .multisampled = 0, //false
                             .sampleType = c.WGPUTextureSampleType_Float,
                             .viewDimension = c.WGPUTextureViewDimension_2D,
                         },
@@ -741,7 +781,7 @@ pub const Device = struct {
                         .nextInChain = null,
                         .type = c.WGPUBufferBindingType_Uniform,
                         .minBindingSize = @sizeOf(zmath.Mat),
-                        .hasDynamicOffset = false,
+                        .hasDynamicOffset = 0, //false
                     },
                     .sampler = undefined,
                     .storageTexture = undefined,
@@ -853,7 +893,7 @@ pub const Device = struct {
             .multisample = c.WGPUMultisampleState{
                 .count = 1,
                 .mask = ~@as(u32, 0),
-                .alphaToCoverageEnabled = false,
+                .alphaToCoverageEnabled = 0, //false
                 .nextInChain = null,
             },
         });
@@ -992,7 +1032,7 @@ pub const Device = struct {
         var buffer = c.wgpuDeviceCreateBuffer(self.c, &c.WGPUBufferDescriptor{
             .nextInChain = null,
             .size = size,
-            .mappedAtCreation = false,
+            .mappedAtCreation = 0, //false
             .usage = @intFromEnum(buffer_type) | c.WGPUBufferUsage_CopyDst,
             .label = "Buffer (" ++ @tagName(buffer_type) ++ ")",
         });
@@ -1028,9 +1068,7 @@ pub const Buffer = struct {
 };
 
 pub fn createInstance() !Instance {
-    var instance = c.wgpuCreateInstance(&c.WGPUInstanceDescriptor{
-        .nextInChain = null,
-    });
+    var instance = c.wgpuCreateInstance(null);
 
     std.debug.print("got instance {*}\n", .{instance.?});
 
@@ -1091,14 +1129,6 @@ pub fn updateProjectionMatrixBuffer(self: *Self, queue: Queue, window: *c.SDL_Wi
     var mat = zmath.orthographicOffCenterLh(0, @floatFromInt(w), 0, @floatFromInt(h), 0, 1);
 
     queue.writeBuffer(self.projection_matrix_buffer, 0, zmath.Mat, &.{mat});
-}
-
-pub fn recreateSwapChain(self: *Self, window: *c.SDL_Window) !void {
-    if (self.swap_chain) |_| {
-        self.swap_chain.?.deinit();
-    }
-
-    self.swap_chain = try self.device.createSwapChainOptimal(self.adapter, self.surface, window);
 }
 
 pub const UVs = struct {

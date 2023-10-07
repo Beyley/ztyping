@@ -256,8 +256,11 @@ fn runGame() !void {
         if (width != old_width or height != old_height) {
             c.ImGui_ImplWGPU_InvalidateDeviceObjects();
 
+            gfx.surface_config.width = @intCast(width);
+            gfx.surface_config.height = @intCast(height);
+
             //Create a new swapchain
-            try gfx.recreateSwapChain(window);
+            gfx.surface.configure(gfx.surface_config);
             gfx.updateProjectionMatrixBuffer(gfx.queue, window);
 
             if (!c.ImGui_ImplWGPU_CreateDeviceObjects()) {
@@ -268,18 +271,41 @@ fn runGame() !void {
             old_width = width;
         }
 
+        //Get the current texture view for the swap chain
+        // var next_texture = try gfx.swap_chain.?.getCurrentSwapChainTexture();
+        var surface_texture = gfx.surface.getCurrentTexture();
+        defer c.wgpuTextureRelease(surface_texture.texture);
+        switch (surface_texture.status) {
+            c.WGPUSurfaceGetCurrentTextureStatus_Success => {},
+            c.WGPUSurfaceGetCurrentTextureStatus_Timeout, c.WGPUSurfaceGetCurrentTextureStatus_Outdated, c.WGPUSurfaceGetCurrentTextureStatus_Lost => {
+                gfx.surface_config.width = @intCast(width);
+                gfx.surface_config.height = @intCast(height);
+
+                //Create a new swapchain
+                gfx.surface.configure(gfx.surface_config);
+                gfx.updateProjectionMatrixBuffer(gfx.queue, window);
+
+                //Skip this frame
+                continue;
+            },
+            else => {
+                std.debug.print("oh shits gone down {d}\n", .{surface_texture.status});
+                @panic("unhandled surface texture status!");
+            },
+        }
+
         c.ImGui_ImplWGPU_NewFrame();
         c.ImGui_ImplSDL2_NewFrame();
         c.igNewFrame();
-
-        //Get the current texture view for the swap chain
-        var next_texture = try gfx.swap_chain.?.getCurrentSwapChainTexture();
 
         //Create a command encoder
         var command_encoder = try gfx.device.createCommandEncoder(&c.WGPUCommandEncoderDescriptor{
             .nextInChain = null,
             .label = "Command Encoder",
         });
+
+        var next_texture = c.wgpuTextureCreateView(surface_texture.texture, null).?;
+        defer c.wgpuTextureViewRelease(next_texture);
 
         //Begin the render pass
         var render_pass_encoder = try command_encoder.beginRenderPass(next_texture);
@@ -312,9 +338,7 @@ fn runGame() !void {
 
         gfx.queue.submit(&.{command_buffer});
 
-        gfx.swap_chain.?.swapChainPresent();
-
-        c.wgpuTextureViewRelease(next_texture);
+        gfx.surface.present();
 
         if (screen.close_screen) {
             _ = screen_stack.pop();
