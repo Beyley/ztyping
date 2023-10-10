@@ -16,6 +16,7 @@ const RenderState = Screen.RenderState;
 const SongSelectData = struct {
     draw_info: DrawInfo,
     challenge_info: Challenge.ChallengeInfo,
+    step_timer: f64,
 };
 
 pub var SongSelect = Screen{
@@ -49,6 +50,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
             .searching = false,
         },
         .challenge_info = .{},
+        .step_timer = 0,
     };
 
     self.data = data;
@@ -144,7 +146,7 @@ const DrawInfo = struct {
                     h_music_info_sub;
 
                 //If the add height is basically 0,
-                if (self.add_height[add_height_middle] < 0.01 and self.add_height_wait > 0) {
+                if (self.add_height[add_height_middle] < 1 and self.add_height_wait > 0) {
                     //Decrement the waiting timer
                     self.add_height_wait -= 1;
                     //Continue, preventing `height` from being added to
@@ -704,7 +706,15 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
         _ = try render_state.fontstash.drawText(.{ 430, Screen.display_height - 20 }, sct_text, state);
     }
 
-    data.draw_info.step();
+    const step_timer_length = 1.0 / 60.0;
+
+    data.step_timer += render_state.game_state.delta_time;
+
+    if (data.step_timer >= step_timer_length) {
+        data.draw_info.step();
+
+        data.step_timer -= step_timer_length;
+    }
 
     try render_state.fontstash.renderer.end();
     try render_state.renderer.end();

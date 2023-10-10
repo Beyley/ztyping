@@ -738,10 +738,20 @@ fn hitResultToAccuracyScore(hit_result: Fumen.Lyric.HitResult) u64 {
 pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
     var data = self.getData(GameplayData);
 
+    if (key.sym == c.SDLK_ESCAPE) {
+        self.close_screen = true;
+        return;
+    }
+
+    if (data.phase == .ready) {
+        data.phase = .main;
+
+        try self.state.audio_tracker.music.?.play(true);
+
+        return;
+    }
+
     switch (key.sym) {
-        c.SDLK_ESCAPE => {
-            self.close_screen = true;
-        },
         c.SDLK_BACKSLASH => {
             if (try self.state.audio_tracker.music.?.activeState() == .playing) {
                 try self.state.audio_tracker.music.?.pause();
@@ -750,6 +760,9 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             }
         },
         c.SDLK_RETURN => {
+            //Dont do any of this when we arent in the main phase
+            if (data.phase != .main) return;
+
             //Deinit the current fumen information
             data.music.fumen.deinit();
 
@@ -779,6 +792,8 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             data.phase = Phase.main;
             data.active_note = 0;
             data.score = .{};
+            //Reset draw score to 0, if we dont do this, then sometimes it will "bounce back" to negative values, and that will crash the game
+            data.draw_score = 0;
             data.gauge_data = GaugeData.init(data.music.fumen.lyrics.len);
             data.current_lyric_kanji = null;
         },
@@ -790,13 +805,7 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             data.speed -= 0.1;
             try self.state.audio_tracker.music.?.setAttribute(bass.ChannelAttribute.frequency, data.starting_freq * data.speed);
         },
-        else => {
-            if (data.phase == .ready) {
-                data.phase = .main;
-
-                try self.state.audio_tracker.music.?.play(true);
-            }
-        },
+        else => {},
     }
 }
 
