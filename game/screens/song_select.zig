@@ -87,6 +87,7 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             self.state.current_map = data.draw_info.music_iter.curr().*;
             //Push the gameplay scene onto the top of the stack
             self.screen_push = &Gameplay.Gameplay;
+            Gameplay.challenge = data.challenge_info;
         },
         c.SDLK_r => {
             data.draw_info.random(self.state);
@@ -98,6 +99,64 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
         c.SDLK_DOWN => data.draw_info.next(),
         c.SDLK_RIGHT => data.draw_info.right(),
         c.SDLK_LEFT => data.draw_info.left(),
+        c.SDLK_h => {
+            data.challenge_info.hidden = !data.challenge_info.hidden;
+            //Stealth and hidden are incompatible, so if we are toggling hidden on, disable stealth
+            if (data.challenge_info.hidden) {
+                data.challenge_info.stealth = false;
+            }
+        },
+        c.SDLK_s => {
+            data.challenge_info.sudden = !data.challenge_info.sudden;
+            //Stealth and sudden are incompatible, so if we are toggling sudden on, disable stealth
+            if (data.challenge_info.sudden) {
+                data.challenge_info.stealth = false;
+            }
+        },
+        c.SDLK_c => {
+            data.challenge_info.stealth = !data.challenge_info.stealth;
+            //Stealth is incompatible with hidden and sudden, so if we are toggling stealth on, disable both of those
+            if (data.challenge_info.stealth) {
+                data.challenge_info.hidden = false;
+                data.challenge_info.sudden = false;
+            }
+        },
+        c.SDLK_l => data.challenge_info.lyrics_stealth = !data.challenge_info.lyrics_stealth,
+        //Speed up
+        c.SDLK_PERIOD => {
+            if (data.challenge_info.speed < 2) {
+                data.challenge_info.speed += 0.1;
+            } else if (data.challenge_info.speed < 3) {
+                data.challenge_info.speed += 0.2;
+            } else if (data.challenge_info.speed < 4) {
+                data.challenge_info.speed += 0.5;
+            }
+        },
+        //Speed down
+        c.SDLK_COMMA => {
+            if (data.challenge_info.speed > 3) {
+                data.challenge_info.speed -= 0.5;
+            } else if (data.challenge_info.speed > 2) {
+                data.challenge_info.speed -= 0.2;
+            } else if (data.challenge_info.speed > 0.5) {
+                data.challenge_info.speed -= 0.1;
+            }
+        },
+        //Key down
+        c.SDLK_MINUS => {
+            if (data.challenge_info.key > -12) {
+                data.challenge_info.key -= 1;
+            }
+        },
+        //Key up
+        c.SDLK_EQUALS => {
+            if (data.challenge_info.key < 12) {
+                data.challenge_info.key += 1;
+            }
+        },
+        c.SDLK_F6 => data.challenge_info.sin = !data.challenge_info.sin,
+        c.SDLK_F7 => data.challenge_info.cos = !data.challenge_info.cos,
+        c.SDLK_F8 => data.challenge_info.tan = !data.challenge_info.tan,
         else => {},
     }
 }
@@ -585,7 +644,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
     {
         var state = Fontstash.Normal;
-        state.color = if (data.challenge_info.stealth) .{ 1, 0.5, 0, 1 } else .{ 0.25, 0.25, 0.25, 1 };
+        state.color = if (data.challenge_info.lyrics_stealth) .{ 1, 0.5, 0, 1 } else .{ 0.25, 0.25, 0.25, 1 };
         _ = try render_state.fontstash.drawText(
             .{ 230, Screen.display_height - 20 },
             "[ LStealth ]",
@@ -651,9 +710,9 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
         } else {
             try std.fmt.format(
                 writer,
-                "[ Key {c}{d:.2} ]",
+                "[ Key {s}{d:.2} ]",
                 .{
-                    @as(u8, if (sign) '+' else '-'),
+                    if (sign) "+" else "",
                     data.challenge_info.key,
                 },
             );

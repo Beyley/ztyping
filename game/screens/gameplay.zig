@@ -11,6 +11,7 @@ const Fumen = @import("../fumen.zig");
 const Music = @import("../music.zig");
 const Convert = @import("../convert.zig");
 const Fontstash = @import("../fontstash.zig");
+const Challenge = @import("../challenge.zig");
 
 const RenderState = Screen.RenderState;
 
@@ -272,6 +273,8 @@ pub var Gameplay = Screen{
     .data = undefined,
     .state = undefined,
 };
+
+pub var challenge: Challenge.ChallengeInfo = undefined;
 
 pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerror!void {
     _ = gfx;
@@ -843,15 +846,15 @@ inline fn getDrawPosY(x: f32) f32 {
 
     workingX -= circle_x;
     var y: f32 = 0;
-    // if(m_challenge.test(CHALLENGE_SIN)){
-    // y += std.math.sin(workingX / scale_function) * scale_function;
-    // }
-    // if(m_challenge.test(CHALLENGE_COS)){
-    // y += std.math.cos(workingX / scale_function) * scale_function;
-    // }
-    // if(m_challenge.test(CHALLENGE_TAN)){
-    // y += std.math.tan(workingX / scale_function) * scale_function;
-    // }
+    if (challenge.sin) {
+        y += std.math.sin(workingX / scale_function) * scale_function;
+    }
+    if (challenge.cos) {
+        y += std.math.cos(workingX / scale_function) * scale_function;
+    }
+    if (challenge.tan) {
+        y += std.math.tan(workingX / scale_function) * scale_function;
+    }
     return -y; // スクリーン座標は上下が逆
 }
 
