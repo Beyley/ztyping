@@ -64,8 +64,8 @@ const GameplayData = struct {
     music: *Music,
 
     ///The current speed of the music
-    speed: f32 = 1,
-    starting_freq: f32,
+    // speed: f32 = 1,
+    // starting_freq: f32,
 
     ///The current note the user is on
     active_note: usize = 0,
@@ -289,7 +289,6 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
             .accuracy_text = try std.time.Timer.start(),
         },
         .gauge_data = GaugeData.init(self.state.current_map.?.fumen.lyrics.len),
-        .starting_freq = undefined,
     };
 
     //Reset the hit status for all the lyrics before the game starts
@@ -320,7 +319,9 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
         },
     );
 
-    data.starting_freq = try self.state.audio_tracker.music.?.getAttribute(bass.ChannelAttribute.frequency);
+    const starting_freq = try self.state.audio_tracker.music.?.getAttribute(bass.ChannelAttribute.frequency);
+
+    try self.state.audio_tracker.music.?.setAttribute(bass.ChannelAttribute.frequency, starting_freq * @as(f32, @floatCast(challenge.speed)));
 }
 
 pub fn deinitScreen(self: *Screen) void {
@@ -799,14 +800,6 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             data.draw_score = 0;
             data.gauge_data = GaugeData.init(data.music.fumen.lyrics.len);
             data.current_lyric_kanji = null;
-        },
-        c.SDLK_RIGHTBRACKET => {
-            data.speed += 0.1;
-            try self.state.audio_tracker.music.?.setAttribute(bass.ChannelAttribute.frequency, data.starting_freq * data.speed);
-        },
-        c.SDLK_LEFTBRACKET => {
-            data.speed -= 0.1;
-            try self.state.audio_tracker.music.?.setAttribute(bass.ChannelAttribute.frequency, data.starting_freq * data.speed);
         },
         else => {},
     }
