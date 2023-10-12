@@ -1425,134 +1425,142 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
         if (posX > 640 + circle_r) continue;
 
         //Draw the note circle itself
-        try render_state.renderer.reserveTexQuadPxSize("typing_cutoff", .{ posX - circle_r, posY + circle_y - circle_r }, .{ circle_r * 2, circle_r * 2 }, Gfx.WhiteF);
-    }
-
-    //Draw all the lyrics
-    for (0..data.music.fumen.lyrics.len) |j| {
-        var i = data.music.fumen.lyrics.len - 1 - j;
-
-        var lyric = data.music.fumen.lyrics[i];
-        var time_diff = data.current_time - lyric.time;
-
-        var posX = getDrawPosX(time_diff);
-        var posY = getDrawPosY(posX);
-
-        if (posX < 0 - circle_r) break;
-        if (posX > 640 + circle_r) continue;
-
-        const note_color = if (lyric.hit_result != null) switch (lyric.hit_result.?) {
-            .excellent => excellent_color,
-            .good => good_color,
-            .fair => fair_color,
-            .poor => poor_color,
-        } else Gfx.RedF;
-
-        //Draw the note circle itself
         try render_state.renderer.reserveTexQuadPxSize(
-            "note",
+            "typing_cutoff",
             .{ posX - circle_r, posY + circle_y - circle_r },
             .{ circle_r * 2, circle_r * 2 },
-            note_color,
+            Gfx.WhiteF,
         );
+    }
 
-        //If we are in debug mode,
-        if (builtin.mode == .Debug) {
-            //And this is the active note,
-            if (i == data.active_note) {
-                //Render a small marker, to mark the note the game thinks the user is playing
-                try render_state.renderer.reserveTexQuadPxSize(
-                    "note",
-                    .{ posX - circle_r / 2, posY + circle_y - circle_r * 2 },
-                    .{ circle_r, circle_r },
-                    Gfx.BlueF,
-                );
+    //We dont draw lyrics when the stealth mod is enabled
+    if (!challenge.stealth) {
+        //Draw all the lyrics
+        for (0..data.music.fumen.lyrics.len) |j| {
+            var i = data.music.fumen.lyrics.len - 1 - j;
+
+            var lyric = data.music.fumen.lyrics[i];
+            var time_diff = data.current_time - lyric.time;
+
+            var posX = getDrawPosX(time_diff);
+            var posY = getDrawPosY(posX);
+
+            if (posX < 0 - circle_r) break;
+            if (posX > 640 + circle_r) continue;
+
+            const note_color = if (lyric.hit_result != null) switch (lyric.hit_result.?) {
+                .excellent => excellent_color,
+                .good => good_color,
+                .fair => fair_color,
+                .poor => poor_color,
+            } else Gfx.RedF;
+
+            //Draw the note circle itself
+            try render_state.renderer.reserveTexQuadPxSize(
+                "note",
+                .{ posX - circle_r, posY + circle_y - circle_r },
+                .{ circle_r * 2, circle_r * 2 },
+                note_color,
+            );
+
+            //If we are in debug mode,
+            if (builtin.mode == .Debug) {
+                //And this is the active note,
+                if (i == data.active_note) {
+                    //Render a small marker, to mark the note the game thinks the user is playing
+                    try render_state.renderer.reserveTexQuadPxSize(
+                        "note",
+                        .{ posX - circle_r / 2, posY + circle_y - circle_r * 2 },
+                        .{ circle_r, circle_r },
+                        Gfx.BlueF,
+                    );
+                }
+
+                //And this is the note after the active note, along with the user being after the current note *in time*
+                if (i == data.active_note + 1 and data.music.fumen.lyrics[data.active_note].time < data.current_time) {
+                    //Render a small marker, to mark the note the user *could* switch to hitting
+                    try render_state.renderer.reserveTexQuadPxSize(
+                        "note",
+                        .{ posX - circle_r / 2, posY + circle_y - circle_r * 2 },
+                        .{ circle_r, circle_r },
+                        Gfx.GreenF,
+                    );
+                }
             }
 
-            //And this is the note after the active note, along with the user being after the current note *in time*
-            if (i == data.active_note + 1 and data.music.fumen.lyrics[data.active_note].time < data.current_time) {
-                //Render a small marker, to mark the note the user *could* switch to hitting
-                try render_state.renderer.reserveTexQuadPxSize(
-                    "note",
-                    .{ posX - circle_r / 2, posY + circle_y - circle_r * 2 },
-                    .{ circle_r, circle_r },
-                    Gfx.GreenF,
-                );
-            }
-        }
+            var size: f32 = 50;
 
-        var size: f32 = 50;
-
-        var state = .{
-            .font = Fontstash.Mincho,
-            .size = Fontstash.ptToPx(50),
-            .color = Gfx.WhiteF,
-            .alignment = .{
-                .horizontal = .center,
-            },
-        };
-
-        //If the font size is too big and it goes outside of the notes,
-        var bounds = try render_state.fontstash.textBounds(lyric.text, state);
-        while (bounds.x2 > circle_r) {
-            //Shrink the font size
-            size -= 5;
-            state.size = size;
-
-            bounds = try render_state.fontstash.textBounds(lyric.text, state);
-        }
-
-        //Make sure the text size is at least 5
-        size = @max(size, 5);
-
-        //Draw the text inside of the notes
-        _ = try render_state.fontstash.drawText(
-            .{
-                posX,
-                posY + circle_y + render_state.fontstash.verticalMetrics(state).line_height - 3,
-            },
-            lyric.text,
-            state,
-        );
-
-        //Draw the text below the notes
-        _ = try render_state.fontstash.drawText(
-            .{ posX, lyrics_y + posY },
-            lyric.text,
-            .{
-                .font = Fontstash.Gothic,
-                .size = Fontstash.ptToPx(28),
+            var state = .{
+                .font = Fontstash.Mincho,
+                .size = Fontstash.ptToPx(50),
                 .color = Gfx.WhiteF,
                 .alignment = .{
                     .horizontal = .center,
                 },
-            },
-        );
+            };
 
-        if (lyric.hit_result == null and render_state.game_state.config.display_romaji) {
-            //Draw the possible romaji below the notes
-            //Create a variable to store how many we have drawn
-            var rendered_romaji: usize = 0;
-            //Iterate over all conversions
-            for (render_state.game_state.convert.conversions) |conversion| {
-                //Get the text that has yet to be typed
-                const to_type = if (i == data.active_note) lyric.text[data.typed_hiragana.len..] else lyric.text;
+            //If the font size is too big and it goes outside of the notes,
+            var bounds = try render_state.fontstash.textBounds(lyric.text, state);
+            while (bounds.x2 > circle_r) {
+                //Shrink the font size
+                size -= 5;
+                state.size = size;
 
-                if (std.mem.startsWith(u8, to_type, conversion.hiragana)) {
-                    rendered_romaji += 1;
+                bounds = try render_state.fontstash.textBounds(lyric.text, state);
+            }
 
-                    _ = try render_state.fontstash.drawText(
-                        .{ posX, lyrics_y + posY + 32 * @as(f32, @floatFromInt(rendered_romaji)) },
-                        conversion.romaji,
-                        .{
-                            .font = Fontstash.Gothic,
-                            .size = Fontstash.ptToPx(26),
-                            .color = .{ 0.5, 0.5, 0.5, 1 },
-                            .alignment = .{
-                                .horizontal = .center,
+            //Make sure the text size is at least 5
+            size = @max(size, 5);
+
+            //Draw the text inside of the notes
+            _ = try render_state.fontstash.drawText(
+                .{
+                    posX,
+                    posY + circle_y + render_state.fontstash.verticalMetrics(state).line_height - 3,
+                },
+                lyric.text,
+                state,
+            );
+
+            //Draw the text below the notes
+            _ = try render_state.fontstash.drawText(
+                .{ posX, lyrics_y + posY },
+                lyric.text,
+                .{
+                    .font = Fontstash.Gothic,
+                    .size = Fontstash.ptToPx(28),
+                    .color = Gfx.WhiteF,
+                    .alignment = .{
+                        .horizontal = .center,
+                    },
+                },
+            );
+
+            if (lyric.hit_result == null and render_state.game_state.config.display_romaji) {
+                //Draw the possible romaji below the notes
+                //Create a variable to store how many we have drawn
+                var rendered_romaji: usize = 0;
+                //Iterate over all conversions
+                for (render_state.game_state.convert.conversions) |conversion| {
+                    //Get the text that has yet to be typed
+                    const to_type = if (i == data.active_note) lyric.text[data.typed_hiragana.len..] else lyric.text;
+
+                    if (std.mem.startsWith(u8, to_type, conversion.hiragana)) {
+                        rendered_romaji += 1;
+
+                        _ = try render_state.fontstash.drawText(
+                            .{ posX, lyrics_y + posY + 32 * @as(f32, @floatFromInt(rendered_romaji)) },
+                            conversion.romaji,
+                            .{
+                                .font = Fontstash.Gothic,
+                                .size = Fontstash.ptToPx(26),
+                                .color = .{ 0.5, 0.5, 0.5, 1 },
+                                .alignment = .{
+                                    .horizontal = .center,
+                                },
                             },
-                        },
-                    );
+                        );
+                    }
                 }
             }
         }
