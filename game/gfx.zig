@@ -177,6 +177,7 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
     for (modes_to_try) |mode| {
         if (std.mem.indexOfPos(c.WGPUPresentMode, supported_modes, 0, &.{@intFromEnum(mode)}) != null) {
             present_mode = mode;
+            break;
         }
     }
 
@@ -654,55 +655,6 @@ pub const Device = struct {
 
         self.c = null;
     }
-
-    // pub fn createSwapChainOptimal(self: Device, adapter: Adapter, surface: Surface, window: *c.SDL_Window) !SwapChain {
-    //     var properties: c.WGPUAdapterProperties = undefined;
-
-    //     c.wgpuAdapterGetProperties(adapter.c, &properties);
-
-    //     var modes_to_try: []const PresentMode = &.{ .mailbox, .fifo, .immediate };
-
-    //     //If we are on an iGPU, lets prefer standard vsync over `mailbox`
-    //     if (properties.adapterType == c.WGPUAdapterType_IntegratedGPU) {
-    //         modes_to_try = &.{ .fifo, .mailbox, .immediate };
-    //     }
-
-    //     for (modes_to_try, 0..) |mode, i| {
-    //         std.debug.print("trying to create swapchain with type {s}\n", .{@tagName(mode)});
-    //         return self.createSwapChain(adapter, surface, window, mode) catch |err| {
-    //             //If we are on the last mode and it failed, return the error we got
-    //             if (i == modes_to_try.len - 1) {
-    //                 return err;
-    //             }
-
-    //             continue;
-    //         };
-    //     }
-
-    //     return Error.UnableToCreateSwapChain;
-    // }
-
-    // pub fn createSwapChain(self: Device, adapter: Adapter, surface: Surface, window: *c.SDL_Window, present_mode: PresentMode) !SwapChain {
-    //     var width: c_int = undefined;
-    //     var height: c_int = undefined;
-    //     c.SDL_GL_GetDrawableSize(window, &width, &height);
-
-    //     var swap_chain = c.wgpuDeviceCreateSwapChain(self.c, surface.c, &c.WGPUSwapChainDescriptor{
-    //         .usage = c.WGPUTextureUsage_RenderAttachment,
-    //         .format = surface.getPreferredFormat(adapter),
-    //         .presentMode = @intFromEnum(present_mode),
-    //         .nextInChain = null,
-    //         .width = @intCast(width),
-    //         .height = @intCast(height),
-    //         .label = "Swapchain",
-    //     });
-
-    //     if (swap_chain != null) {
-    //         std.debug.print("got swap chain {*} with size {d}x{d}\n", .{ swap_chain.?, width, height });
-    //     }
-
-    //     return .{ .c = swap_chain orelse return Error.UnableToCreateSwapChain };
-    // }
 
     pub fn getQueue(self: Device) !Queue {
         return .{ .c = c.wgpuDeviceGetQueue(self.c) orelse return Error.UnableToGetDeviceQueue };
