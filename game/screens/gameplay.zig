@@ -1435,6 +1435,24 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
 
     //We dont draw lyrics when the stealth mod is enabled
     if (!challenge.stealth) {
+        const hidden_x = circle_x + circle_r + 60;
+        const sudden_x = hidden_x + 30;
+
+        const x_min: f32 = if (challenge.hidden) hidden_x else 0;
+        const x_max: f32 = if (challenge.sudden) sudden_x else Screen.display_width;
+
+        const rect: Gfx.RectU = .{
+            @intFromFloat(x_min * render_state.gfx.scale),
+            0,
+            @intFromFloat((x_max - x_min) * render_state.gfx.scale),
+            @intFromFloat(Screen.display_height * render_state.gfx.scale),
+        };
+        try render_state.renderer.setScissor(rect);
+        try render_state.fontstash.renderer.setScissor(rect);
+
+        defer render_state.renderer.resetScissor() catch unreachable;
+        defer render_state.fontstash.renderer.resetScissor() catch unreachable;
+
         //Draw all the lyrics
         for (0..data.music.fumen.lyrics.len) |j| {
             var i = data.music.fumen.lyrics.len - 1 - j;
@@ -1445,9 +1463,12 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
             var posX = getDrawPosX(time_diff);
             var posY = getDrawPosY(posX);
 
+            //If the note is fully off the left side of the screen, break out, dont try to render any more notes
             if (posX < 0 - circle_r) break;
+            //If the note is fully off the right side of the screen, skip it
             if (posX > 640 + circle_r) continue;
 
+            //Get the color of the note
             const note_color = if (lyric.hit_result != null) switch (lyric.hit_result.?) {
                 .excellent => excellent_color,
                 .good => good_color,
