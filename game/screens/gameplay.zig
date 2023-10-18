@@ -1040,6 +1040,9 @@ fn drawCurrentLyricText(render_state: RenderState, data: *GameplayData) !void {
         return;
     }
 
+    //Dont draw current lyric text when the stealth or lyrics stealth is enabled
+    if (challenge.stealth or challenge.lyrics_stealth) return;
+
     const current_note = data.music.fumen.lyrics[data.active_note];
 
     //If we are not within the typing window of the note, dont display its text
@@ -1509,78 +1512,80 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
                 }
             }
 
-            var size: f32 = 50;
+            if (!challenge.lyrics_stealth) {
+                var size: f32 = 50;
 
-            var state = .{
-                .font = Fontstash.Mincho,
-                .size = Fontstash.ptToPx(50),
-                .color = Gfx.WhiteF,
-                .alignment = .{
-                    .horizontal = .center,
-                },
-            };
-
-            //If the font size is too big and it goes outside of the notes,
-            var bounds = try render_state.fontstash.textBounds(lyric.text, state);
-            while (bounds.x2 > circle_r) {
-                //Shrink the font size
-                size -= 5;
-                state.size = size;
-
-                bounds = try render_state.fontstash.textBounds(lyric.text, state);
-            }
-
-            //Make sure the text size is at least 5
-            size = @max(size, 5);
-
-            //Draw the text inside of the notes
-            _ = try render_state.fontstash.drawText(
-                .{
-                    posX,
-                    posY + circle_y + render_state.fontstash.verticalMetrics(state).line_height - 3,
-                },
-                lyric.text,
-                state,
-            );
-
-            //Draw the text below the notes
-            _ = try render_state.fontstash.drawText(
-                .{ posX, lyrics_y + posY },
-                lyric.text,
-                .{
-                    .font = Fontstash.Gothic,
-                    .size = Fontstash.ptToPx(28),
+                var state = .{
+                    .font = Fontstash.Mincho,
+                    .size = Fontstash.ptToPx(50),
                     .color = Gfx.WhiteF,
                     .alignment = .{
                         .horizontal = .center,
                     },
-                },
-            );
+                };
 
-            if (lyric.hit_result == null and render_state.game_state.config.display_romaji) {
-                //Draw the possible romaji below the notes
-                //Create a variable to store how many we have drawn
-                var rendered_romaji: usize = 0;
-                //Iterate over all conversions
-                for (render_state.game_state.convert.conversions) |conversion| {
-                    //Get the text that has yet to be typed
-                    const to_type = if (i == data.active_note) lyric.text[data.typed_hiragana.len..] else lyric.text;
+                //If the font size is too big and it goes outside of the notes,
+                var bounds = try render_state.fontstash.textBounds(lyric.text, state);
+                while (bounds.x2 > circle_r) {
+                    //Shrink the font size
+                    size -= 5;
+                    state.size = size;
 
-                    if (std.mem.startsWith(u8, to_type, conversion.hiragana)) {
-                        rendered_romaji += 1;
+                    bounds = try render_state.fontstash.textBounds(lyric.text, state);
+                }
 
-                        _ = try render_state.fontstash.drawText(
-                            .{ posX, lyrics_y + posY + 32 * @as(f32, @floatFromInt(rendered_romaji)) },
-                            conversion.romaji,
-                            .{
-                                .font = Fontstash.Gothic,
-                                .size = Fontstash.ptToPx(26),
-                                .color = .{ 0.5, 0.5, 0.5, 1 },
-                                .alignment = .{
-                                    .horizontal = .center,
+                //Make sure the text size is at least 5
+                size = @max(size, 5);
+
+                //Draw the text inside of the notes
+                _ = try render_state.fontstash.drawText(
+                    .{
+                        posX,
+                        posY + circle_y + render_state.fontstash.verticalMetrics(state).line_height - 3,
+                    },
+                    lyric.text,
+                    state,
+                );
+
+                //Draw the text below the notes
+                _ = try render_state.fontstash.drawText(
+                    .{ posX, lyrics_y + posY },
+                    lyric.text,
+                    .{
+                        .font = Fontstash.Gothic,
+                        .size = Fontstash.ptToPx(28),
+                        .color = Gfx.WhiteF,
+                        .alignment = .{
+                            .horizontal = .center,
+                        },
+                    },
+                );
+
+                if (lyric.hit_result == null and render_state.game_state.config.display_romaji) {
+                    //Draw the possible romaji below the notes
+                    //Create a variable to store how many we have drawn
+                    var rendered_romaji: usize = 0;
+                    //Iterate over all conversions
+                    for (render_state.game_state.convert.conversions) |conversion| {
+                        //Get the text that has yet to be typed
+                        const to_type = if (i == data.active_note) lyric.text[data.typed_hiragana.len..] else lyric.text;
+
+                        if (std.mem.startsWith(u8, to_type, conversion.hiragana)) {
+                            rendered_romaji += 1;
+
+                            _ = try render_state.fontstash.drawText(
+                                .{ posX, lyrics_y + posY + 32 * @as(f32, @floatFromInt(rendered_romaji)) },
+                                conversion.romaji,
+                                .{
+                                    .font = Fontstash.Gothic,
+                                    .size = Fontstash.ptToPx(26),
+                                    .color = .{ 0.5, 0.5, 0.5, 1 },
+                                    .alignment = .{
+                                        .horizontal = .center,
+                                    },
                                 },
-                            },
-                        );
+                            );
+                        }
                     }
                 }
             }
@@ -1591,6 +1596,9 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
 }
 
 fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) !void {
+    //Dont draw kanji lyrics when lyrics stealth or stealth challenge is enabled
+    if (challenge.lyrics_stealth or challenge.stealth) return;
+
     //If there are no kanji lyrics, return out
     if (data.music.fumen.lyrics_kanji.len == 0) {
         return;
