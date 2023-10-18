@@ -1596,8 +1596,8 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
 }
 
 fn drawKanjiLyrics(render_state: Screen.RenderState, data: *GameplayData) !void {
-    //Dont draw kanji lyrics when lyrics stealth or stealth challenge is enabled
-    if (challenge.lyrics_stealth or challenge.stealth) return;
+    //Dont draw kanji lyrics when lyrics stealth challenge is enabled
+    if (challenge.lyrics_stealth) return;
 
     //If there are no kanji lyrics, return out
     if (data.music.fumen.lyrics_kanji.len == 0) {
