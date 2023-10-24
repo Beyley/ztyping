@@ -1339,7 +1339,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
         },
     };
 
-    //Get the accuracy timer in seconds, note we divide in 2 stagets to help remove floating point inaccuracies
+    //Get the accuracy timer in seconds, note we divide in 2 stages to help remove floating point inaccuracies
     var accuracy_text_timer = @as(f32, @floatFromInt(data.animation_timers.accuracy_text.read() / std.time.ns_per_ms)) / std.time.ms_per_s;
 
     var accuracy_text_offset: f32 = 0;

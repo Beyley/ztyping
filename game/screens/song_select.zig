@@ -131,6 +131,8 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             } else if (data.challenge_info.speed < 4) {
                 data.challenge_info.speed += 0.5;
             }
+            //Round to nearest tenth to prevent floating pointrounding errors
+            data.challenge_info.speed = @round(data.challenge_info.speed * 10.0) / 10.0;
         },
         //Speed down
         c.SDLK_COMMA => {
@@ -141,6 +143,8 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             } else if (data.challenge_info.speed > 0.5) {
                 data.challenge_info.speed -= 0.1;
             }
+            //Round to nearest tenth to prevent floating point rounding errors
+            data.challenge_info.speed = @round(data.challenge_info.speed * 10.0) / 10.0;
         },
         //Key down
         c.SDLK_MINUS => {
