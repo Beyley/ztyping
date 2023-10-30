@@ -131,7 +131,7 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             } else if (data.challenge_info.speed < 4) {
                 data.challenge_info.speed += 0.5;
             }
-            //Round to nearest tenth to prevent floating pointrounding errors
+            //Round to nearest tenth to prevent floating point rounding errors
             data.challenge_info.speed = @round(data.challenge_info.speed * 10.0) / 10.0;
         },
         //Speed down
@@ -161,6 +161,11 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
         c.SDLK_F6 => data.challenge_info.sin = !data.challenge_info.sin,
         c.SDLK_F7 => data.challenge_info.cos = !data.challenge_info.cos,
         c.SDLK_F8 => data.challenge_info.tan = !data.challenge_info.tan,
+        c.SDLK_0 => data.draw_info.music_iter.noSort(),
+        c.SDLK_1 => data.draw_info.music_iter.sortTitle(),
+        c.SDLK_2 => data.draw_info.music_iter.sortArtist(),
+        c.SDLK_3 => data.draw_info.music_iter.sortLevel(),
+        // c.SDLK_4 => data.draw_info.music_iter.sortAchievement(),
         else => {},
     }
 }
@@ -324,13 +329,10 @@ const DrawInfo = struct {
         //Jump to the random selection
         self.jump(selection);
     }
-
-    //TODO: sorting funcs here
-    //pub fn noSort(self: *DrawInfo) void {}
 };
 
 pub const MusicIterator = struct {
-    music: []const Music,
+    music: []Music,
     idx: usize,
 
     pub fn prev(self: *MusicIterator) void {
@@ -349,6 +351,52 @@ pub const MusicIterator = struct {
     pub fn curr(self: *MusicIterator) *const Music {
         return &self.music[self.idx];
     }
+
+    fn noSortComparison(context: void, lhs: Music, rhs: Music) bool {
+        _ = context;
+        return lhs.sort_idx < rhs.sort_idx;
+    }
+
+    pub fn noSort(self: *MusicIterator) void {
+        std.sort.block(Music, self.music, {}, noSortComparison);
+    }
+
+    fn titleComparison(context: void, lhs: Music, rhs: Music) bool {
+        _ = context;
+        return std.ascii.lessThanIgnoreCase(lhs.title, rhs.title);
+    }
+
+    pub fn sortTitle(self: *MusicIterator) void {
+        std.sort.block(Music, self.music, {}, titleComparison);
+    }
+
+    fn artistComparison(context: void, lhs: Music, rhs: Music) bool {
+        _ = context;
+        return std.ascii.lessThanIgnoreCase(lhs.artist, rhs.artist);
+    }
+
+    pub fn sortArtist(self: *MusicIterator) void {
+        std.sort.block(Music, self.music, {}, artistComparison);
+    }
+
+    fn levelComparison(context: void, lhs: Music, rhs: Music) bool {
+        _ = context;
+        return lhs.level < rhs.level;
+    }
+
+    pub fn sortLevel(self: *MusicIterator) void {
+        std.sort.block(Music, self.music, {}, levelComparison);
+    }
+
+    // fn achievementComparison(context: void, lhs: Music, rhs: Music) bool {
+    //     _ = context;
+    //     //TODO: implement this properly
+    //     return lhs.level < rhs.level;
+    // }
+
+    // pub fn sortAchievement(self: *MusicIterator) void {
+    //     std.sort.block(Music, self.music, {}, levelComparison);
+    // }
 };
 
 pub const h_ranking = 252;

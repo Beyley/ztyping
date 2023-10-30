@@ -17,6 +17,8 @@ fumen_file_name: [:0]const u8,
 ranking_file_name: [:0]const u8,
 comment: []const [:0]const u8,
 folder_path: []const u8,
+///The index assigned at load time for the song, used for "no sort" option, to return to original order
+sort_idx: usize,
 
 fumen: *Fumen,
 
@@ -42,8 +44,9 @@ pub fn deinit(self: *Self) void {
     self.* = undefined;
 }
 
-pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs.File) !Self {
+pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs.File, sort_idx: usize) !Self {
     var self: Self = undefined;
+    self.sort_idx = sort_idx;
     self.allocator = allocator;
 
     var iconv = IConv.ziconv_open("Shift_JIS", "UTF-8");
@@ -164,6 +167,7 @@ pub fn readUTypingList(allocator: std.mem.Allocator) ![]Self {
         music_list.deinit();
     }
 
+    var i: usize = 0;
     while (true) {
         var line = try reader.readUntilDelimiterOrEofAlloc(allocator, '\n', 100) orelse break;
         defer allocator.free(line);
@@ -178,9 +182,10 @@ pub fn readUTypingList(allocator: std.mem.Allocator) ![]Self {
         var music_dir = try std.fs.cwd().openDir(std.fs.path.dirname(normalized) orelse "", .{});
         defer music_dir.close();
 
-        var music = try readFromFile(allocator, music_dir, music_file);
+        var music = try readFromFile(allocator, music_dir, music_file, i);
 
         try music_list.append(music);
+        i += 1;
     }
 
     return try music_list.toOwnedSlice();
