@@ -16,7 +16,8 @@ const Image = struct {
 };
 
 pub fn main() !void {
-    const allocator = std.heap.c_allocator;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
 
     var args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);

@@ -169,13 +169,6 @@ pub fn build(b: *std.Build) !void {
             .root_source_file = .{ .path = root_path ++ "image_processor.zig" },
         });
 
-        if (target.isDarwin()) {
-            process_assets_exe.addIncludePath(.{ .path = root_path ++ "libs/system-sdk/macos12/usr/include" });
-            process_assets_exe.addFrameworkPath(.{ .path = root_path ++ "libs/system-sdk/macos12/System/Library/Frameworks" });
-            process_assets_exe.addLibraryPath(.{ .path = root_path ++ "libs/system-sdk/macos12/usr/lib" });
-        }
-
-        process_assets_exe.linkLibC();
         process_assets_exe.addModule("zigimg", zigimg_module);
         var run_process_assets = b.addRunArtifact(process_assets_exe);
         run_process_assets.addArg(root_path);
