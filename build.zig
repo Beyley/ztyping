@@ -5,6 +5,7 @@ const wgpu = @import("wgpu.zig");
 const cimgui = @import("libs/cimgui/build.zig");
 const iconv = @import("libs/iconv-zig/build.zig");
 const ImageProcessor = @import("image_processor.zig");
+const builtin = @import("builtin");
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
@@ -27,7 +28,10 @@ pub fn build(b: *std.Build) !void {
         exe.addIncludePath(.{ .path = root_path ++ "libs/system-sdk/macos12/usr/include" });
         exe.addFrameworkPath(.{ .path = root_path ++ "libs/system-sdk/macos12/System/Library/Frameworks" });
         exe.addLibraryPath(.{ .path = root_path ++ "libs/system-sdk/macos12/usr/lib" });
-        b.sysroot = root_path ++ "libs/system-sdk/macos12";
+
+        if (!builtin.target.isDarwin()) {
+            b.sysroot = root_path ++ "libs/system-sdk/macos12";
+        }
 
         exe.addIncludePath(.{ .path = root_path ++ "game/osx" });
         exe.addCSourceFile(.{ .file = .{ .path = root_path ++ "game/osx/osx_helper.mm" }, .flags = &.{"-fobjc-arc"} });
