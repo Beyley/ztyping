@@ -33,9 +33,6 @@ pub fn build(b: *std.Build) !void {
             b.sysroot = root_path ++ "libs/system-sdk/macos12";
         }
 
-        exe.addIncludePath(.{ .path = root_path ++ "game/osx" });
-        exe.addCSourceFile(.{ .file = .{ .path = root_path ++ "game/osx/osx_helper.mm" }, .flags = &.{"-fobjc-arc"} });
-
         exe.linkFramework("Metal");
         exe.linkFramework("QuartzCore");
         exe.linkFramework("Foundation");

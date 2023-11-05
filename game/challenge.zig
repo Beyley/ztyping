@@ -17,6 +17,9 @@ pub const ChallengeInfo = struct {
     /// The speed of the map
     speed: f64 = 1,
     key: i32 = 0,
+    /// A time added to the current time to "offset" the visuals/timing from the actual audio time,
+    /// this is used to fix audio delay caused by the OS, hardware, and poor map timing
+    audio_offset: i16 = 0,
 
     /// Whether or not the challenge is valid
     valid: bool = true,

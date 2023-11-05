@@ -543,12 +543,14 @@ pub const Instance = struct {
             }
         } else if (info.subsystem == c.SDL_SYSWM_COCOA) {
             if (@hasDecl(c, "SDL_VIDEO_DRIVER_COCOA")) {
+                const metal_view = c.SDL_Metal_CreateView(window);
+
                 descriptor.nextInChain = @as([*c]const c.WGPUChainedStruct, @ptrCast(&c.WGPUSurfaceDescriptorFromMetalLayer{
                     .chain = .{
                         .sType = c.WGPUSType_SurfaceDescriptorFromMetalLayer,
                         .next = null,
                     },
-                    .layer = c.createMetalLayer(info.info.cocoa.window),
+                    .layer = c.SDL_Metal_GetLayer(metal_view),
                 }));
             } else {
                 return Error.MissingSDLCocoa;

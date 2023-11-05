@@ -20,9 +20,6 @@ pub const c = @cImport({
     @cDefine("CIMGUI_USE_SDL2", "1");
     @cDefine("CIMGUI_USE_WGPU", "1");
     @cInclude("cimgui.h");
-    if (builtin.target.isDarwin()) {
-        @cInclude("osx_helper.h");
-    }
 });
 
 fn runGame() !void {

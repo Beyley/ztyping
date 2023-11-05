@@ -1,1 +1,0 @@
-void* createMetalLayer(void* window);

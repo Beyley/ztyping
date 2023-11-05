@@ -158,6 +158,16 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
                 data.challenge_info.key += 1;
             }
         },
+        c.SDLK_LEFTBRACKET => {
+            if (data.challenge_info.audio_offset > -1000) {
+                data.challenge_info.audio_offset -= 1;
+            }
+        },
+        c.SDLK_RIGHTBRACKET => {
+            if (data.challenge_info.audio_offset < 1000) {
+                data.challenge_info.audio_offset += 1;
+            }
+        },
         c.SDLK_F6 => data.challenge_info.sin = !data.challenge_info.sin,
         c.SDLK_F7 => data.challenge_info.cos = !data.challenge_info.cos,
         c.SDLK_F8 => data.challenge_info.tan = !data.challenge_info.tan,
@@ -815,6 +825,20 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
         };
 
         _ = try render_state.fontstash.drawText(.{ 430, Screen.display_height - 20 }, sct_text, state);
+    }
+
+    {
+        var state = Fontstash.Normal;
+
+        state.size *= render_state.gfx.scale;
+        var context: Fontstash.Fontstash.WriterContext = .{
+            .state = state,
+            .draw = true,
+            .draw_position = Gfx.Vector2{ 470, Screen.display_height - 20 } * @as(Gfx.Vector2, @splat(render_state.gfx.scale)),
+        };
+        var writer = try render_state.fontstash.context.writer(&context);
+
+        try std.fmt.format(writer, "[ Offset: {d} ]", .{data.challenge_info.audio_offset});
     }
 
     const step_timer_length = 1.0 / 60.0;

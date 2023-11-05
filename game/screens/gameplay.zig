@@ -83,11 +83,12 @@ const GameplayData = struct {
     accuracy_text: [:0]const u8 = "",
     ///The color of the accuracy text
     accuracy_text_color: Gfx.ColorF = .{ 1, 1, 1, 1 },
+
+    audio_offset: f64,
 };
 
 const GaugeData = struct {
     //Gauge
-
     gauge: isize,
     gauge_max: isize,
     gauge_last_count: isize,
@@ -135,7 +136,10 @@ const GaugeData = struct {
         const count = data.active_note;
 
         if (count > self.gauge_last_count) {
-            var lost: isize = @intCast(count - self.clear_count);
+            const icount: isize = @intCast(count);
+            const iclear_count: isize = @intCast(self.clear_count);
+
+            var lost: isize = icount - iclear_count;
             var t = lost - self.gauge_last_lost;
             self.gauge_last_lost = lost;
             while (t > 0) : (t -= 1) {
@@ -289,6 +293,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
             .accuracy_text = try std.time.Timer.start(),
         },
         .gauge_data = GaugeData.init(self.state.current_map.?.fumen.lyrics.len),
+        .audio_offset = @as(f64, @floatFromInt(challenge.audio_offset)) / 1000.0,
     };
 
     //Reset the hit status for all the lyrics before the game starts
@@ -397,7 +402,7 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
 
     // std.debug.print("user wrote {s}\n", .{typed_char});
 
-    var current_time = try self.state.audio_tracker.music.?.getSecondPosition();
+    var current_time = try self.state.audio_tracker.music.?.getSecondPosition() - data.audio_offset;
 
     var current_note: *Fumen.Lyric = &data.music.fumen.lyrics[data.active_note];
     var next_note: ?*Fumen.Lyric = if (data.active_note + 1 == data.music.fumen.lyrics.len) null else &data.music.fumen.lyrics[data.active_note + 1];
@@ -854,7 +859,7 @@ inline fn getDrawPosY(x: f32) f32 {
 pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     var data = self.getData(GameplayData);
 
-    data.current_time = try self.state.audio_tracker.music.?.getSecondPosition();
+    data.current_time = try self.state.audio_tracker.music.?.getSecondPosition() - data.audio_offset;
 
     //In debug mode, allow the user to scrub through the song
     if (builtin.mode == .Debug) {
