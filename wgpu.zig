@@ -49,7 +49,7 @@ pub fn create_wgpu(b: *std.Build, target: std.zig.CrossTarget, optimize: std.bui
         try args.append("--release");
     }
 
-    var build_result = try std.ChildProcess.exec(.{
+    var build_result = try std.ChildProcess.run(.{
         .allocator = b.allocator,
         .argv = args.items,
         .cwd = wgpu_native_path,

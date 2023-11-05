@@ -7,8 +7,8 @@
             .hash = "122076ecd1f0ff2720fa7011af7174b2b463989ecd0a3422e186c9b29b370e165da5",
         },
         .zigimg = .{
-            .url = "https://github.com/zigimg/zigimg/archive/814064a8935dceee99adb11f2b17871b84f75a2b.tar.gz",
-            .hash = "122080a54f041da9e47b6ace70d1a3190cccc6456e4f8540bdd2732a3ab744ba3855",
+            .url = "https://github.com/zigimg/zigimg/archive/368658aa6b4d22cd532f2785d11f75b2ec2b490c.tar.gz",
+            .hash = "12201a74c6aa44832f8eac3e4a0e92e7bb7f3d6a12777f517fd470d7f6643cdc33fc",
         },
         .clap = .{
             .url = "https://github.com/Hejsil/zig-clap/archive/f49b94700e0761b7514abdca0e4f0e7f3f938a93.tar.gz",
