@@ -21,20 +21,18 @@ pub const ChallengeInfo = struct {
     /// this is used to fix audio delay caused by the OS, hardware, and poor map timing
     audio_offset: i16 = 0,
 
-    /// Whether or not the challenge is valid
-    valid: bool = true,
-
     const Self = @This();
 
-    pub fn format(self: Self, render_state: *RenderState, writer: anytype) !void {
-        _ = render_state;
+    pub fn format(self: Self, actual_fmt: anytype, options: anytype, writer: anytype) !void {
+        _ = options;
+        _ = actual_fmt;
         //If its not valid,
-        if (!self.valid) {
-            //Write some hyphens
-            try writer.writeAll("----");
-            //Break out
-            return;
-        }
+        // if (!self.valid) {
+        //     //Write some hyphens
+        //     try writer.writeAll("----");
+        //     //Break out
+        //     return;
+        // }
 
         //Write the speed
         try writer.writeByte('x');

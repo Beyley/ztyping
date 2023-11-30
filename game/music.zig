@@ -2,6 +2,7 @@ const std = @import("std");
 
 const IConv = @import("iconv.zig");
 const Fumen = @import("fumen.zig");
+const Ranking = @import("ranking.zig");
 
 const Gfx = @import("gfx.zig");
 const Screen = @import("screen.zig");
@@ -21,6 +22,7 @@ folder_path: []const u8,
 sort_idx: usize,
 
 fumen: *Fumen,
+ranking: Ranking,
 
 allocator: std.mem.Allocator,
 
@@ -149,6 +151,15 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs
     errdefer allocator.destroy(self.fumen);
     self.fumen.* = try Fumen.readFromFile(allocator, fumen_file, path);
     errdefer self.fumen.deinit();
+
+    var ranking_path = try path.realpathAlloc(allocator, self.ranking_file_name);
+    defer allocator.free(ranking_path);
+
+    var ranking_file = try std.fs.openFileAbsolute(ranking_path, .{});
+    defer ranking_file.close();
+
+    self.ranking = try Ranking.readRanking(allocator, ranking_file);
+    errdefer self.ranking.deinit();
 
     return self;
 }
