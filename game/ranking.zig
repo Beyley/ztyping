@@ -4,6 +4,12 @@ const Challenge = @import("challenge.zig").ChallengeInfo;
 
 const Self = @This();
 
+const Gfx = @import("gfx.zig");
+const Screen = @import("screen.zig");
+const Fontstash = @import("fontstash.zig");
+
+const RenderState = Screen.RenderState;
+
 /// The maximum length for a UTyping score name
 const name_len = 16;
 
@@ -23,7 +29,7 @@ pub const UTypingDate = packed struct(i32) {
     year: u16,
 };
 
-/// Gets an integer representing the current date
+/// Gets the current date, in the UTyping date format
 pub fn getUTypingDate() UTypingDate {
     //Get the current timestamp
     var epoch_seconds = std.time.epoch.EpochSeconds{
@@ -41,8 +47,26 @@ pub fn getUTypingDate() UTypingDate {
     };
 }
 
-pub fn readRanking(allocator: std.mem.Allocator, file: std.fs.File) !Self {
-    _ = allocator;
+pub fn draw(
+    self: Self,
+    render_state: RenderState,
+    pos: Gfx.Vector2,
+    rank_begin: usize,
+    rank_len: usize,
+    comptime font: []const u8,
+) !void {
+    _ = render_state;
+    for (rank_begin..(rank_begin + rank_len)) |i| {
+        //Break out if we are drawing more than the max amount of storable ranks
+        if (i >= ranking_len) {
+            break;
+        }
+
+        try self.scores[i].draw(pos + Gfx.Vector2{ 0, 48 * i }, i + 1, font);
+    }
+}
+
+pub fn readRanking(file: std.fs.File) !Self {
     var ranking = Self{
         .achievement = .no_data,
         .play_count = 0,
@@ -132,6 +156,18 @@ pub const RankingLevel = enum(i32) {
     perfect = 0x0700,
 };
 
+fn formatOrdinal(writer: anytype, num: anytype) !void {
+    try std.fmt.format(writer, "{d}", .{num});
+    if ((num / 10) % 10 == 1) {
+        try writer.writeAll("th");
+    } else switch (num % 10) {
+        1 => try writer.writeAll("th"),
+        2 => try writer.writeAll("nd"),
+        3 => try writer.writeAll("rd"),
+        else => try writer.writeAll("th"),
+    }
+}
+
 pub const Score = struct {
     name: [name_len]u8,
     score: i32,
@@ -167,6 +203,20 @@ pub const Score = struct {
         score.name[0] = '_';
 
         return score;
+    }
+
+    pub fn draw(
+        self: Score,
+        render_state: RenderState,
+        pos: Gfx.Vector2,
+        n: usize,
+        comptime font: []const u8,
+    ) !void {
+        _ = font;
+        _ = n;
+        _ = pos;
+        _ = render_state;
+        _ = self;
     }
 
     pub fn getLevel(self: Score) RankingLevel {

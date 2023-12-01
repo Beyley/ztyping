@@ -158,7 +158,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs
     var ranking_file = try std.fs.openFileAbsolute(ranking_path, .{});
     defer ranking_file.close();
 
-    self.ranking = try Ranking.readRanking(allocator, ranking_file);
+    self.ranking = try Ranking.readRanking(ranking_file);
     errdefer self.ranking.deinit();
 
     return self;
