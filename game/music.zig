@@ -152,7 +152,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs
     self.fumen.* = try Fumen.readFromFile(allocator, fumen_file, path);
     errdefer self.fumen.deinit();
 
-    var ranking_path = try path.realpathAlloc(allocator, self.ranking_file_name);
+    const ranking_path = try path.realpathAlloc(allocator, self.ranking_file_name);
     defer allocator.free(ranking_path);
 
     var ranking_file = try std.fs.openFileAbsolute(ranking_path, .{});

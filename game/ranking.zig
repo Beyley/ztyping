@@ -38,7 +38,7 @@ pub fn getUTypingDate() UTypingDate {
     //Get the year and day
     var year_day = epoch_seconds.getEpochDay().calculateYearDay();
     //Get the year and month
-    var month_and_day = year_day.calculateMonthDay();
+    const month_and_day = year_day.calculateMonthDay();
 
     return .{
         .day = month_and_day.day_index,
@@ -120,7 +120,7 @@ pub fn readRanking(file: std.fs.File) !Self {
     }
 
     //In version 5, we now only store the exact number of scores, rather than all ranking_len scores.
-    var ranking_size: usize = if (version >= 5) @intCast(try reader.readInt(i32, .little)) else ranking_len;
+    const ranking_size: usize = if (version >= 5) @intCast(try reader.readInt(i32, .little)) else ranking_len;
 
     //Iterate through all the rankings and read the scores
     for (0..ranking_size) |i| {
