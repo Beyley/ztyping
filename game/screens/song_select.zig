@@ -35,7 +35,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
     _ = gfx;
     self.allocator = allocator;
 
-    var data = try allocator.create(SongSelectData);
+    const data = try allocator.create(SongSelectData);
     data.* = .{
         .draw_info = DrawInfo{
             .ranking_flag = false,
@@ -57,7 +57,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
 }
 
 pub fn deinitScreen(self: *Screen) void {
-    var data = self.getData(SongSelectData);
+    const data = self.getData(SongSelectData);
 
     self.allocator.destroy(data);
 }
@@ -213,10 +213,10 @@ const DrawInfo = struct {
 
     pub fn step(self: *DrawInfo) void {
         for (&self.add_height, 0..) |*height, i| {
-            var h: f32 =
+            const h: f32 =
                 if (i == add_height_middle)
             blk: {
-                var h: f32 = if (self.ranking_flag)
+                const h: f32 = if (self.ranking_flag)
                     h_ranking
                 else if (self.ranking_pos == 0)
                     h_ranking1
@@ -742,7 +742,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     {
         var state = Fontstash.Normal;
 
-        var sign: bool = blk: {
+        const sign: bool = blk: {
             if (data.challenge_info.key > 8) {
                 state.color = .{ 1, 0.125, 0, 1 };
                 break :blk true;
@@ -764,7 +764,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
             .draw = true,
             .draw_position = Gfx.Vector2{ 330, Screen.display_height - 20 } * @as(Gfx.Vector2, @splat(render_state.gfx.scale)),
         };
-        var writer = try render_state.fontstash.context.writer(&context);
+        const writer = try render_state.fontstash.context.writer(&context);
 
         if (data.challenge_info.key == 0) {
             context.state.color = .{ 0.25, 0.25, 0.25, 1 };
@@ -836,7 +836,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
             .draw = true,
             .draw_position = Gfx.Vector2{ 470, Screen.display_height - 20 } * @as(Gfx.Vector2, @splat(render_state.gfx.scale)),
         };
-        var writer = try render_state.fontstash.context.writer(&context);
+        const writer = try render_state.fontstash.context.writer(&context);
 
         try std.fmt.format(writer, "[ Offset: {d} ]", .{data.challenge_info.audio_offset});
     }
@@ -859,9 +859,9 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 }
 
 fn drawMainRanking(render_state: Screen.RenderState, music: Music, ranking_pos: isize, pos: Gfx.Vector2, height: f32) !void {
-    var yMin = @max(pos[1], 0);
+    const yMin = @max(pos[1], 0);
     _ = yMin;
-    var yMax = @min(pos[1] + height, 360);
+    const yMax = @min(pos[1] + height, 360);
     _ = yMax;
 
     // TODO: debug why scissors are borked :(

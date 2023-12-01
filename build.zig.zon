@@ -3,12 +3,12 @@
     .version = "0.0.0",
     .dependencies = .{
         .SDL2 = .{
-            .url = "https://github.com/Beyley/SDL/archive/0a6995fbf53a00e181ddac434eaab3dd48ce1846.tar.gz",
-            .hash = "122076ecd1f0ff2720fa7011af7174b2b463989ecd0a3422e186c9b29b370e165da5",
+            .url = "https://github.com/Beyley/SDL/archive/f254788cd768adac006a25d7f1fe1e726596d9fd.tar.gz",
+            .hash = "1220f430383c1d7c198901c99dcd0b10cce8b3a34e77e60026f4c55ecf548e6d1ecc",
         },
         .zigimg = .{
-            .url = "https://github.com/zigimg/zigimg/archive/368658aa6b4d22cd532f2785d11f75b2ec2b490c.tar.gz",
-            .hash = "12201a74c6aa44832f8eac3e4a0e92e7bb7f3d6a12777f517fd470d7f6643cdc33fc",
+            .url = "https://github.com/zigimg/zigimg/archive/bb4dd9854c64cec6d810e1f9fa858ec308ac260c.tar.gz",
+            .hash = "12201813d83afa600cdbd68bbe5daf90c4b05edea8a99bded98217472760b425ec96",
         },
         .clap = .{
             .url = "https://github.com/Hejsil/zig-clap/archive/f49b94700e0761b7514abdca0e4f0e7f3f938a93.tar.gz",

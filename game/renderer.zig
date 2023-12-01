@@ -281,7 +281,7 @@ pub fn reserve(self: *Self, vtx_count: u64, idx_count: u64) !ReservedData {
     //Assert that we have started recording
     std.debug.assert(self.started);
 
-    var recording_buf: RenderBuffer = self.recording_buffer.?;
+    const recording_buf: RenderBuffer = self.recording_buffer.?;
 
     //If the vertex count or index count would put us over the limit of the current recording buffer
     if (recording_buf.used_vtx + vtx_count > vtx_per_buf or recording_buf.used_idx + idx_count > idx_per_buf) {

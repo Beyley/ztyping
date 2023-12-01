@@ -149,7 +149,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: std.fs.File, dir: std.fs
         var orig_line: []u8 = try file.reader().readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(u32)) orelse break;
         defer allocator.free(orig_line);
 
-        var returnless = if (orig_line[orig_line.len - 1] == '\r') orig_line[0 .. orig_line.len - 1] else orig_line;
+        const returnless = if (orig_line[orig_line.len - 1] == '\r') orig_line[0 .. orig_line.len - 1] else orig_line;
 
         var converted = try iconv.convert(allocator, returnless);
         defer allocator.free(converted);
@@ -161,9 +161,9 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: std.fs.File, dir: std.fs
                 self.audio_path = try allocator.dupeZ(u8, without_identifier);
             },
             '+' => {
-                var space_idx = std.mem.indexOf(u8, without_identifier, &.{' '}).?;
+                const space_idx = std.mem.indexOf(u8, without_identifier, &.{' '}).?;
 
-                var lyric = Lyric{
+                const lyric = Lyric{
                     .time = try std.fmt.parseFloat(f64, without_identifier[0..space_idx]),
                     .text = try allocator.dupeZ(u8, without_identifier[(space_idx + 1)..]),
                 };
@@ -207,7 +207,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: std.fs.File, dir: std.fs
                     next = split_iterator.next();
                 }
 
-                var lyric = LyricKanji{
+                const lyric = LyricKanji{
                     .time = time,
                     .time_end = std.math.inf(f64),
                     .parts = try part_list.toOwnedSlice(),
@@ -228,7 +228,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: std.fs.File, dir: std.fs
                 });
             },
             '/' => {
-                var time = try std.fmt.parseFloat(f64, without_identifier);
+                const time = try std.fmt.parseFloat(f64, without_identifier);
 
                 if (lyrics_kanji.items.len > 0) {
                     lyrics_kanji.items[lyrics_kanji.items.len - 1].time_end = time;

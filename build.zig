@@ -91,10 +91,10 @@ pub fn build(b: *std.Build) !void {
     //SDL
 
     { //wgpu
-        var wgpu_from_source = b.option(bool, "wgpu_from_source", "Compile WGPU from source") orelse false;
+        const wgpu_from_source = b.option(bool, "wgpu_from_source", "Compile WGPU from source") orelse false;
 
         if (wgpu_from_source) {
-            var wgpu_lib = try wgpu.create_wgpu(b, target, optimize);
+            const wgpu_lib = try wgpu.create_wgpu(b, target, optimize);
 
             if (target.getOsTag() == .windows) {
                 @panic("TODO"); //we need to force dynamic linking here.
@@ -110,7 +110,7 @@ pub fn build(b: *std.Build) !void {
             try wgpu_bin_path.append('-');
             try wgpu_bin_path.appendSlice(@tagName(target.getCpuArch()));
 
-            var wgpu_bin_path_slice = try wgpu_bin_path.toOwnedSlice();
+            const wgpu_bin_path_slice = try wgpu_bin_path.toOwnedSlice();
 
             exe.addLibraryPath(.{ .path = wgpu_bin_path_slice });
             exe.linkSystemLibrary("wgpu_native");
@@ -154,7 +154,7 @@ pub fn build(b: *std.Build) !void {
     //zigimg
 
     { //iconv
-        var iconv_lib = iconv.createIconv(b, target, optimize);
+        const iconv_lib = iconv.createIconv(b, target, optimize);
 
         exe.linkLibrary(iconv_lib);
 

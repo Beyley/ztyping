@@ -205,7 +205,7 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
     self.shader = try self.device.createShaderModule();
 
     //Get the surface format
-    var preferred_surface_format = self.surface.getPreferredFormat(self.adapter);
+    const preferred_surface_format = self.surface.getPreferredFormat(self.adapter);
 
     //Create the bind group layouts
     self.bind_group_layouts = try self.device.createBindGroupLayouts();
@@ -492,7 +492,7 @@ pub const Instance = struct {
     pub fn createSurface(self: Instance, window: *c.SDL_Window) !Surface {
         var info: c.SDL_SysWMinfo = undefined;
         c.SDL_GetVersion(&info.version);
-        var result = c.SDL_GetWindowWMInfo(window, &info);
+        const result = c.SDL_GetWindowWMInfo(window, &info);
 
         if (result == c.SDL_FALSE) {
             return Error.UnableToRetrieveWindowWMInfo;
@@ -559,7 +559,7 @@ pub const Instance = struct {
             return Error.UnknownWindowSubsystem;
         }
 
-        var surface = c.wgpuInstanceCreateSurface(self.c, &descriptor);
+        const surface = c.wgpuInstanceCreateSurface(self.c, &descriptor);
 
         std.debug.print("got surface {*}\n", .{surface.?});
 
@@ -663,7 +663,7 @@ pub const Device = struct {
     }
 
     pub fn createShaderModule(self: Device) !c.WGPUShaderModule {
-        var module = c.wgpuDeviceCreateShaderModule(self.c, &c.WGPUShaderModuleDescriptor{
+        const module = c.wgpuDeviceCreateShaderModule(self.c, &c.WGPUShaderModuleDescriptor{
             .label = "Shader",
             .nextInChain = @as(
                 [*c]c.WGPUChainedStruct,
@@ -751,7 +751,7 @@ pub const Device = struct {
     }
 
     pub fn createPipelineLayout(self: Device, bind_group_layouts: BindGroupLayouts) !c.WGPUPipelineLayout {
-        var layout = c.wgpuDeviceCreatePipelineLayout(self.c, &c.WGPUPipelineLayoutDescriptor{
+        const layout = c.wgpuDeviceCreatePipelineLayout(self.c, &c.WGPUPipelineLayoutDescriptor{
             .label = "Pipeline Layout",
             .bindGroupLayoutCount = 2,
             .bindGroupLayouts = @as([]const c.WGPUBindGroupLayout, &.{
@@ -767,7 +767,7 @@ pub const Device = struct {
     }
 
     pub fn createRenderPipeline(self: Device, layout: c.WGPUPipelineLayout, shader: c.WGPUShaderModule, surface_format: c.WGPUTextureFormat) !RenderPipeline {
-        var pipeline = c.wgpuDeviceCreateRenderPipeline(self.c, &c.WGPURenderPipelineDescriptor{
+        const pipeline = c.wgpuDeviceCreateRenderPipeline(self.c, &c.WGPURenderPipelineDescriptor{
             .nextInChain = null,
             .label = "Render Pipeline",
             .layout = layout,
@@ -871,7 +871,7 @@ pub const Device = struct {
 
         var texFormat: c_uint = c.WGPUTextureFormat_RGBA8UnormSrgb;
 
-        var tex = c.wgpuDeviceCreateTexture(self.c, &c.WGPUTextureDescriptor{
+        const tex = c.wgpuDeviceCreateTexture(self.c, &c.WGPUTextureDescriptor{
             .nextInChain = null,
             .label = "Texture",
             .usage = c.WGPUTextureUsage_CopyDst | c.WGPUTextureUsage_TextureBinding,
@@ -888,7 +888,7 @@ pub const Device = struct {
             .viewFormats = &texFormat,
         }) orelse return Error.UnableToCreateDeviceTexture;
 
-        var view = c.wgpuTextureCreateView(tex, &c.WGPUTextureViewDescriptor{
+        const view = c.wgpuTextureCreateView(tex, &c.WGPUTextureViewDescriptor{
             .nextInChain = null,
             .label = "Texture View",
             .format = texFormat,
@@ -928,7 +928,7 @@ pub const Device = struct {
             },
         );
 
-        var texture = Texture{
+        const texture = Texture{
             .width = @intCast(image.width),
             .height = @intCast(image.height),
             .tex = tex,
@@ -941,7 +941,7 @@ pub const Device = struct {
     pub fn createBlankTexture(self: Device, width: u32, height: u32) !Texture {
         var texFormat: c_uint = c.WGPUTextureFormat_RGBA8UnormSrgb;
 
-        var tex = c.wgpuDeviceCreateTexture(self.c, &c.WGPUTextureDescriptor{
+        const tex = c.wgpuDeviceCreateTexture(self.c, &c.WGPUTextureDescriptor{
             .nextInChain = null,
             .label = "Texture",
             .usage = c.WGPUTextureUsage_CopyDst | c.WGPUTextureUsage_TextureBinding,
@@ -958,7 +958,7 @@ pub const Device = struct {
             .viewFormats = &texFormat,
         }) orelse return Error.UnableToCreateDeviceTexture;
 
-        var view = c.wgpuTextureCreateView(tex, &c.WGPUTextureViewDescriptor{
+        const view = c.wgpuTextureCreateView(tex, &c.WGPUTextureViewDescriptor{
             .nextInChain = null,
             .label = "Texture View",
             .format = texFormat,
@@ -970,7 +970,7 @@ pub const Device = struct {
             .aspect = c.WGPUTextureAspect_All,
         }) orelse return Error.UnableToCreateTextureView;
 
-        var texture = Texture{
+        const texture = Texture{
             .width = width,
             .height = height,
             .tex = tex,
@@ -983,7 +983,7 @@ pub const Device = struct {
     pub fn createBuffer(self: Device, comptime contents_type: type, count: u64, comptime buffer_type: BufferType) !Buffer {
         const size: u64 = @intCast(@sizeOf(contents_type) * count);
 
-        var buffer = c.wgpuDeviceCreateBuffer(self.c, &c.WGPUBufferDescriptor{
+        const buffer = c.wgpuDeviceCreateBuffer(self.c, &c.WGPUBufferDescriptor{
             .nextInChain = null,
             .size = size,
             .mappedAtCreation = 0, //false
@@ -1022,7 +1022,7 @@ pub const Buffer = struct {
 };
 
 pub fn createInstance() !Instance {
-    var instance = c.wgpuCreateInstance(null);
+    const instance = c.wgpuCreateInstance(null);
 
     std.debug.print("got instance {*}\n", .{instance.?});
 
@@ -1050,7 +1050,7 @@ fn deviceLost(reason: c.WGPUDeviceLostReason, message: [*c]const u8, user_data: 
 }
 
 pub fn handleDeviceCallback(status: c.WGPURequestDeviceStatus, device: c.WGPUDevice, message: [*c]const u8, userdata: ?*anyopaque) callconv(.C) void {
-    var device_ptr: *c.WGPUDevice = @ptrCast(@alignCast(userdata));
+    const device_ptr: *c.WGPUDevice = @ptrCast(@alignCast(userdata));
 
     if (status != c.WGPURequestDeviceStatus_Success) {
         std.debug.print("Failed to get wgpu adapter, status: {d}, message {s}", .{ status, std.mem.span(message) });
@@ -1061,7 +1061,7 @@ pub fn handleDeviceCallback(status: c.WGPURequestDeviceStatus, device: c.WGPUDev
 }
 
 pub fn handleAdapterCallback(status: c.WGPURequestAdapterStatus, adapter: c.WGPUAdapter, message: [*c]const u8, userdata: ?*anyopaque) callconv(.C) void {
-    var adapter_ptr: *c.WGPUAdapter = @ptrCast(@alignCast(userdata));
+    const adapter_ptr: *c.WGPUAdapter = @ptrCast(@alignCast(userdata));
 
     if (status != c.WGPURequestAdapterStatus_Success) {
         std.debug.print("Failed to get wgpu adapter, status: {d}, message {s}", .{ status, std.mem.span(message) });
@@ -1080,7 +1080,7 @@ pub fn updateProjectionMatrixBuffer(self: *Self, queue: Queue, window: *c.SDL_Wi
     w = 640;
     h = 480;
 
-    var mat = zmath.orthographicOffCenterLh(0, @floatFromInt(w), 0, @floatFromInt(h), 0, 1);
+    const mat = zmath.orthographicOffCenterLh(0, @floatFromInt(w), 0, @floatFromInt(h), 0, 1);
 
     queue.writeBuffer(self.projection_matrix_buffer, 0, zmath.Mat, &.{mat});
 }

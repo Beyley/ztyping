@@ -143,7 +143,7 @@ pub fn compile(allocator: std.mem.Allocator, input_file: std.fs.File, output_dir
 
     //Get the writer for the output file
     var buffered_writer = std.io.bufferedWriter(output_file.writer());
-    var writer = buffered_writer.writer();
+    const writer = buffered_writer.writer();
 
     //Write the path of the music file
     try std.fmt.format(writer, "@{s}\n", .{stripNewline(try reader.readUntilDelimiterOrEof(&buf, '\n') orelse return error.UnexpectedEOF)});
@@ -412,8 +412,8 @@ fn setSpeed(info: *Info, speed: []const u8) !void {
     var iter = std.mem.tokenizeAny(u8, speed, "= \t\n");
 
     //Parse out the BPM and BPM divisor
-    var bpm_divsor: f64 = @floatFromInt(try std.fmt.parseInt(usize, iter.next() orelse return error.MissingTimeSignature, 0));
-    var bpm = try std.fmt.parseFloat(f64, iter.next() orelse return error.MissingBPM);
+    const bpm_divsor: f64 = @floatFromInt(try std.fmt.parseInt(usize, iter.next() orelse return error.MissingTimeSignature, 0));
+    const bpm = try std.fmt.parseFloat(f64, iter.next() orelse return error.MissingBPM);
 
     //Validate BPM and BPM divisor are within valid ranges
     if (bpm_divsor <= 0) return error.InvalidTimeSignature;
@@ -433,7 +433,7 @@ fn setBase(info: *Info, base: []const u8) !void {
     //Every token
     while (iter.next()) |item| {
         //Parse the base from the token
-        var base_value = try std.fmt.parseInt(usize, item, 0);
+        const base_value = try std.fmt.parseInt(usize, item, 0);
 
         //Verify the value is valid
         if (base_value <= 0) {
@@ -479,7 +479,7 @@ fn setTimeSignature(info: *Info, beat: []const u8) !void {
     //Get the last item in the time signature command
     if (iter.next()) |d_str| {
         //TODO: what the fuck does this do
-        var d = try std.fmt.parseFloat(f64, d_str);
+        const d = try std.fmt.parseFloat(f64, d_str);
 
         //The integer part of the beat
         info.beat_int = @intFromFloat(@ceil(d));

@@ -19,7 +19,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    var args = try std.process.argsAlloc(allocator);
+    const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
     try processImages(allocator, args[1]);
@@ -40,7 +40,7 @@ pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void 
     const content_path = try std.mem.concat(allocator, u8, &.{ root_path, "content/" });
     defer allocator.free(content_path);
 
-    var png_files = try find_png_files(allocator, content_path);
+    const png_files = try find_png_files(allocator, content_path);
     defer allocator.free(png_files);
 
     const atlas_gen_folder = try std.mem.concat(allocator, u8, &.{ root_path, "zig-cache/atlas-gen/" });
@@ -66,10 +66,10 @@ pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void 
         defer file.close();
 
         //Get the length of the PNG file
-        var len = try file.getEndPos();
+        const len = try file.getEndPos();
 
         //allocate a buffer for the file
-        var buf = try allocator.alloc(u8, len);
+        const buf = try allocator.alloc(u8, len);
         defer allocator.free(buf);
 
         //Read the whole file
@@ -88,7 +88,7 @@ pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void 
         hashes[i] = (try hash_hex.toOwnedSlice())[0..8];
 
         //Try to open the file which may contain the hash
-        var cache_file = cache_dir.openFile(hashes[i], .{});
+        const cache_file = cache_dir.openFile(hashes[i], .{});
 
         //If the file failed to open, then we need to rebuild
         var cach_file_val = cache_file catch {
@@ -115,10 +115,10 @@ pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void 
 
         var path_without_content = path_without_root["content/".len..];
 
-        var name = path_without_content[0 .. path_without_content.len - 4];
+        const name = path_without_content[0 .. path_without_content.len - 4];
 
         //Load the file
-        var image = try img.png.load(&image_stream, allocator, .{ .temp_allocator = allocator });
+        const image = try img.png.load(&image_stream, allocator, .{ .temp_allocator = allocator });
         try images.append(.{
             .width = @as(u32, @intCast(image.width)) + 2,
             .height = @as(u32, @intCast(image.height)) + 2,
@@ -136,7 +136,7 @@ pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void 
 
     const bin_size = 4096;
 
-    var packed_images = try packImages(allocator, Image, images.items, .{ .w = bin_size, .h = bin_size });
+    const packed_images = try packImages(allocator, Image, images.items, .{ .w = bin_size, .h = bin_size });
     defer allocator.free(packed_images);
 
     var final_image = try img.Image.create(allocator, bin_size, bin_size, .rgba32);
@@ -162,7 +162,7 @@ pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void 
             .rgb24 => |pix| {
                 for (0..(packed_image.image.width - 2)) |x| {
                     for (0..(packed_image.image.height - 2)) |y| {
-                        var pixel = pix[y * (packed_image.image.width - 2) + x];
+                        const pixel = pix[y * (packed_image.image.width - 2) + x];
                         final_image.pixels.rgba32[(y + 1 + packed_image.pos.y) * final_image.width + packed_image.pos.x + 1 + x] = .{ .r = pixel.r, .g = pixel.g, .b = pixel.b, .a = 255 };
                     }
                 }
@@ -201,7 +201,7 @@ pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void 
     try output_atlas_info.writeAll(try std.fmt.allocPrint(allocator, "pub const atlas_width: comptime_float = {d};\npub const atlas_height: comptime_float = {d};\n\n", .{ bin_size, bin_size }));
 
     for (packed_images) |packed_image| {
-        var image_rect = try std.fmt.allocPrint(allocator,
+        const image_rect = try std.fmt.allocPrint(allocator,
             \\pub const {s}: Rectangle = .{{.x = {d}, .y = {d}, .w = {d}, .h = {d}}};
         , .{
             packed_image.image.name,
@@ -221,25 +221,27 @@ pub fn processImages(allocator: std.mem.Allocator, root_path: []const u8) !void 
 fn find_png_files(allocator: std.mem.Allocator, search_path: []const u8) ![]const []const u8 {
     var png_list = std.ArrayList([]const u8).init(allocator);
 
-    var dir = try std.fs.openIterableDirAbsolute(search_path, .{});
+    var dir = try std.fs.openDirAbsolute(search_path, .{
+        .iterate = true,
+    });
     defer dir.close();
 
-    var walker: std.fs.IterableDir.Walker = try dir.walk(allocator);
+    var walker: std.fs.Dir.Walker = try dir.walk(allocator);
     defer walker.deinit();
 
-    var itr_next: ?std.fs.IterableDir.Walker.WalkerEntry = try walker.next();
+    var itr_next: ?std.fs.Dir.Walker.WalkerEntry = try walker.next();
     while (itr_next != null) {
-        var next: std.fs.IterableDir.Walker.WalkerEntry = itr_next.?;
+        const next: std.fs.Dir.Walker.WalkerEntry = itr_next.?;
 
         //if the file is a png file
         if (std.mem.endsWith(u8, next.path, ".png")) {
             var item = try allocator.alloc(u8, next.path.len + search_path.len);
 
             //copy the root first
-            std.mem.copy(u8, item, search_path);
+            @memcpy(item[0..search_path.len], search_path);
 
             //copy the filepath next
-            std.mem.copy(u8, item[search_path.len..], next.path);
+            @memcpy(item[search_path.len..], next.path);
 
             try png_list.append(item);
         }
@@ -286,8 +288,8 @@ pub fn packImages(allocator: std.mem.Allocator, comptime T: type, images: []cons
 
         //Iterate backwards through all the items
         for (0..empty_spaces.items.len) |j| {
-            var i = empty_spaces.items.len - 1 - j;
-            var empty_space: EmptySpace = empty_spaces.items[i];
+            const i = empty_spaces.items.len - 1 - j;
+            const empty_space: EmptySpace = empty_spaces.items[i];
 
             //If the empty space can fit the image
             if (empty_space.w >= image.width and empty_space.h >= image.height) {
@@ -299,7 +301,7 @@ pub fn packImages(allocator: std.mem.Allocator, comptime T: type, images: []cons
             return error.UnableToFitRect;
         }
 
-        var empty_space: EmptySpace = empty_spaces.items[candidate_space_index.?];
+        const empty_space: EmptySpace = empty_spaces.items[candidate_space_index.?];
 
         // std.debug.print("space: {d}/{d}/{d}/{d}\n", .{ empty_space.x, empty_space.y, empty_space.w, empty_space.h });
         try packed_images.append(.{

@@ -11,7 +11,7 @@ pub fn Ini(comptime ReaderType: type, comptime max_line_size: comptime_int, comp
         const Self = @This();
 
         pub fn init(reader: ReaderType) Self {
-            var self = Self{
+            const self = Self{
                 .read_buf = undefined,
                 .current_section = undefined,
                 .current_section_len = 0,

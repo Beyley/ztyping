@@ -139,7 +139,7 @@ const GaugeData = struct {
             const icount: isize = @intCast(count);
             const iclear_count: isize = @intCast(self.clear_count);
 
-            var lost: isize = icount - iclear_count;
+            const lost: isize = icount - iclear_count;
             var t = lost - self.gauge_last_lost;
             self.gauge_last_lost = lost;
             while (t > 0) : (t -= 1) {
@@ -284,7 +284,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
     _ = gfx;
     self.allocator = allocator;
 
-    var data = try allocator.create(GameplayData);
+    const data = try allocator.create(GameplayData);
     errdefer allocator.destroy(data);
 
     data.* = .{
@@ -307,11 +307,11 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
     var dir = try std.fs.openDirAbsolute(data.music.fumen.fumen_folder, .{});
     defer dir.close();
     //Get the real path of the audio file
-    var full_audio_path = try dir.realpathAlloc(allocator, data.music.fumen.audio_path);
+    const full_audio_path = try dir.realpathAlloc(allocator, data.music.fumen.audio_path);
     defer allocator.free(full_audio_path);
 
     //Create a sentinel-ending array for the path
-    var audio_pathZ = try allocator.dupeZ(u8, full_audio_path);
+    const audio_pathZ = try allocator.dupeZ(u8, full_audio_path);
     defer allocator.free(audio_pathZ);
     std.debug.print("Loading song file {s}\n", .{audio_pathZ});
     self.state.audio_tracker.music = try bass.createFileStream(
@@ -330,7 +330,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
 }
 
 pub fn deinitScreen(self: *Screen) void {
-    var data = self.getData(GameplayData);
+    const data = self.getData(GameplayData);
 
     //Stop the song
     self.state.audio_tracker.music.?.stop() catch |err| {
@@ -402,13 +402,13 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
 
     // std.debug.print("user wrote {s}\n", .{typed_char});
 
-    var current_time = try self.state.audio_tracker.music.?.getSecondPosition() - data.audio_offset;
+    const current_time = try self.state.audio_tracker.music.?.getSecondPosition() - data.audio_offset;
 
     var current_note: *Fumen.Lyric = &data.music.fumen.lyrics[data.active_note];
     var next_note: ?*Fumen.Lyric = if (data.active_note + 1 == data.music.fumen.lyrics.len) null else &data.music.fumen.lyrics[data.active_note + 1];
 
     var hiragana_to_type = current_note.text[data.typed_hiragana.len..];
-    var hiragana_to_type_next: ?[:0]const u8 = if (next_note != null) next_note.?.text else &.{};
+    const hiragana_to_type_next: ?[:0]const u8 = if (next_note != null) next_note.?.text else &.{};
 
     const Match = struct {
         //The matched conversion
@@ -420,7 +420,7 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
     //The found match for the current note
     var matched: ?Match = null;
     //The found match for the next hiragana (only for the current note, check matched_next for the next note)
-    var next_hiragana_matched: ?Match = null;
+    const next_hiragana_matched: ?Match = null;
     //The found match for the next note
     var matched_next: ?Match = null;
 
@@ -442,7 +442,7 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
             //If the conversion starts with the romaji we have already typed,
             if (std.mem.startsWith(u8, conversion.romaji, data.typed_romaji)) {
                 //Get the romaji we have left to type
-                var romaji_to_type = conversion.romaji[data.typed_romaji.len..];
+                const romaji_to_type = conversion.romaji[data.typed_romaji.len..];
 
                 //If the romaji we need to type starts with the characters the user has just typed
                 if (std.mem.startsWith(u8, romaji_to_type, typed_char)) {
@@ -482,7 +482,7 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
     if (matched) |matched_for_current_note| {
         if (current_note.pending_hit_result == null) {
             //Get the offset the user hit the note at, used to determine the hit result of the note
-            var delta = current_time - current_note.time;
+            const delta = current_time - current_note.time;
 
             //Get the hit result, using the absolute value
             var hit_result = deltaToHitResult(@abs(delta));
@@ -600,10 +600,10 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
 
     if (matched_next) |matched_for_next_note| {
         //Get the offset the user hit the note at, used to determine the hit result of the note
-        var delta = current_time - next_note.?.time;
+        const delta = current_time - next_note.?.time;
 
         //Get the hit result, using the absolute value
-        var hit_result = deltaToHitResult(@abs(delta));
+        const hit_result = deltaToHitResult(@abs(delta));
 
         // std.debug.print("next \"{s}\"/{d}/{any}\n", .{ matched_for_next_note.conversion.romaji, delta, hit_result });
 
@@ -655,7 +655,7 @@ fn handleTypedRomaji(data: *GameplayData, typed: []const u8) !void {
 
 fn handleNoteFirstChar(data: *GameplayData, note: *Fumen.Lyric) void {
     //Get the extra score from having a combo, capped to the `combo_score_max` value
-    var score_combo = @min(combo_score * data.score.combo, combo_score_max);
+    const score_combo = @min(combo_score * data.score.combo, combo_score_max);
 
     //Add the accuracy the user has reached to the accuracy score, ignore bonus score with a `poor` hit
     data.score.accuracy_score += (if (note.pending_hit_result.? == .poor) 0 else score_combo) + hitResultToAccuracyScore(note.pending_hit_result.?);
@@ -776,7 +776,7 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             data.music.fumen.deinit();
 
             //Get the filename of the source file
-            var source_filename = try std.fmt.allocPrint(data.music.allocator, "{s}_src.txt", .{std.fs.path.stem(data.music.fumen_file_name)});
+            const source_filename = try std.fmt.allocPrint(data.music.allocator, "{s}_src.txt", .{std.fs.path.stem(data.music.fumen_file_name)});
             defer data.music.allocator.free(source_filename);
 
             //Open the output dir
@@ -868,10 +868,10 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
         if (data.scrub_frame_counter > 20) {
             var mouse_x_i: c_int = 0;
             var mouse_y: c_int = 0;
-            var mouse_buttons = c.SDL_GetMouseState(&mouse_x_i, &mouse_y);
+            const mouse_buttons = c.SDL_GetMouseState(&mouse_x_i, &mouse_y);
             var mouse_x: f32 = @floatFromInt(mouse_x_i);
 
-            var max_x = render_state.gfx.scale * 640.0;
+            const max_x = render_state.gfx.scale * 640.0;
 
             if (mouse_x < 0) {
                 mouse_x = 0;
@@ -882,7 +882,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
             }
 
             if ((mouse_buttons & c.SDL_BUTTON(3)) != 0 and mouse_x != data.last_mouse_x) {
-                var byte: u64 = @intFromFloat(@as(f64, @floatFromInt(try self.state.audio_tracker.music.?.getLength(.byte))) * (mouse_x / max_x));
+                const byte: u64 = @intFromFloat(@as(f64, @floatFromInt(try self.state.audio_tracker.music.?.getLength(.byte))) * (mouse_x / max_x));
 
                 try self.state.audio_tracker.music.?.setPosition(byte, .byte, .{});
             }
@@ -1119,9 +1119,9 @@ fn checkForMissedNotes(data: *GameplayData) void {
     }
 
     //The current note the user is playing
-    var current_note = data.music.fumen.lyrics[data.active_note];
+    const current_note = data.music.fumen.lyrics[data.active_note];
     //The next note the user *could* hit
-    var next_note: ?Fumen.Lyric = if (data.active_note < data.music.fumen.lyrics.len - 1) data.music.fumen.lyrics[data.active_note + 1] else null;
+    const next_note: ?Fumen.Lyric = if (data.active_note < data.music.fumen.lyrics.len - 1) data.music.fumen.lyrics[data.active_note + 1] else null;
 
     //If the user should miss the current note
     if (missCheck(data, current_note, next_note)) {
@@ -1227,8 +1227,8 @@ const stat_gauge_width = 400;
 const stat_gauge_height = 40;
 
 fn drawStatGauge(render_state: Screen.RenderState, data: *GameplayData) !void {
-    var y: f32 = stat_gauge_y;
-    var single_bar_height: f32 = stat_gauge_height / 4;
+    const y: f32 = stat_gauge_y;
+    const single_bar_height: f32 = stat_gauge_height / 4;
 
     for (&data.gauge_data.draw_x, &data.gauge_data.draw_v, &data.gauge_data.lengths) |*x, *velocity, length| {
         //Add a little bit of velocity, depending on the amount we need to change
@@ -1278,9 +1278,9 @@ fn drawBar(render_state: Screen.RenderState, val: f32, y: f32, h: f32, color: Gf
     //Set opacity to 7/8
     display_color[3] = 0.875;
 
-    var rounded_val = @floor(val);
+    const rounded_val = @floor(val);
 
-    var val_fractional = val - rounded_val;
+    const val_fractional = val - rounded_val;
 
     try render_state.renderer.reserveSolidBox(.{ stat_gauge_x - rounded_val, y }, .{ rounded_val, h }, display_color);
     //Multiply opacity by the fractional part of the number
@@ -1299,7 +1299,7 @@ fn drawLight(render_state: Screen.RenderState, light: f32, y: f32, h: f32, color
     display_light = @min(1, display_light);
 
     //The amount to change the height of the light as it fades out
-    var delta_height = @round(h * 0.5 * (1 - display_light) * (1 - display_light)) * 4;
+    const delta_height = @round(h * 0.5 * (1 - display_light) * (1 - display_light)) * 4;
     try render_state.renderer.reserveSolidBox(.{ stat_gauge_x - stat_gauge_width, y + delta_height / 2 }, .{ stat_gauge_width, h - delta_height }, display_color);
 }
 
@@ -1312,7 +1312,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
 
     //Draw the score
     var buf: [8]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0 };
-    var used = std.fmt.formatIntBuf(
+    const used = std.fmt.formatIntBuf(
         &buf,
         @as(u64, @intFromFloat(@ceil(data.draw_score))),
         10,
@@ -1345,7 +1345,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
     };
 
     //Get the accuracy timer in seconds, note we divide in 2 stages to help remove floating point inaccuracies
-    var accuracy_text_timer = @as(f32, @floatFromInt(data.animation_timers.accuracy_text.read() / std.time.ns_per_ms)) / std.time.ms_per_s;
+    const accuracy_text_timer = @as(f32, @floatFromInt(data.animation_timers.accuracy_text.read() / std.time.ns_per_ms)) / std.time.ms_per_s;
 
     var accuracy_text_offset: f32 = 0;
     if (accuracy_text_timer < 0.05) {
@@ -1363,7 +1363,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
         state.color[3] = @max(0, 1.0 - time_since_start_fade * 10);
     }
 
-    var metrics = render_state.fontstash.verticalMetrics(state);
+    const metrics = render_state.fontstash.verticalMetrics(state);
     _ = try render_state.fontstash.drawText(
         .{ accuracy_x, accuracy_y + metrics.line_height + accuracy_text_offset },
         data.accuracy_text,
@@ -1371,7 +1371,7 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
     );
 
     if (data.score.combo >= 10) {
-        var digits = std.fmt.count("{d}", .{data.score.combo});
+        const digits = std.fmt.count("{d}", .{data.score.combo});
 
         _ = std.fmt.formatIntBuf(
             &buf,
@@ -1400,11 +1400,11 @@ fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
 fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !void {
     //Draw all the beat lines
     for (0..data.music.fumen.beat_lines.len) |i| {
-        var beat_line = data.music.fumen.beat_lines[i];
+        const beat_line = data.music.fumen.beat_lines[i];
 
-        var time_diff = data.current_time - beat_line.time;
-        var posX = getDrawPosX(time_diff);
-        var posY = getDrawPosY(posX);
+        const time_diff = data.current_time - beat_line.time;
+        const posX = getDrawPosX(time_diff);
+        const posY = getDrawPosY(posX);
 
         if (posX < 0) continue;
         if (posX > 640) break;
@@ -1421,13 +1421,13 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
 
     //Draw all the typing cutoffs
     for (0..data.music.fumen.lyric_cutoffs.len) |j| {
-        var i = data.music.fumen.lyric_cutoffs.len - 1 - j;
+        const i = data.music.fumen.lyric_cutoffs.len - 1 - j;
 
-        var lyric_cutoff = data.music.fumen.lyric_cutoffs[i];
-        var time_diff = data.current_time - lyric_cutoff.time;
+        const lyric_cutoff = data.music.fumen.lyric_cutoffs[i];
+        const time_diff = data.current_time - lyric_cutoff.time;
 
-        var posX = getDrawPosX(time_diff);
-        var posY = getDrawPosY(posX);
+        const posX = getDrawPosX(time_diff);
+        const posY = getDrawPosY(posX);
 
         if (posX < 0 - circle_r) break;
         if (posX > 640 + circle_r) continue;
@@ -1463,13 +1463,13 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
 
         //Draw all the lyrics
         for (0..data.music.fumen.lyrics.len) |j| {
-            var i = data.music.fumen.lyrics.len - 1 - j;
+            const i = data.music.fumen.lyrics.len - 1 - j;
 
             var lyric = data.music.fumen.lyrics[i];
-            var time_diff = data.current_time - lyric.time;
+            const time_diff = data.current_time - lyric.time;
 
-            var posX = getDrawPosX(time_diff);
-            var posY = getDrawPosY(posX);
+            const posX = getDrawPosX(time_diff);
+            const posY = getDrawPosY(posX);
 
             //If the note is fully off the left side of the screen, break out, dont try to render any more notes
             if (posX < 0 - circle_r) break;

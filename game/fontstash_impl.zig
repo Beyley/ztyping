@@ -176,7 +176,7 @@ pub const Atlas = struct {
     }
 
     fn addSkylineLevel(self: *Atlas, index: usize, rect: Rectangle) !void {
-        var new_node = SkylineNode{
+        const new_node = SkylineNode{
             .pos = .{
                 rect.tl[0],
                 rect.tl[1] + rect.br[1],
@@ -223,7 +223,7 @@ pub const Atlas = struct {
         var i: usize = 0;
         while (i < self.nodes.items.len - 1) : (i += 1) {
             var curr_node: *SkylineNode = &self.nodes.items[i];
-            var next_node: SkylineNode = self.nodes.items[i + 1];
+            const next_node: SkylineNode = self.nodes.items[i + 1];
 
             if (curr_node.pos[1] == next_node.pos[1]) {
                 curr_node.width += next_node.width;
@@ -292,15 +292,15 @@ pub const Atlas = struct {
 
         i = idx;
         while (i < self.nodes.items.len and self.nodes.items[i].pos[0] < rect_right) {
-            var curr_node = self.nodes.items[i];
+            const curr_node = self.nodes.items[i];
 
             //If the current node is outside of the rect,
             if (curr_node.pos[0] >= rect_right or curr_node.pos[0] + curr_node.width <= rect_left) {
                 break;
             }
 
-            var left_side = curr_node.pos[0];
-            var right_side = @min(rect_right, left_side + curr_node.width);
+            const left_side = curr_node.pos[0];
+            const right_side = @min(rect_right, left_side + curr_node.width);
 
             std.debug.assert(y >= curr_node.pos[1]);
 
@@ -482,19 +482,19 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     var render_font = font;
 
     //Convert the blur into a pixel padding, 1blur = 10px
-    var pad = @as(isize, @intFromFloat(state.blur * 10)) + 2;
+    const pad = @as(isize, @intFromFloat(state.blur * 10)) + 2;
 
     //Reset the scratch buffer usage
     self.scratch_buffer.len = 0;
 
     //Hash the codepoint
-    var hash = hashInt(codepoint) & (hash_lut_size - 1);
+    const hash = hashInt(codepoint) & (hash_lut_size - 1);
     //Get the index of the codepoint from the hash
     var i = font.lut[hash];
 
     while (i != null) {
         //Get the glyph
-        var glyph = &font.glyphs.items[i.?];
+        const glyph = &font.glyphs.items[i.?];
 
         //If the codepoint, size, and blur matches, return the cached glyph
         if (glyph.codepoint == codepoint and glyph.size == state.size and glyph.blur == state.blur) {
@@ -511,7 +511,7 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     //Try to find the glyph in the fallback fonts if there was none in the main font
     if (glyph_index == 0) {
         for (font.fallbacks.items) |fallback_font| {
-            var fallback_index = getGlyphIndex(fallback_font, codepoint);
+            const fallback_index = getGlyphIndex(fallback_font, codepoint);
 
             //If the fallback font has the glyph, render that index and font instead
             if (fallback_index != 0) {
@@ -522,7 +522,7 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
         }
     }
 
-    var scale = c.stbtt_ScaleForPixelHeight(&render_font.font, state.size);
+    const scale = c.stbtt_ScaleForPixelHeight(&render_font.font, state.size);
 
     var advance: c_int = undefined;
     var left_side_bearing: c_int = undefined;
@@ -547,15 +547,15 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
         &y1c,
     );
 
-    var x0: isize = @intCast(x0c);
-    var y0: isize = @intCast(y0c);
-    var x1: isize = @intCast(x1c);
-    var y1: isize = @intCast(y1c);
+    const x0: isize = @intCast(x0c);
+    const y0: isize = @intCast(y0c);
+    const x1: isize = @intCast(x1c);
+    const y1: isize = @intCast(y1c);
 
-    var glyph_width: usize = @intCast(x1 - x0 + @as(isize, @intCast(pad)) * 2);
-    var glyph_height: usize = @intCast(y1 - y0 + @as(isize, @intCast(pad)) * 2);
+    const glyph_width: usize = @intCast(x1 - x0 + @as(isize, @intCast(pad)) * 2);
+    const glyph_height: usize = @intCast(y1 - y0 + @as(isize, @intCast(pad)) * 2);
 
-    var glyph_position = self.atlas.getRect(glyph_width, glyph_height) catch |err| blk: {
+    const glyph_position = self.atlas.getRect(glyph_width, glyph_height) catch |err| blk: {
         if (err == Atlas.AtlasErrors.AtlasFull) {
             try self.parameters.impl_handle_error(self.parameters.user_ptr, err);
             break :blk try self.atlas.getRect(glyph_width, glyph_height);
@@ -564,7 +564,7 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
         }
     };
 
-    var glyph = Font.Glyph{
+    const glyph = Font.Glyph{
         .blur = state.blur,
         .codepoint = codepoint,
         .index = glyph_index,
@@ -584,7 +584,7 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     font.lut[hash] = font.glyphs.items.len - 1;
 
     //Rasterize
-    var dst_ptr = &self.tex_cache[(glyph.rectangle.tl[0] + @as(usize, @intCast(pad))) + (glyph.rectangle.tl[1] + @as(usize, @intCast(pad))) * self.parameters.width];
+    const dst_ptr = &self.tex_cache[(glyph.rectangle.tl[0] + @as(usize, @intCast(pad))) + (glyph.rectangle.tl[1] + @as(usize, @intCast(pad))) * self.parameters.width];
     c.stbtt_MakeGlyphBitmap(
         &render_font.font,
         dst_ptr,
@@ -615,7 +615,7 @@ fn getGlyph(self: *Self, font: *Font, codepoint: u21, state: State) !*Font.Glyph
     //Blur
     if (state.blur > 0) {
         self.scratch_buffer.len = 0;
-        var blur_dst_offset: usize = @intCast(glyph.rectangle.tl[0] + glyph.rectangle.tl[1] * self.parameters.width);
+        const blur_dst_offset: usize = @intCast(glyph.rectangle.tl[0] + glyph.rectangle.tl[1] * self.parameters.width);
         _ = blur_dst_offset;
 
         // TODO
@@ -661,19 +661,19 @@ fn getQuad(
     // Each glyph has a 2px border to allow good interpolation,
     // one pixel to prevent leaking, and one to allow good interpolation for rendering.
     // Inset the texture region by one pixel for correct interpolation.
-    var x_offset = glyph.x_offset + 1;
-    var y_offset = glyph.y_offset + 1;
+    const x_offset = glyph.x_offset + 1;
+    const y_offset = glyph.y_offset + 1;
     //Inset the rect
-    var rect = RectangleF{
+    const rect = RectangleF{
         .tl = Gfx.vector2UToF(glyph.rectangle.tl) + Gfx.Vector2One,
         .br = Gfx.vector2UToF(glyph.rectangle.br) - Gfx.Vector2One,
     };
 
-    var quad = switch (self.parameters.zero_position) {
+    const quad = switch (self.parameters.zero_position) {
         .top_left => blk: {
             //TODO: make a way to disable rounding here
-            var rounded_x = @round(x.* + x_offset);
-            var rounded_y = @round(y.* + y_offset);
+            const rounded_x = @round(x.* + x_offset);
+            const rounded_y = @round(y.* + y_offset);
 
             break :blk Quad{
                 .rect = RectangleF{
@@ -687,8 +687,8 @@ fn getQuad(
             };
         },
         .bottom_left => blk: {
-            var rounded_x = @round(x.* + x_offset);
-            var rounded_y = @round(y.* - y_offset);
+            const rounded_x = @round(x.* + x_offset);
+            const rounded_y = @round(y.* - y_offset);
 
             break :blk Quad{
                 .rect = RectangleF{
@@ -728,7 +728,7 @@ pub fn textBounds(
 
     var font = self.fonts.get(state.font) orelse return error.MissingFont;
 
-    var scale = c.stbtt_ScaleForPixelHeight(&font.font, state.size);
+    const scale = c.stbtt_ScaleForPixelHeight(&font.font, state.size);
 
     //Align vertically
     draw_position[1] += self.getVerticalAlignment(font.*, state);
@@ -736,18 +736,18 @@ pub fn textBounds(
     var min = draw_position;
     var max = draw_position;
 
-    var x_start = draw_position[0];
+    const x_start = draw_position[0];
 
     var iter = std.unicode.Utf8Iterator{ .bytes = text, .i = 0 };
 
     var previous_glyph_index: ?usize = null;
     var next = iter.nextCodepoint();
     while (next != null) : (next = iter.nextCodepoint()) {
-        var codepoint: u21 = next.?;
+        const codepoint: u21 = next.?;
 
-        var glyph = try self.getGlyph(font, codepoint, state);
+        const glyph = try self.getGlyph(font, codepoint, state);
 
-        var quad = self.getQuad(
+        const quad = self.getQuad(
             font,
             previous_glyph_index,
             glyph,
@@ -831,11 +831,11 @@ pub fn write(context: *WriterContext, text: []const u8) WriteError!usize {
     var min = context.bounds.tl;
     var max = context.bounds.br;
 
-    var previous_glyph_index: ?usize = null;
+    const previous_glyph_index: ?usize = null;
     while (iter.nextCodepoint()) |codepoint| {
-        var glyph = try self.getGlyph(context._font, codepoint, state);
+        const glyph = try self.getGlyph(context._font, codepoint, state);
 
-        var quad = self.getQuad(
+        const quad = self.getQuad(
             context._font,
             previous_glyph_index,
             glyph,
@@ -906,7 +906,7 @@ pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: Sta
 
     var font = self.fonts.get(state.font) orelse return error.MissingFont;
 
-    var scale = c.stbtt_ScaleForPixelHeight(&font.font, state.size);
+    const scale = c.stbtt_ScaleForPixelHeight(&font.font, state.size);
 
     //Align horizontally
     switch (state.alignment.horizontal) {
@@ -929,14 +929,14 @@ pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: Sta
 
     var return_size: Gfx.Vector2 = draw_position;
 
-    var previous_glyph_index: ?usize = null;
+    const previous_glyph_index: ?usize = null;
     var next: ?u21 = iter.nextCodepoint();
     while (next != null) : (next = iter.nextCodepoint()) {
-        var codepoint = next.?;
+        const codepoint = next.?;
 
-        var glyph = try self.getGlyph(font, codepoint, state);
+        const glyph = try self.getGlyph(font, codepoint, state);
 
-        var quad = self.getQuad(font, previous_glyph_index, glyph, scale, state.spacing, &draw_position[0], &draw_position[1]);
+        const quad = self.getQuad(font, previous_glyph_index, glyph, scale, state.spacing, &draw_position[0], &draw_position[1]);
 
         if (self.vertex_count + 6 > vertex_count) {
             try self.flush();
@@ -1003,12 +1003,12 @@ fn flush(self: *Self) !void {
 
 ///Adds a white rectangle to the atlas
 fn addWhiteRect(self: *Self, width: usize, height: usize) !void {
-    var rect_pos = try self.atlas.getRect(width, height);
+    const rect_pos = try self.atlas.getRect(width, height);
 
     for (0..height) |y| {
         const start_pos = rect_pos[0] + y * self.parameters.width;
 
-        var row = self.tex_cache[start_pos .. start_pos + width];
+        const row = self.tex_cache[start_pos .. start_pos + width];
         @memset(row, 0);
     }
 
@@ -1022,7 +1022,7 @@ pub fn verticalMetrics(self: *Self, state: State) struct {
     descender: f32,
     lineh: f32,
 } {
-    var font: *Font = self.fonts.get(state.font) orelse unreachable;
+    const font: *Font = self.fonts.get(state.font) orelse unreachable;
 
     return .{
         .ascender = font.ascender * state.size,
@@ -1111,7 +1111,7 @@ pub fn addFontMem(
         &line_gap,
     );
 
-    var fh = ascent - descent;
+    const fh = ascent - descent;
 
     font.ascender = @as(f32, @floatFromInt(ascent)) / @as(f32, @floatFromInt(fh));
     font.descender = @as(f32, @floatFromInt(descent)) / @as(f32, @floatFromInt(fh));
@@ -1130,7 +1130,7 @@ pub fn deinit(self: *Self) void {
     var next: ?**Font = iter.next();
 
     while (next != null) : (next = iter.next()) {
-        var font = next.?;
+        const font = next.?;
 
         font.*.glyphs.deinit();
 

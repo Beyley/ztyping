@@ -77,10 +77,10 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs
     errdefer if (fumen_file_name) |fumen_file_name_ptr| allocator.free(fumen_file_name_ptr);
     errdefer if (ranking_file_name) |ranking_file_name_ptr| allocator.free(ranking_file_name_ptr);
 
-    var orig_file = try file.readToEndAlloc(allocator, 10000);
+    const orig_file = try file.readToEndAlloc(allocator, 10000);
     defer allocator.free(orig_file);
 
-    var read_file = try iconv.convert(allocator, orig_file);
+    const read_file = try iconv.convert(allocator, orig_file);
     defer allocator.free(read_file);
 
     var iter = std.mem.split(u8, read_file, "\n");
@@ -141,7 +141,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs
     self.folder_path = try path.realpathAlloc(allocator, ".");
     errdefer allocator.free(self.folder_path);
 
-    var fumen_path = try path.realpathAlloc(allocator, self.fumen_file_name);
+    const fumen_path = try path.realpathAlloc(allocator, self.fumen_file_name);
     defer allocator.free(fumen_path);
 
     var fumen_file = try std.fs.openFileAbsolute(fumen_path, .{});
@@ -184,7 +184,7 @@ pub fn readUTypingList(allocator: std.mem.Allocator) ![]Self {
         defer allocator.free(line);
 
         //Normalize, aka remove \r and change `\` to `/`
-        var normalized = try std.mem.replaceOwned(u8, allocator, if (line[line.len - 1] == '\r') line[0 .. line.len - 1] else line, &.{'\\'}, &.{'/'});
+        const normalized = try std.mem.replaceOwned(u8, allocator, if (line[line.len - 1] == '\r') line[0 .. line.len - 1] else line, &.{'\\'}, &.{'/'});
         defer allocator.free(normalized);
 
         var music_file = try std.fs.cwd().openFile(normalized, .{});
@@ -193,7 +193,7 @@ pub fn readUTypingList(allocator: std.mem.Allocator) ![]Self {
         var music_dir = try std.fs.cwd().openDir(std.fs.path.dirname(normalized) orelse "", .{});
         defer music_dir.close();
 
-        var music = try readFromFile(allocator, music_dir, music_file, i);
+        const music = try readFromFile(allocator, music_dir, music_file, i);
 
         try music_list.append(music);
         i += 1;
@@ -262,8 +262,8 @@ pub fn draw(
         const width = (try render_state.fontstash.textBounds(self.artist, Fontstash.Normal)).x2;
         var x = (Screen.display_width - 150) - width * 2 / 3;
 
-        var width_l = x - (title_x + title_width);
-        var width_r = (num_x - width_num) - (x + width);
+        const width_l = x - (title_x + title_width);
+        const width_r = (num_x - width_num) - (x + width);
 
         if (width_l <= 20 or width_r <= 20) {
             x += (width_r - width_l) / 4;

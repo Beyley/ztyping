@@ -35,7 +35,7 @@ pub fn readUTypingConversions(allocator: std.mem.Allocator) !Self {
     var file = try std.fs.cwd().openFile("convert.dat", .{});
     defer file.close();
 
-    var raw_data = try allocator.alloc(u8, try file.getEndPos());
+    const raw_data = try allocator.alloc(u8, try file.getEndPos());
     defer allocator.free(raw_data);
 
     _ = try file.readAll(raw_data);
@@ -58,10 +58,10 @@ pub fn readUTypingConversions(allocator: std.mem.Allocator) !Self {
     const yen_replaced = std.mem.replace(u8, raw_replaced_data[0..(raw_replaced_data.len - underlines_replaced * ("‾".len - "~".len))], "¥", "\\", converted_data);
 
     //Calculate the length to cut off the end of the file, as the replacements will have shortened it
-    var length_to_cut = underlines_replaced * ("‾".len - "~".len) + yen_replaced * ("¥".len - "\\".len);
+    const length_to_cut = underlines_replaced * ("‾".len - "~".len) + yen_replaced * ("¥".len - "\\".len);
 
     //Cut off the end of the file
-    var data = converted_data[0..(converted_data.len - length_to_cut)];
+    const data = converted_data[0..(converted_data.len - length_to_cut)];
 
     var conversions = std.ArrayList(Conversion).init(allocator);
     errdefer {
@@ -81,11 +81,11 @@ pub fn readUTypingConversions(allocator: std.mem.Allocator) !Self {
 
         var line = if (raw_line[raw_line.len - 1] == '\r') raw_line[0..(raw_line.len - 1)] else raw_line;
 
-        var idx1 = std.mem.indexOf(u8, line, "\t") orelse return error.InvalidConvertFile;
-        var idx2 = std.mem.indexOfPos(u8, line, idx1 + 1, "\t");
+        const idx1 = std.mem.indexOf(u8, line, "\t") orelse return error.InvalidConvertFile;
+        const idx2 = std.mem.indexOfPos(u8, line, idx1 + 1, "\t");
 
-        var romaji = line[0..idx1];
-        var hiragana = line[(idx1 + 1)..(idx2 orelse line.len)];
+        const romaji = line[0..idx1];
+        const hiragana = line[(idx1 + 1)..(idx2 orelse line.len)];
         var end_cut: ?[]const u8 = if (idx2 == null) null else line[(idx2.? + 1)..];
 
         //The end cut must not be empty, so if it is, set it to null

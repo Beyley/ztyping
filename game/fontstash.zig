@@ -50,8 +50,8 @@ pub fn init(self: *Self, gfx: *Gfx, allocator: std.mem.Allocator) !void {
     self.renderer = try Renderer.init(allocator, gfx, self.texture.?);
     errdefer self.renderer.deinit();
 
-    var gothic_data = @embedFile("fonts/gothic.ttf");
-    var mincho_data = @embedFile("fonts/mincho.ttf");
+    const gothic_data = @embedFile("fonts/gothic.ttf");
+    const mincho_data = @embedFile("fonts/mincho.ttf");
 
     self.gothic = try self.context.addFontMem("gothic", gothic_data);
     self.mincho = try self.context.addFontMem("mincho", mincho_data);
@@ -61,7 +61,7 @@ pub fn verticalMetrics(self: *Self, state: Fontstash.State) struct { ascender: f
     var internal_state = state;
     internal_state.size *= self.gfx.scale;
 
-    var metrics = self.context.verticalMetrics(internal_state);
+    const metrics = self.context.verticalMetrics(internal_state);
 
     return .{
         .ascender = metrics.ascender / self.gfx.scale,
@@ -96,7 +96,7 @@ const Bounds = extern struct {
 };
 
 pub fn textBounds(self: *Self, text: []const u8, state: Fontstash.State) !Bounds {
-    var bounds = try self.context.textBounds(Gfx.Vector2Zero, text, state);
+    const bounds = try self.context.textBounds(Gfx.Vector2Zero, text, state);
 
     return .{
         .x1 = bounds.bounds.tl[0],
@@ -158,11 +158,11 @@ fn handleError(self_ptr: ?*anyopaque, err: anyerror) anyerror!void {
 fn update(self_ptr: ?*anyopaque, rect: Fontstash.Rectangle, data: []const u8) anyerror!void {
     var self = toSelf(self_ptr.?);
 
-    var rect_x = rect.tl[0];
-    var rect_y = rect.tl[1];
-    var rect_wh = rect.br - rect.tl;
-    var w = rect_wh[0];
-    var h = rect_wh[1];
+    const rect_x = rect.tl[0];
+    const rect_y = rect.tl[1];
+    const rect_wh = rect.br - rect.tl;
+    const w = rect_wh[0];
+    const h = rect_wh[1];
 
     var full = try self.allocator.alloc(Gfx.ColorB, @intCast(w * h));
     defer self.allocator.free(full);

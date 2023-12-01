@@ -114,24 +114,24 @@ fn runGame() !void {
     var gfx: Gfx = try Gfx.init(window, state.config.window_scale);
     defer gfx.deinit();
 
-    var imgui_context = c.igCreateContext(null);
+    const imgui_context = c.igCreateContext(null);
     defer c.igDestroyContext(imgui_context);
 
     c.igSetCurrentContext(imgui_context);
 
-    var imgui_io = c.igGetIO();
+    const imgui_io = c.igGetIO();
 
     //Enable keyboard nav
     imgui_io.*.ConfigFlags |= c.ImGuiConfigFlags_NavEnableKeyboard;
 
     //Create a font config
-    var font_config = c.ImFontConfig_ImFontConfig();
+    const font_config = c.ImFontConfig_ImFontConfig();
     //Mark that the atlas does *not* own the font data
     font_config.*.FontDataOwnedByAtlas = false;
 
-    var mincho_data = @embedFile("fonts/mincho.ttf");
+    const mincho_data = @embedFile("fonts/mincho.ttf");
     //Create the font from the mincho ttf
-    var mincho = c.ImFontAtlas_AddFontFromMemoryTTF(imgui_io.*.Fonts, @constCast(mincho_data.ptr), mincho_data.len, 15, font_config, c.ImFontAtlas_GetGlyphRangesJapanese(imgui_io.*.Fonts));
+    const mincho = c.ImFontAtlas_AddFontFromMemoryTTF(imgui_io.*.Fonts, @constCast(mincho_data.ptr), mincho_data.len, 15, font_config, c.ImFontAtlas_GetGlyphRangesJapanese(imgui_io.*.Fonts));
 
     if (!c.ImGui_ImplSDL2_InitForD3D(window)) {
         return error.UnableToInitSDL2ImGui;
@@ -207,7 +207,7 @@ fn runGame() !void {
 
     try screen_stack.load(&Screen.MainMenu.MainMenu, gfx, &state);
     while (state.is_running) {
-        var current_counter = c.SDL_GetPerformanceCounter();
+        const current_counter = c.SDL_GetPerformanceCounter();
         state.counter_curr = current_counter;
         const delta_time: f64 = @as(f64, @floatFromInt((current_counter - delta_start))) / freq;
         state.delta_time = delta_time;
@@ -234,7 +234,7 @@ fn runGame() !void {
                 },
                 c.SDL_TEXTINPUT => {
                     //Get the end of the arr
-                    var end = std.mem.indexOf(u8, &ev.text.text, &.{0}) orelse 32;
+                    const end = std.mem.indexOf(u8, &ev.text.text, &.{0}) orelse 32;
 
                     //Send the event to the screen
                     if (screen.char) |char| {
@@ -270,7 +270,7 @@ fn runGame() !void {
 
         //Get the current texture view for the swap chain
         // var next_texture = try gfx.swap_chain.?.getCurrentSwapChainTexture();
-        var surface_texture = gfx.surface.getCurrentTexture();
+        const surface_texture = gfx.surface.getCurrentTexture();
         defer c.wgpuTextureRelease(surface_texture.texture);
         switch (surface_texture.status) {
             c.WGPUSurfaceGetCurrentTextureStatus_Success => {},
@@ -301,7 +301,7 @@ fn runGame() !void {
             .label = "Command Encoder",
         });
 
-        var next_texture = c.wgpuTextureCreateView(surface_texture.texture, null).?;
+        const next_texture = c.wgpuTextureCreateView(surface_texture.texture, null).?;
         defer c.wgpuTextureViewRelease(next_texture);
 
         //Begin the render pass
@@ -328,7 +328,7 @@ fn runGame() !void {
 
         render_pass_encoder.end();
 
-        var command_buffer = try command_encoder.finish(&c.WGPUCommandBufferDescriptor{
+        const command_buffer = try command_encoder.finish(&c.WGPUCommandBufferDescriptor{
             .label = "Command buffer",
             .nextInChain = null,
         });
@@ -362,7 +362,7 @@ pub fn main() !void {
             if (err == std.mem.Allocator.Error.OutOfMemory) {
                 _ = c.SDL_ShowSimpleMessageBox(0, "Unhandled Error!", error_str ++ "OutOfMemory", null);
             } else {
-                var fmt = try std.mem.concatWithSentinel(std.heap.c_allocator, u8, &.{ error_str, @errorName(err) }, 0);
+                const fmt = try std.mem.concatWithSentinel(std.heap.c_allocator, u8, &.{ error_str, @errorName(err) }, 0);
                 defer std.heap.c_allocator.free(fmt);
 
                 _ = c.SDL_ShowSimpleMessageBox(0, "Unhandled Error!", fmt, null);

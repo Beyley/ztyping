@@ -5,13 +5,13 @@ pub fn create_wgpu(b: *std.Build, target: std.zig.CrossTarget, optimize: std.bui
     const wgpu_native_path = root_path ++ "libs/wgpu-native/";
 
     //Get the users name
-    var username = try std.process.getEnvVarOwned(b.allocator, "USER");
+    const username = try std.process.getEnvVarOwned(b.allocator, "USER");
 
     //TODO: install the proper toolchains
 
     //Get the possible path to `cross`
     //TODO: make this logic much smarter
-    var cross_path = try std.mem.concat(b.allocator, u8, &.{ "/home/", username, "/.cargo/bin/cross" });
+    const cross_path = try std.mem.concat(b.allocator, u8, &.{ "/home/", username, "/.cargo/bin/cross" });
 
     //Array list will store our target name
     var cross_target = std.ArrayList(u8).init(b.allocator);
@@ -49,7 +49,7 @@ pub fn create_wgpu(b: *std.Build, target: std.zig.CrossTarget, optimize: std.bui
         try args.append("--release");
     }
 
-    var build_result = try std.ChildProcess.run(.{
+    const build_result = try std.ChildProcess.run(.{
         .allocator = b.allocator,
         .argv = args.items,
         .cwd = wgpu_native_path,
@@ -63,7 +63,7 @@ pub fn create_wgpu(b: *std.Build, target: std.zig.CrossTarget, optimize: std.bui
         return error.UnableToCompileWgpu;
     }
 
-    var target_path = try std.mem.concat(b.allocator, u8, &.{ root_path, "libs/wgpu-native/target/", cross_target.items, "/", if (optimize == std.builtin.OptimizeMode.Debug) "debug" else "release" });
+    const target_path = try std.mem.concat(b.allocator, u8, &.{ root_path, "libs/wgpu-native/target/", cross_target.items, "/", if (optimize == std.builtin.OptimizeMode.Debug) "debug" else "release" });
 
     return (try std.mem.concat(b.allocator, u8, &.{ target_path, "/libwgpu_native.a" }));
 }
