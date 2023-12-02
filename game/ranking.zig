@@ -240,7 +240,11 @@ pub const Score = struct {
         var stream = std.io.fixedBufferStream(&buf);
         const writer = stream.writer();
 
-        const color = Gfx.ColorF{ 1, 1, 1, 1 };
+        var color = Gfx.ColorF{ 1, 1, 1, 1 };
+
+        if (self.challenge.speed == 0)
+            color = .{ 0.5, 0.5, 0.5, 1 };
+
         {
             stream.pos = 0;
             try formatOrdinal(writer, n);
