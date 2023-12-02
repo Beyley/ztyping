@@ -860,15 +860,23 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
 fn drawMainRanking(render_state: Screen.RenderState, music: Music, ranking_pos: isize, pos: Gfx.Vector2, height: f32) !void {
     const yMin = @max(pos[1], 0);
-    _ = yMin;
     const yMax = @min(pos[1] + height, 360);
-    _ = yMax;
 
-    // TODO: debug why scissors are borked :(
-    // try render_state.renderer.setScissor(.{ 10, yMin, Screen.display_width - 20, yMax - yMin });
+    var scissor: Gfx.RectF = .{ 10, yMin, Screen.display_width - 20, yMax - yMin };
+    scissor *= @splat(render_state.gfx.scale);
+
+    const scissor_u: Gfx.RectU = .{
+        @intFromFloat(@max(0, scissor[0])),
+        @intFromFloat(@max(0, scissor[1])),
+        @intFromFloat(@max(0, scissor[2])),
+        @intFromFloat(@max(0, scissor[3])),
+    };
+
+    try render_state.renderer.setScissor(scissor_u);
+    try render_state.fontstash.renderer.setScissor(scissor_u);
 
     if (ranking_pos >= 0) {
-        try music.drawRanking(render_state, .{ pos[0], pos[1] + 6 }, ranking_pos, ranking_draw_len);
+        try music.ranking.draw(render_state, .{ pos[0], pos[1] + 6 }, @intCast(ranking_pos), ranking_draw_len);
     } else {
         try music.drawComment(render_state, .{ pos[0], pos[1] + 6 });
         try music.drawPlayData(render_state, .{ pos[0], pos[1] + 6 + h_comment + 4 });

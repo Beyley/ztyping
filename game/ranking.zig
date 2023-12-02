@@ -29,6 +29,20 @@ pub const UTypingDate = packed struct(i32) {
     year: u16,
 };
 
+pub fn init() Self {
+    var self = Self{
+        .play_time = 0,
+        .play_count = 0,
+        .achievement = .no_data,
+        .changed = false,
+        .scores = undefined,
+    };
+
+    @memset(&self.scores, Score.init());
+
+    return self;
+}
+
 /// Gets the current date, in the UTyping date format
 pub fn getUTypingDate() UTypingDate {
     //Get the current timestamp
@@ -53,18 +67,18 @@ pub fn draw(
     pos: Gfx.Vector2,
     rank_begin: usize,
     rank_len: usize,
-    comptime font: []const u8,
 ) !void {
-    _ = render_state;
     for (rank_begin..(rank_begin + rank_len)) |i| {
         //Break out if we are drawing more than the max amount of storable ranks
         if (i >= ranking_len) {
             break;
         }
 
-        try self.scores[i].draw(pos + Gfx.Vector2{ 0, 48 * i }, i + 1, font);
+        try self.scores[i].draw(render_state, pos + Gfx.Vector2{ 0, @floatFromInt(48 * i) }, i + 1);
     }
 }
+
+const ranking_file_version = 5;
 
 pub fn readRanking(file: std.fs.File) !Self {
     var ranking = Self{
@@ -89,8 +103,6 @@ pub fn readRanking(file: std.fs.File) !Self {
         return err;
     };
 
-    const ranking_file_version = 5;
-
     //If the first byte of the version is greater than 32, than assume version is 0
     if ((version & 0xff) > ' ') {
         version = 0;
@@ -108,7 +120,7 @@ pub fn readRanking(file: std.fs.File) !Self {
         return error.UnknownRankingVersion;
     }
 
-    //In version 4, achivement was added to the score data34
+    //In version 4, achivement was added to the score data
     if (version >= 4) {
         ranking.achievement = try reader.readEnum(RankingLevel, .little);
     }
@@ -142,6 +154,17 @@ pub fn readRanking(file: std.fs.File) !Self {
     try file.seekTo(0);
 
     return ranking;
+}
+
+pub fn writeRanking(self: Self, writer: std.fs.File.Writer) !void {
+    try writer.writeInt(i32, ranking_file_version, .little);
+    try writer.writeInt(i32, @intFromEnum(self.achievement), .little);
+    try writer.writeInt(i32, self.play_count, .little);
+    try writer.writeInt(i32, self.play_time, .little);
+    try writer.writeInt(i32, self.scores.len, .little);
+    for (&self.scores) |score| {
+        try score.write(writer);
+    }
 }
 
 pub const RankingLevel = enum(i32) {
@@ -194,7 +217,9 @@ pub const Score = struct {
                 .month = 0,
                 .year = 0,
             },
-            .challenge = .{},
+            .challenge = .{
+                .speed = 0,
+            },
         };
 
         //Zero-init the score to all zeroes
@@ -210,13 +235,72 @@ pub const Score = struct {
         render_state: RenderState,
         pos: Gfx.Vector2,
         n: usize,
-        comptime font: []const u8,
     ) !void {
-        _ = font;
-        _ = n;
-        _ = pos;
-        _ = render_state;
-        _ = self;
+        var buf: [256]u8 = undefined;
+        var stream = std.io.fixedBufferStream(&buf);
+        const writer = stream.writer();
+
+        const color = Gfx.ColorF{ 1, 1, 1, 1 };
+        {
+            stream.pos = 0;
+            try formatOrdinal(writer, n);
+            try std.fmt.format(writer, ": {s} {d:0>8} 点( {d:0>7} + {d:0>7} ),", .{
+                std.mem.sliceTo(&self.name, 0),
+                @as(u32, @intCast(self.score)),
+                @as(u32, @intCast(self.score_accuracy)),
+                @as(u32, @intCast(self.score_typing)),
+            });
+
+            var state = Fontstash.Ranking;
+            state.color = color;
+
+            _ = try render_state.fontstash.drawText(pos + Gfx.Vector2{ 40, 6 }, buf[0..stream.pos], state);
+        }
+        {
+            stream.pos = 0;
+            if (self.date.year == 0) {
+                try std.fmt.format(writer, "----/--/--", .{});
+            } else {
+                try std.fmt.format(writer, "{d:0>4}/{d:0>2}/{d:0>2}", .{
+                    @as(u32, @intCast(self.date.year)),
+                    @as(u32, @intCast(self.date.month)),
+                    @as(u32, @intCast(self.date.day)),
+                });
+            }
+
+            var state = Fontstash.Ranking;
+            state.color = color;
+            state.alignment.horizontal = .right;
+
+            _ = try render_state.fontstash.drawText(pos + Gfx.Vector2{ Screen.display_width - 40, 6 }, buf[0..stream.pos], state);
+        }
+        {
+            stream.pos = 0;
+            try self.challenge.format({}, {}, writer);
+            if (self.combo_max >= 0) {
+                try std.fmt.format(writer, ", 最大 {d:0>4} コンボ, ({d:0>4}/{d:0>4}/{d:0>4}/{d:0>4}/{d:0>4})", .{
+                    @as(u32, @intCast(self.combo_max)),
+                    @as(u32, @intCast(self.count[0])),
+                    @as(u32, @intCast(self.count[1])),
+                    @as(u32, @intCast(self.count[2])),
+                    @as(u32, @intCast(self.count[3])),
+                    @as(u32, @intCast(self.count[4])),
+                });
+            } else {
+                try std.fmt.format(writer, ",      フル コンボ, ({d:0>4}/{d:0>4}/{d:0>4}/{d:0>4}/{d:0>4})", .{
+                    @as(u32, @intCast(self.count[0])),
+                    @as(u32, @intCast(self.count[1])),
+                    @as(u32, @intCast(self.count[2])),
+                    @as(u32, @intCast(self.count[3])),
+                    @as(u32, @intCast(self.count[4])),
+                });
+            }
+            var state = Fontstash.Ranking;
+            state.color = color;
+            state.alignment.horizontal = .right;
+
+            _ = try render_state.fontstash.drawText(pos + Gfx.Vector2{ Screen.display_width - 40, 48 - 6 - 16 }, buf[0..stream.pos], state);
+        }
     }
 
     pub fn getLevel(self: Score) RankingLevel {
@@ -226,8 +310,10 @@ pub const Score = struct {
         return .perfect;
     }
 
+    const challenge_num = 7;
+
     pub fn read(reader: anytype, version: i32) !Score {
-        var score = init();
+        var score = Score.init();
 
         //In version 1, the score name length was bumped from 8 to 16
         if (version >= 1) {
@@ -254,7 +340,6 @@ pub const Score = struct {
         //Read the max combo
         score.combo_max = try reader.readInt(i32, .little);
 
-        const challenge_num = 7;
         //In version 1, challenges were added
         if (version >= 1) {
             //Iterate over all known challenges
@@ -290,5 +375,34 @@ pub const Score = struct {
         }
 
         return score;
+    }
+
+    pub fn write(self: Score, writer: std.fs.File.Writer) !void {
+        try writer.writeAll(&self.name);
+        try writer.writeInt(i32, self.score, .little);
+        try writer.writeInt(i32, self.score_accuracy, .little);
+        try writer.writeInt(i32, self.score_typing, .little);
+        for (&self.count) |count| {
+            try writer.writeInt(i32, count, .little);
+        }
+        try writer.writeInt(i32, self.count_all, .little);
+        try writer.writeInt(i32, self.combo_max, .little);
+
+        try writer.writeByte(@intFromBool(self.challenge.hidden));
+        try writer.writeByte(@intFromBool(self.challenge.sudden));
+        try writer.writeByte(@intFromBool(self.challenge.stealth));
+        try writer.writeByte(@intFromBool(self.challenge.lyrics_stealth));
+        try writer.writeByte(@intFromBool(self.challenge.sin));
+        try writer.writeByte(@intFromBool(self.challenge.cos));
+        try writer.writeByte(@intFromBool(self.challenge.tan));
+
+        for (challenge_num..16) |_| {
+            try writer.writeByte(0);
+        }
+
+        try writer.writeInt(i32, @intFromFloat(self.challenge.speed * 10), .little);
+        try writer.writeInt(i32, self.challenge.key, .little);
+
+        try writer.writeInt(i32, @bitCast(self.date), .little);
     }
 };

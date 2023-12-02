@@ -111,7 +111,7 @@ fn runGame() !void {
     try bass.setConfig(.global_stream_volume, @intFromFloat(state.config.volume * 10000));
 
     //Initialize our graphics
-    var gfx: Gfx = try Gfx.init(window, state.config.window_scale);
+    var gfx: Gfx = try Gfx.init(window, state.config);
     defer gfx.deinit();
 
     const imgui_context = c.igCreateContext(null);

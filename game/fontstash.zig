@@ -20,6 +20,14 @@ pub const Normal: Fontstash.State = .{
     },
 };
 
+pub const Ranking: Fontstash.State = .{
+    .font = Mincho,
+    .size = 16,
+    .alignment = .{
+        .vertical = .top,
+    },
+};
+
 gfx: *Gfx,
 renderer: Renderer,
 context: *Fontstash,

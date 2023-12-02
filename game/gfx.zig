@@ -4,6 +4,8 @@ const c = @import("main.zig").c;
 const zmath = @import("zmath");
 const img = @import("zigimg");
 
+const Config = @import("config.zig");
+
 const Self = @This();
 
 pub const Vector2 = @Vector(2, f32);
@@ -15,6 +17,7 @@ pub const ColorF = @Vector(4, f32);
 pub const ColorB = @Vector(4, u8);
 ///A rectangle with its bounds specified as u32
 pub const RectU = @Vector(4, u32);
+pub const RectF = @Vector(4, f32);
 
 pub const Vector2One: Vector2 = @splat(@as(f32, 1));
 pub const Vector2Zero: Vector2 = @splat(@as(f32, 0));
@@ -130,9 +133,9 @@ const PresentMode = enum(c_uint) {
     mailbox = 3,
 };
 
-pub fn init(window: *c.SDL_Window, scale: f32) !Self {
+pub fn init(window: *c.SDL_Window, config: Config) !Self {
     var self: Self = Self{
-        .scale = scale,
+        .scale = config.window_scale,
     };
 
     //Update the viewport
@@ -165,7 +168,7 @@ pub fn init(window: *c.SDL_Window, scale: f32) !Self {
     var modes_to_try: []const PresentMode = &.{ .mailbox, .fifo, .immediate };
 
     //If we are on an iGPU, lets prefer standard vsync over mailbox
-    if (properties.adapterType == c.WGPUAdapterType_IntegratedGPU) {
+    if (config.vsync) {
         modes_to_try = &.{ .fifo, .mailbox, .immediate };
     }
 

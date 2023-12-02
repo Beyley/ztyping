@@ -152,7 +152,22 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs
     self.fumen.* = try Fumen.readFromFile(allocator, fumen_file, path);
     errdefer self.fumen.deinit();
 
-    const ranking_path = try path.realpathAlloc(allocator, self.ranking_file_name);
+    const ranking_path = path.realpathAlloc(allocator, self.ranking_file_name) catch |err| blk: {
+        //If we got a FileNotFound error, write out a new blank ranking file
+        if (err == std.fs.Dir.OpenError.FileNotFound) {
+            const ranking = Ranking.init();
+
+            var new_ranking_file = try path.createFile(self.ranking_file_name, .{});
+
+            try ranking.writeRanking(new_ranking_file.writer());
+
+            new_ranking_file.close();
+
+            break :blk try path.realpathAlloc(allocator, self.ranking_file_name);
+        } else {
+            return err;
+        }
+    };
     defer allocator.free(ranking_path);
 
     var ranking_file = try std.fs.openFileAbsolute(ranking_path, .{});
@@ -330,20 +345,6 @@ pub fn draw(
     var state = title_state;
     state.color = color;
     _ = try render_state.fontstash.drawText(.{ title_x, title_y + y }, self.title, state);
-}
-
-pub fn drawRanking(
-    self: Self,
-    render_state: Screen.RenderState,
-    pos: Gfx.Vector2,
-    ranking_pos: isize,
-    rank_len: usize,
-) !void {
-    _ = self;
-    _ = rank_len;
-    _ = ranking_pos;
-    _ = pos;
-    _ = render_state;
 }
 
 pub fn drawComment(self: Self, render_state: Screen.RenderState, pos: Gfx.Vector2) !void {
