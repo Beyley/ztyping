@@ -184,7 +184,7 @@ fn formatOrdinal(writer: anytype, num: anytype) !void {
     if ((num / 10) % 10 == 1) {
         try writer.writeAll("th");
     } else switch (num % 10) {
-        1 => try writer.writeAll("th"),
+        1 => try writer.writeAll("st"),
         2 => try writer.writeAll("nd"),
         3 => try writer.writeAll("rd"),
         else => try writer.writeAll("th"),
