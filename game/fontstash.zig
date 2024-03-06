@@ -1,6 +1,5 @@
 const std = @import("std");
-
-const c = @import("main.zig").c;
+const core = @import("mach-core");
 
 const Gfx = @import("gfx.zig");
 const Renderer = @import("renderer.zig");
@@ -15,6 +14,14 @@ pub const Gothic = "gothic";
 pub const Normal: Fontstash.State = .{
     .font = Gothic,
     .size = 16,
+    .alignment = .{
+        .vertical = .top,
+    },
+};
+
+pub const Big: Fontstash.State = .{
+    .font = Mincho,
+    .size = 36,
     .alignment = .{
         .vertical = .top,
     },
@@ -90,6 +97,18 @@ pub fn drawText(self: *Self, position: Gfx.Vector2, text: []const u8, state: Fon
         text,
         internal_state,
     ) / @as(Gfx.Vector2, @splat(self.gfx.scale));
+}
+
+pub fn formatText(self: *Self, position: Gfx.Vector2, comptime fmt: []const u8, args: anytype, state: Fontstash.State) !void {
+    var context = Fontstash.WriterContext{
+        .state = state,
+        .draw = true,
+        .draw_position = position,
+    };
+
+    const writer = try self.context.writer(&context);
+
+    try std.fmt.format(writer, fmt, args);
 }
 
 pub fn ptToPx(pt: f32) f32 {
@@ -190,12 +209,12 @@ fn update(self_ptr: ?*anyopaque, rect: Fontstash.Rectangle, data: []const u8) an
         self.texture.?,
         Gfx.ColorB,
         full,
-        c.WGPUOrigin3D{
+        core.gpu.Origin3D{
             .x = @intCast(rect_x),
             .y = @intCast(rect_y),
             .z = 0,
         },
-        c.WGPUExtent3D{
+        core.gpu.Extent3D{
             .width = @intCast(w),
             .height = @intCast(h),
             .depthOrArrayLayers = 1,

@@ -2,8 +2,7 @@ const std = @import("std");
 const bass = @import("bass");
 const builtin = @import("builtin");
 const fumen_compiler = @import("fumen_compiler");
-
-const c = @import("../main.zig").c;
+const core = @import("mach-core");
 
 const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");
@@ -20,10 +19,13 @@ const Phase = enum {
     ready,
     ///While the game is playing
     main,
+    ///Fading out, transition state between main and result
     fade_out,
-    ///The results of the play
+    ///Start displaying the results, and ask for the users name
     result,
+    ///The play is completely finished, results should still be drawn at this point
     finished,
+    ///We are exiting the gameplay loop, and should return to the song selection screen
     exit,
 };
 
@@ -36,19 +38,27 @@ const Score = struct {
     combo: u64 = 0,
     ///The highest combo the user has reached
     max_combo: u64 = 0,
+
+    excellent_count: usize = 0,
+    good_count: usize = 0,
+    fair_count: usize = 0,
+    poor_count: usize = 0,
 };
 
 const GameplayData = struct {
+    /// The current phase of the game, this determines how to handle keypresses, what to display, and so on
     phase: Phase = .ready,
     beat_line_left: usize = 0,
     beat_line_right: usize = std.math.maxInt(usize),
 
+    /// The current audio time
     current_time: f64 = 0,
 
-    last_mouse_x: f32 = 0,
+    /// The last tracked position of the mouse cursor
+    last_mouse_x: f64 = 0,
     scrub_frame_counter: usize = 0,
 
-    ///The current kanji lyric on display
+    /// The current kanji lyric on display
     current_lyric_kanji: ?usize = null,
 
     animation_timers: AnimationTimers,
@@ -83,7 +93,7 @@ const GameplayData = struct {
     accuracy_text: [:0]const u8 = "",
     ///The color of the accuracy text
     accuracy_text_color: Gfx.ColorF = .{ 1, 1, 1, 1 },
-
+    /// The audio offset we should use for timing
     audio_offset: f64,
 };
 
@@ -264,7 +274,10 @@ const GaugeData = struct {
 };
 
 const AnimationTimers = struct {
+    const fade_out_time = 1.2;
+
     accuracy_text: std.time.Timer,
+    fade_out: std.time.Timer,
 };
 
 pub var Gameplay = Screen{
@@ -291,6 +304,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
         .music = &self.state.current_map.?,
         .animation_timers = .{
             .accuracy_text = try std.time.Timer.start(),
+            .fade_out = try std.time.Timer.start(),
         },
         .gauge_data = GaugeData.init(self.state.current_map.?.fumen.lyrics.len),
         .audio_offset = @as(f64, @floatFromInt(challenge.audio_offset)) / 1000.0,
@@ -694,6 +708,13 @@ fn handleNoteFirstChar(data: *GameplayData, note: *Fumen.Lyric) void {
         .poor => data.gauge_data.poor_count += 1,
     }
 
+    switch (note.pending_hit_result.?) {
+        .excellent => data.score.excellent_count += 1,
+        .good => data.score.good_count += 1,
+        .fair => data.score.fair_count += 1,
+        .poor => data.score.poor_count += 1,
+    }
+
     data.gauge_data.gaugeIncrement(note.pending_hit_result.?);
     data.gauge_data.statIncrement(note.pending_hit_result.?);
 
@@ -715,7 +736,8 @@ fn hitNote(data: *GameplayData) void {
     data.active_note += 1;
 
     if (data.active_note == data.music.fumen.lyrics.len) {
-        data.phase = .finished;
+        data.animation_timers.fade_out.reset();
+        data.phase = .fade_out;
         std.debug.print("note hit, game finished\n", .{});
     }
 }
@@ -744,10 +766,10 @@ fn hitResultToAccuracyScore(hit_result: Fumen.Lyric.HitResult) u64 {
     };
 }
 
-pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
+pub fn keyDown(self: *Screen, key: core.Key) anyerror!void {
     var data = self.getData(GameplayData);
 
-    if (key.sym == c.SDLK_ESCAPE) {
+    if (key == .escape) {
         self.close_screen = true;
         return;
     }
@@ -761,14 +783,14 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
     }
 
     switch (key.sym) {
-        c.SDLK_BACKSLASH => {
+        .backslash => {
             if (try self.state.audio_tracker.music.?.activeState() == .playing) {
                 try self.state.audio_tracker.music.?.pause();
             } else {
                 try self.state.audio_tracker.music.?.play(false);
             }
         },
-        c.SDLK_RETURN => {
+        .enter => {
             //Dont do any of this when we arent in the main phase
             if (data.phase != .main) return;
 
@@ -866,10 +888,8 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
         data.scrub_frame_counter += 1;
 
         if (data.scrub_frame_counter > 20) {
-            var mouse_x_i: c_int = 0;
-            var mouse_y: c_int = 0;
-            const mouse_buttons = c.SDL_GetMouseState(&mouse_x_i, &mouse_y);
-            var mouse_x: f32 = @floatFromInt(mouse_x_i);
+            const right_depressed = core.mousePressed(.right);
+            var mouse_x: f64 = core.mousePosition().x;
 
             const max_x = render_state.gfx.scale * 640.0;
 
@@ -881,7 +901,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
                 mouse_x = max_x;
             }
 
-            if ((mouse_buttons & c.SDL_BUTTON(3)) != 0 and mouse_x != data.last_mouse_x) {
+            if (right_depressed and mouse_x != data.last_mouse_x) {
                 const byte: u64 = @intFromFloat(@as(f64, @floatFromInt(try self.state.audio_tracker.music.?.getLength(.byte))) * (mouse_x / max_x));
 
                 try self.state.audio_tracker.music.?.setPosition(byte, .byte, .{});
@@ -960,81 +980,173 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
     try render_state.fontstash.renderer.end();
 
-    try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
+    try render_state.fontstash.renderer.draw(render_state.render_ffffffffffFfffff_encoder);
 
-    if (builtin.mode == .Debug) {
-        var open = false;
-        _ = c.igBegin("Gameplay Debugger", &open, 0);
-
-        c.igText("Gameplay State");
-
-        inline for (@typeInfo(GameplayData).Struct.fields) |field| {
-            handleDebugType(data, field.name, field.type, {});
+    //If we are in the fade out or result phases
+    if (data.phase == .fade_out or data.phase == .result) {
+        //If we are fully faded out, switch to the result phase
+        if (data.animation_timers.fade_out.read() > @as(comptime_int, AnimationTimers.fade_out_time * std.time.ns_per_s)) {
+            data.phase = .result;
         }
 
-        c.igSeparator();
+        //Begin a new render batch
+        try render_state.renderer.begin();
+        try render_state.fontstash.renderer.begin();
 
-        c.igText("Score");
+        const timer = @as(f32, @floatFromInt(data.animation_timers.fade_out.read())) / std.time.ns_per_s;
 
-        inline for (@typeInfo(Score).Struct.fields) |field| {
-            handleDebugType(data.score, field.name, field.type, {});
+        //Calculate the opacity of the background, to slowly fade out the rest of the scene
+        const fade_out_percentage: f32 = @min(timer / AnimationTimers.fade_out_time, 1);
+
+        // Render the fade out background
+        try render_state.renderer.reserveSolidBox(.{ 0, 0 }, .{ 640, 480 }, .{ 0, 0, 0, fade_out_percentage });
+
+        const ranking_time = timer - AnimationTimers.fade_out_time;
+
+        const count_all = data.score.excellent_count + data.score.good_count + data.score.fair_count + data.score.fair_count;
+
+        if (ranking_time > 0) {
+            _ = try render_state.fontstash.drawText(.{ 30, 10 }, "判定 :", Fontstash.Big);
         }
 
-        c.igSeparator();
-
-        c.igText("Gauge Data");
-
-        inline for (@typeInfo(GaugeData).Struct.fields) |field| {
-            handleDebugType(data.gauge_data, field.name, field.type, {});
-        }
-
-        c.igEnd();
-    }
-}
-
-fn handleDebugType(data: anytype, comptime name: []const u8, comptime T: type, contents: anytype) void {
-    const actual_contents = if (@TypeOf(contents) == void) @field(data, name) else contents;
-
-    switch (@typeInfo(T)) {
-        .Int => {
-            c.igText(name ++ ": %d", actual_contents);
-        },
-        .Float => {
-            c.igText(name ++ ": %f", actual_contents);
-        },
-        .Enum => {
-            c.igText(name ++ ": %s", @tagName(actual_contents).ptr);
-        },
-        .Pointer => |ptr| {
-            //We dont handle printing non-slices, so just break out
-            if (ptr.size != .Slice) return;
-
-            switch (ptr.child) {
-                u8 => {
-                    //We can just use normal %s for sentinel terminated arrays
-                    if (ptr.sentinel != null) {
-                        c.igText(name ++ ": \"%s\"", actual_contents.ptr);
-                    }
-                    //Else we have to use the `%.*s` magic
-                    else {
-                        c.igText(name ++ ": \"%.*s\"", actual_contents.len, actual_contents.ptr);
-                    }
+        if (ranking_time >= 0.6) {
+            var color_state = Fontstash.Normal;
+            color_state.color = excellent_color;
+            try render_state.fontstash.formatText(
+                .{ 320, 15 },
+                "　優 : {d: >4} / {d}",
+                .{
+                    data.score.excellent_count,
+                    count_all,
                 },
-                else => {},
-            }
-        },
-        .Optional => |optional| {
-            const content = @field(data, name);
+                color_state,
+            );
+        }
 
-            if (content == null) {
-                c.igText(name ++ ": null");
-            } else {
-                handleDebugType(data, name, optional.child, content.?);
-            }
-        },
-        else => {},
+        if (ranking_time >= 0.7) {
+            var color_state = Fontstash.Normal;
+            color_state.color = good_color;
+            try render_state.fontstash.formatText(
+                .{ 320, 40 },
+                "　優 : {d: >4} / {d}",
+                .{
+                    data.score.good_count,
+                    count_all,
+                },
+                color_state,
+            );
+        }
+
+        if (ranking_time >= 0.8) {
+            var color_state = Fontstash.Normal;
+            color_state.color = fair_color;
+            try render_state.fontstash.formatText(
+                .{ 320, 65 },
+                "　優 : {d: >4} / {d}",
+                .{
+                    data.score.fair_count,
+                    count_all,
+                },
+                color_state,
+            );
+        }
+
+        if (ranking_time >= 0.9) {
+            var color_state = Fontstash.Normal;
+            color_state.color = poor_color;
+            try render_state.fontstash.formatText(
+                .{ 320, 90 },
+                "　優 : {d: >4} / {d}",
+                .{
+                    data.score.poor_count,
+                    count_all,
+                },
+                color_state,
+            );
+        }
+
+        //End the new render batch
+        try render_state.renderer.end();
+        try render_state.fontstash.renderer.end();
+
+        //Draw it, with text on top
+        try render_state.renderer.draw(render_state.render_pass_encoder);
+        try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
     }
+
+    // if (builtin.mode == .Debug) {
+    //     var open = false;
+    //     _ = c.igBegin("Gameplay Debugger", &open, 0);
+
+    //     c.igText("Gameplay State");
+
+    //     inline for (@typeInfo(GameplayData).Struct.fields) |field| {
+    //         handleDebugType(data, field.name, field.type, {});
+    //     }
+
+    //     c.igSeparator();
+
+    //     c.igText("Score");
+
+    //     inline for (@typeInfo(Score).Struct.fields) |field| {
+    //         handleDebugType(data.score, field.name, field.type, {});
+    //     }
+
+    //     c.igSeparator();
+
+    //     c.igText("Gauge Data");
+
+    //     inline for (@typeInfo(GaugeData).Struct.fields) |field| {
+    //         handleDebugType(data.gauge_data, field.name, field.type, {});
+    //     }
+
+    //     c.igEnd();
+    // }
 }
+
+// fn handleDebugType(data: anytype, comptime name: []const u8, comptime T: type, contents: anytype) void {
+//     const actual_contents = if (@TypeOf(contents) == void) @field(data, name) else contents;
+
+//     switch (@typeInfo(T)) {
+//         .Int => {
+//             c.igText(name ++ ": %d", actual_contents);
+//         },
+//         .Float => {
+//             c.igText(name ++ ": %f", actual_contents);
+//         },
+//         .Enum => {
+//             c.igText(name ++ ": %s", @tagName(actual_contents).ptr);
+//         },
+//         .Pointer => |ptr| {
+//             //We dont handle printing non-slices, so just break out
+//             if (ptr.size != .Slice) return;
+
+//             switch (ptr.child) {
+//                 u8 => {
+//                     //We can just use normal %s for sentinel terminated arrays
+//                     if (ptr.sentinel != null) {
+//                         c.igText(name ++ ": \"%s\"", actual_contents.ptr);
+//                     }
+//                     //Else we have to use the `%.*s` magic
+//                     else {
+//                         c.igText(name ++ ": \"%.*s\"", actual_contents.len, actual_contents.ptr);
+//                     }
+//                 },
+//                 else => {},
+//             }
+//         },
+//         .Optional => |optional| {
+//             const content = @field(data, name);
+
+//             if (content == null) {
+//                 c.igText(name ++ ": null");
+//             } else {
+//                 handleDebugType(data, name, optional.child, content.?);
+//             }
+//         },
+//         else => {},
+//     }
+// }
 
 const big_lyric_x = circle_x - circle_r;
 const big_lyirc_y = 350;
@@ -1106,7 +1218,10 @@ fn missNote(data: *GameplayData) void {
 
     //If we are on the last note, mark the game as finished
     if (data.music.fumen.lyrics.len == data.active_note) {
-        data.phase = .finished;
+        //Reset the fade out animation timer
+        data.animation_timers.fade_out.reset();
+        //Start fading out the gameplay
+        data.phase = .fade_out;
         std.debug.print("note missed, game finished\n", .{});
     }
 

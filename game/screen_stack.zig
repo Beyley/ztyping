@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const GameState = @import("game_state.zig");
+const App = @import("app.zig");
 const Gfx = @import("gfx.zig");
 const Screen = @import("screen.zig");
 
@@ -16,8 +16,8 @@ pub fn deinit(self: ScreenStack) void {
     self.internal.deinit();
 }
 
-pub fn load(self: *ScreenStack, screen: *Screen, gfx: Gfx, state: *GameState) !void {
-    screen.state = state;
+pub fn load(self: *ScreenStack, screen: *Screen, gfx: Gfx, app: *App) !void {
+    screen.app = app;
     try screen.init(screen, self.internal.allocator, gfx);
 
     try self.internal.append(screen);

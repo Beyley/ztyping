@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const c = @import("../main.zig").c;
+const core = @import("mach-core");
 
 const SongSelect = @import("song_select.zig");
 
@@ -53,24 +53,24 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
     self.state.name = data.name.items;
 }
 
-pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
+pub fn keyDown(self: *Screen, key: core.Key) anyerror!void {
     var data = self.getData(MainMenuData);
 
     switch (key.sym) {
-        c.SDLK_ESCAPE => {
+        .escape => {
             if (data.name.items.len == 0) {
                 self.state.is_running = false;
             } else {
                 data.name.clearRetainingCapacity();
             }
         },
-        c.SDLK_BACKSPACE => {
+        .backspace => {
             if (data.name.items.len != 0) {
                 //TODO: handle unicode stuff here
                 _ = data.name.pop();
             }
         },
-        c.SDLK_RETURN => {
+        .enter => {
             //If they did not enter a name, mark them as a guest
             if (data.name.items.len == 0) {
                 try data.name.appendSlice("(guest)");

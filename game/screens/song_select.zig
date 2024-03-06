@@ -1,15 +1,14 @@
 const builtin = @import("builtin");
 const std = @import("std");
-
-const c = @import("../main.zig").c;
+const core = @import("mach-core");
 
 const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");
 const Gameplay = @import("gameplay.zig");
 const Music = @import("../music.zig");
-const GameState = @import("../game_state.zig");
 const Fontstash = @import("../fontstash.zig");
 const Challenge = @import("../challenge.zig");
+const App = @import("app");
 
 const RenderState = Screen.RenderState;
 
@@ -74,46 +73,46 @@ pub fn reenter(self: *Screen) anyerror!void {
     data.draw_info.resetPos();
 }
 
-pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
+pub fn keyDown(self: *Screen, key: core.Key) anyerror!void {
     var data = self.getData(SongSelectData);
 
-    switch (key.sym) {
-        c.SDLK_ESCAPE => {
+    switch (key) {
+        .escape => {
             self.close_screen = true;
         },
         //If the user presses either enter/return key,
-        c.SDLK_RETURN, c.SDLK_KP_ENTER => {
+        .enter, .kp_enter => {
             //Set the current map
             self.state.current_map = data.draw_info.music_iter.curr().*;
             //Push the gameplay scene onto the top of the stack
             self.screen_push = &Gameplay.Gameplay;
             Gameplay.challenge = data.challenge_info;
         },
-        c.SDLK_r => {
+        .r => {
             data.draw_info.random(self.state);
         },
-        c.SDLK_f => {
+        .f => {
             //TODO: search
         },
-        c.SDLK_UP => data.draw_info.prev(),
-        c.SDLK_DOWN => data.draw_info.next(),
-        c.SDLK_RIGHT => data.draw_info.right(),
-        c.SDLK_LEFT => data.draw_info.left(),
-        c.SDLK_h => {
+        .up => data.draw_info.prev(),
+        .down => data.draw_info.next(),
+        .right => data.draw_info.right(),
+        .left => data.draw_info.left(),
+        .h => {
             data.challenge_info.hidden = !data.challenge_info.hidden;
             //Stealth and hidden are incompatible, so if we are toggling hidden on, disable stealth
             if (data.challenge_info.hidden) {
                 data.challenge_info.stealth = false;
             }
         },
-        c.SDLK_s => {
+        .s => {
             data.challenge_info.sudden = !data.challenge_info.sudden;
             //Stealth and sudden are incompatible, so if we are toggling sudden on, disable stealth
             if (data.challenge_info.sudden) {
                 data.challenge_info.stealth = false;
             }
         },
-        c.SDLK_c => {
+        .c => {
             data.challenge_info.stealth = !data.challenge_info.stealth;
             //Stealth is incompatible with hidden and sudden, so if we are toggling stealth on, disable both of those
             if (data.challenge_info.stealth) {
@@ -121,9 +120,9 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
                 data.challenge_info.sudden = false;
             }
         },
-        c.SDLK_l => data.challenge_info.lyrics_stealth = !data.challenge_info.lyrics_stealth,
+        .l => data.challenge_info.lyrics_stealth = !data.challenge_info.lyrics_stealth,
         //Speed up
-        c.SDLK_PERIOD => {
+        .period => {
             if (data.challenge_info.speed < 2) {
                 data.challenge_info.speed += 0.1;
             } else if (data.challenge_info.speed < 3) {
@@ -135,7 +134,7 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             data.challenge_info.speed = @round(data.challenge_info.speed * 10.0) / 10.0;
         },
         //Speed down
-        c.SDLK_COMMA => {
+        .comma => {
             if (data.challenge_info.speed > 3) {
                 data.challenge_info.speed -= 0.5;
             } else if (data.challenge_info.speed > 2) {
@@ -147,34 +146,35 @@ pub fn keyDown(self: *Screen, key: c.SDL_Keysym) anyerror!void {
             data.challenge_info.speed = @round(data.challenge_info.speed * 10.0) / 10.0;
         },
         //Key down
-        c.SDLK_MINUS => {
+        .minus => {
             if (data.challenge_info.key > -12) {
                 data.challenge_info.key -= 1;
             }
         },
         //Key up
-        c.SDLK_EQUALS => {
+        .equals => {
             if (data.challenge_info.key < 12) {
                 data.challenge_info.key += 1;
             }
         },
-        c.SDLK_LEFTBRACKET => {
+        .left_bracket => {
             if (data.challenge_info.audio_offset > -1000) {
                 data.challenge_info.audio_offset -= 1;
             }
         },
-        c.SDLK_RIGHTBRACKET => {
+        .right_bracket => {
             if (data.challenge_info.audio_offset < 1000) {
                 data.challenge_info.audio_offset += 1;
             }
         },
-        c.SDLK_F6 => data.challenge_info.sin = !data.challenge_info.sin,
-        c.SDLK_F7 => data.challenge_info.cos = !data.challenge_info.cos,
-        c.SDLK_F8 => data.challenge_info.tan = !data.challenge_info.tan,
-        c.SDLK_0 => data.draw_info.music_iter.noSort(),
-        c.SDLK_1 => data.draw_info.music_iter.sortTitle(),
-        c.SDLK_2 => data.draw_info.music_iter.sortArtist(),
-        c.SDLK_3 => data.draw_info.music_iter.sortLevel(),
+        .f6 => data.challenge_info.sin = !data.challenge_info.sin,
+        .f7 => data.challenge_info.cos = !data.challenge_info.cos,
+        .f8 => data.challenge_info.tan = !data.challenge_info.tan,
+        .zero => data.draw_info.music_iter.noSort(),
+        .one => data.draw_info.music_iter.sortTitle(),
+        .two => data.draw_info.music_iter.sortArtist(),
+        .three => data.draw_info.music_iter.sortLevel(),
+        // TODO:
         // c.SDLK_4 => data.draw_info.music_iter.sortAchievement(),
         else => {},
     }
@@ -333,7 +333,7 @@ const DrawInfo = struct {
         while (self.music_iter.idx != idx) : (self.music_iter.next()) continue;
     }
 
-    pub fn random(self: *DrawInfo, game_state: *GameState) void {
+    pub fn random(self: *DrawInfo, game_state: *App) void {
         //Get a random number from 0 - music.len
         const selection: usize = @intFromFloat(@as(f64, @floatFromInt(game_state.random.next())) / std.math.maxInt(u64) * @as(f64, @floatFromInt(self.music_iter.music.len - 1)));
         //Jump to the random selection
@@ -420,19 +420,19 @@ pub const h_music_info_sub = 6 + h_comment + 4 + h_play_data + 6;
 pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     var data = self.getData(SongSelectData);
 
-    var open = true;
+    // var open = true;
 
-    if (builtin.mode == .Debug) {
-        _ = c.igBegin("Test", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
+    // // if (builtin.mode == .Debug) {
+    // //     _ = c.igBegin("Test", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
-        for (data.draw_info.add_height) |height| {
-            c.igText("height: %f", height);
-        }
-        c.igText("wait: %f", data.draw_info.add_height_wait);
-        c.igText("ranking pos: %d", data.draw_info.ranking_pos);
+    // //     for (data.draw_info.add_height) |height| {
+    // //         c.igText("height: %f", height);
+    // //     }
+    // //     c.igText("wait: %f", data.draw_info.add_height_wait);
+    // //     c.igText("ranking pos: %d", data.draw_info.ranking_pos);
 
-        c.igEnd();
-    }
+    // //     c.igEnd();
+    // // }
 
     try render_state.renderer.begin();
     try render_state.fontstash.renderer.begin();
