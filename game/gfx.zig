@@ -109,13 +109,13 @@ pub const Error = error{
     InstanceCreationError,
 };
 
-shader: *core.gpu.ShaderModule = null,
+shader: *core.gpu.ShaderModule = undefined,
 bind_group_layouts: BindGroupLayouts = undefined,
-render_pipeline_layout: *core.gpu.PipelineLayout = null,
+render_pipeline_layout: *core.gpu.PipelineLayout = undefined,
 render_pipeline: *core.gpu.RenderPipeline = undefined,
 projection_matrix_buffer: *core.gpu.Buffer = undefined,
 projection_matrix_bind_group: *core.gpu.BindGroup = undefined,
-sampler: *core.gpu.Sampler = null,
+sampler: *core.gpu.Sampler = undefined,
 scale: f32 = 1.0,
 viewport: RectU = undefined,
 
@@ -124,7 +124,14 @@ pub fn init(config: Config) !Self {
         .scale = config.window_scale,
     };
 
-    const width, const height = core.size();
+    const width: u32 = @intFromFloat(640 * config.window_scale);
+    const height: u32 = @intFromFloat(480 * config.window_scale);
+
+    core.setSizeLimit(.{
+        .min = .{ .width = width, .height = height },
+        .max = .{ .width = width, .height = height },
+    });
+    core.setSize(.{ .width = width, .height = height });
 
     //Update the viewport
     self.viewport = RectU{ 0, 0, @intCast(width), @intCast(height) };
@@ -139,21 +146,21 @@ pub fn init(config: Config) !Self {
     self.bind_group_layouts = try createBindGroupLayouts();
 
     //Create the render pipeline layout
-    self.render_pipeline_layout = try createPipelineLayout(self.bind_group_layouts);
+    self.render_pipeline_layout = createPipelineLayout(self.bind_group_layouts);
 
     //Create the render pipeline
-    self.render_pipeline = try createRenderPipeline(self.shader, self.render_pipeline_layout);
+    self.render_pipeline = createRenderPipeline(self.render_pipeline_layout, self.shader);
 
     //Create the projection matrix buffer
-    self.projection_matrix_buffer = try self.device.createBuffer(math.Mat4x4, 1, .uniform);
+    self.projection_matrix_buffer = try createBuffer(math.Mat4x4, 1, .{ .uniform = true, .copy_dst = true });
 
     //Create the projection matrix bind group
-    self.projection_matrix_bind_group = core.device.createBindGroup(self.device.c, &core.gpu.BindGroup.Descriptor.init(.{
+    self.projection_matrix_bind_group = core.device.createBindGroup(&core.gpu.BindGroup.Descriptor.init(.{
         .label = "Projection Matrix Bind Group",
         .layout = self.bind_group_layouts.projection_matrix,
         .entries = &.{core.gpu.BindGroup.Entry.buffer(0, self.projection_matrix_buffer, 0, @sizeOf(math.Mat4x4))},
     }));
-    std.debug.print("got projection matrix bind group {*}\n", .{self.projection_matrix_bind_group.c.?});
+    std.debug.print("got projection matrix bind group {*}\n", .{self.projection_matrix_bind_group});
 
     self.sampler = core.device.createSampler(&core.gpu.Sampler.Descriptor{
         .label = "Sampler",
@@ -181,8 +188,8 @@ pub fn deinit(self: *Self) void {
     self.render_pipeline_layout.release();
     self.shader.release();
 
-    self.shader = null;
-    self.render_pipeline_layout = null;
+    self.shader = undefined;
+    self.render_pipeline_layout = undefined;
 }
 
 pub const Texture = struct {
@@ -200,28 +207,30 @@ pub const Texture = struct {
             self.bind_group.?.release();
         }
 
-        self.tex = null;
-        self.view = null;
+        self.tex = undefined;
+        self.view = undefined;
     }
 
     ///Creates the bind group for the texture, not called implicitly as textures may be used for other purposes
     pub fn createBindGroup(self: *Texture, sampler: *core.gpu.Sampler, bind_group_layouts: BindGroupLayouts) !void {
-        self.bind_group = core.device.createBindGroup(core.gpu.BindGroup.Descriptor.init(.{
+        self.bind_group = core.device.createBindGroup(&core.gpu.BindGroup.Descriptor.init(.{
             .label = "Texture bind group",
             .entries = &.{
                 .{
                     .binding = 0,
                     .texture_view = self.view,
+                    .size = 0,
                 },
                 .{
                     .binding = 1,
                     .sampler = sampler,
+                    .size = 0,
                 },
             },
             .layout = bind_group_layouts.texture_sampler,
         }));
 
-        std.debug.print("got texture bind group {*}\n", .{self.bind_group.?.c.?});
+        std.debug.print("got texture bind group {*}\n", .{self.bind_group});
     }
 };
 
@@ -256,7 +265,7 @@ pub fn createBindGroupLayouts() !BindGroupLayouts {
                 false,
             ),
             core.gpu.BindGroupLayout.Entry.sampler(
-                0,
+                1,
                 .{ .fragment = true },
                 .filtering,
             ),
@@ -275,14 +284,14 @@ pub fn createBindGroupLayouts() !BindGroupLayouts {
         },
     }));
 
-    std.debug.print("got texture/sampler bind group layout {*}\n", .{layouts.texture_sampler.c});
-    std.debug.print("got projection matrix bind group layout {*}\n", .{layouts.projection_matrix.c});
+    std.debug.print("got texture/sampler bind group layout {*}\n", .{layouts.texture_sampler});
+    std.debug.print("got projection matrix bind group layout {*}\n", .{layouts.projection_matrix});
 
     return layouts;
 }
 
 pub fn createPipelineLayout(bind_group_layouts: BindGroupLayouts) *core.gpu.PipelineLayout {
-    const layout = core.device.createPipelineLayout(core.gpu.PipelineLayout.Descriptor.init(.{
+    const layout = core.device.createPipelineLayout(&core.gpu.PipelineLayout.Descriptor.init(.{
         .label = "Pipeline Layout",
         .bind_group_layouts = &.{
             bind_group_layouts.projection_matrix,
@@ -303,7 +312,7 @@ pub fn createRenderPipeline(layout: *core.gpu.PipelineLayout, shader: *core.gpu.
             .module = shader,
             .entry_point = "vs_main",
             .buffer_count = 3,
-            .buffers = &.{
+            .buffers = @as([]const core.gpu.VertexBufferLayout, &.{
                 core.gpu.VertexBufferLayout.init(.{
                     .array_stride = @sizeOf(Vector2),
                     .step_mode = .vertex,
@@ -337,7 +346,7 @@ pub fn createRenderPipeline(layout: *core.gpu.PipelineLayout, shader: *core.gpu.
                         },
                     },
                 }),
-            },
+            }).ptr,
         },
         .fragment = &core.gpu.FragmentState.init(.{
             .module = shader,
@@ -381,7 +390,7 @@ pub fn createTexture(allocator: std.mem.Allocator, data: []const u8) !Texture {
 
     const tex_format = core.gpu.Texture.Format.rgba8_unorm_srgb;
 
-    const tex = core.device.createTexture(core.gpu.Texture.Descriptor.init(.{
+    const tex = core.device.createTexture(&core.gpu.Texture.Descriptor.init(.{
         .label = "Texture",
         .usage = .{
             .copy_dst = true,
@@ -399,7 +408,7 @@ pub fn createTexture(allocator: std.mem.Allocator, data: []const u8) !Texture {
         .view_formats = &.{tex_format},
     }));
 
-    const view = tex.createView(core.gpu.TextureView.Descriptor{
+    const view = tex.createView(&core.gpu.TextureView.Descriptor{
         .label = "Texture View",
         .format = tex_format,
         .dimension = .dimension_2d,
@@ -437,7 +446,7 @@ pub fn createTexture(allocator: std.mem.Allocator, data: []const u8) !Texture {
 pub fn createBlankTexture(width: u32, height: u32) !Texture {
     const tex_format = core.gpu.Texture.Format.rgba8_unorm_srgb;
 
-    const tex = core.device.createTexture(core.gpu.Texture.Descriptor.init(.{
+    const tex = core.device.createTexture(&core.gpu.Texture.Descriptor.init(.{
         .label = "Texture",
         .usage = .{
             .copy_dst = true,
@@ -455,7 +464,7 @@ pub fn createBlankTexture(width: u32, height: u32) !Texture {
         .view_formats = &.{tex_format},
     }));
 
-    const view = tex.createView(core.gpu.TextureView.Descriptor{
+    const view = tex.createView(&core.gpu.TextureView.Descriptor{
         .label = "Texture View",
         .format = tex_format,
         .dimension = .dimension_2d,
@@ -479,21 +488,24 @@ pub fn createBlankTexture(width: u32, height: u32) !Texture {
 pub fn createBuffer(comptime contents_type: type, count: u64, buffer_type: core.gpu.Buffer.UsageFlags) !*core.gpu.Buffer {
     const size: u64 = @intCast(@sizeOf(contents_type) * count);
 
+    var usage = buffer_type;
+    usage.copy_dst = true;
+
     const buffer = core.device.createBuffer(&core.gpu.Buffer.Descriptor{
         .label = "Buffer",
-        .usage = buffer_type,
-        .mapped_at_creation = false,
+        .usage = usage,
+        .mapped_at_creation = .false,
         .size = size,
     });
 
-    std.debug.print("got buffer {*}\n", .{buffer.?});
+    std.debug.print("got buffer {*}\n", .{buffer});
 
     return buffer;
 }
 
 pub fn setErrorCallbacks(self: *Self) void {
     _ = self; // autofix
-    core.device.setUncapturedErrorCallback({}, uncapturedError);
+    // core.device.setUncapturedErrorCallback({}, uncapturedError);
 
     std.debug.print("setup wgpu device callbacks\n", .{});
 }
@@ -528,7 +540,7 @@ pub fn updateProjectionMatrixBuffer(self: *Self) void {
         1,
     );
 
-    core.queue.writeBuffer(self.projection_matrix_buffer, 0, &.{mat});
+    core.queue.writeBuffer(self.projection_matrix_buffer, 0, &[_]math.Mat4x4{mat});
 }
 
 pub fn orthographicOffCenter(left: f32, right: f32, top: f32, bottom: f32, near: f32, far: f32) math.Mat4x4 {

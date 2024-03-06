@@ -288,7 +288,7 @@ pub var Gameplay = Screen{
     .char = char,
     .key_down = keyDown,
     .data = undefined,
-    .state = undefined,
+    .app = undefined,
 };
 
 pub var challenge: Challenge.ChallengeInfo = undefined;
@@ -301,12 +301,12 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
     errdefer allocator.destroy(data);
 
     data.* = .{
-        .music = &self.state.current_map.?,
+        .music = &self.app.current_map.?,
         .animation_timers = .{
             .accuracy_text = try std.time.Timer.start(),
             .fade_out = try std.time.Timer.start(),
         },
-        .gauge_data = GaugeData.init(self.state.current_map.?.fumen.lyrics.len),
+        .gauge_data = GaugeData.init(self.app.current_map.?.fumen.lyrics.len),
         .audio_offset = @as(f64, @floatFromInt(challenge.audio_offset)) / 1000.0,
     };
 
@@ -328,7 +328,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
     const audio_pathZ = try allocator.dupeZ(u8, full_audio_path);
     defer allocator.free(audio_pathZ);
     std.debug.print("Loading song file {s}\n", .{audio_pathZ});
-    self.state.audio_tracker.music = try bass.createFileStream(
+    self.app.audio_tracker.music = try bass.createFileStream(
         .{ .file = .{ .path = audio_pathZ } },
         0,
         .{
@@ -338,20 +338,20 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
         },
     );
 
-    const starting_freq = try self.state.audio_tracker.music.?.getAttribute(bass.ChannelAttribute.frequency);
+    const starting_freq = try self.app.audio_tracker.music.?.getAttribute(bass.ChannelAttribute.frequency);
 
-    try self.state.audio_tracker.music.?.setAttribute(bass.ChannelAttribute.frequency, starting_freq * @as(f32, @floatCast(challenge.speed)));
+    try self.app.audio_tracker.music.?.setAttribute(bass.ChannelAttribute.frequency, starting_freq * @as(f32, @floatCast(challenge.speed)));
 }
 
 pub fn deinitScreen(self: *Screen) void {
     const data = self.getData(GameplayData);
 
     //Stop the song
-    self.state.audio_tracker.music.?.stop() catch |err| {
+    self.app.audio_tracker.music.?.stop() catch |err| {
         std.debug.panicExtra(null, null, "Unable to stop music!!! err:{s}\n", .{@errorName(err)});
     };
     //Deinit the stream
-    self.state.audio_tracker.music.?.deinit();
+    self.app.audio_tracker.music.?.deinit();
 
     //Destroy the data pointer
     self.allocator.destroy(data);
@@ -403,7 +403,10 @@ pub const combo_score_max = 1000;
 
 pub const typing_score = 500;
 
-pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
+pub fn char(self: *Screen, typed_codepoint: u21) anyerror!void {
+    var typed_char_buf: [std.math.maxInt(u3)]u8 = undefined;
+    const typed_char: []const u8 = typed_char_buf[0..try std.unicode.utf8Encode(typed_codepoint, &typed_char_buf)];
+
     var data = self.getData(GameplayData);
 
     //If we're not in the main phase, ignore the input
@@ -416,7 +419,7 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
 
     // std.debug.print("user wrote {s}\n", .{typed_char});
 
-    const current_time = try self.state.audio_tracker.music.?.getSecondPosition() - data.audio_offset;
+    const current_time = try self.app.audio_tracker.music.?.getSecondPosition() - data.audio_offset;
 
     var current_note: *Fumen.Lyric = &data.music.fumen.lyrics[data.active_note];
     var next_note: ?*Fumen.Lyric = if (data.active_note + 1 == data.music.fumen.lyrics.len) null else &data.music.fumen.lyrics[data.active_note + 1];
@@ -441,7 +444,7 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
     _ = next_hiragana_matched;
 
     //Iterate over all conversions,
-    for (self.state.convert.conversions) |conversion| {
+    for (self.app.convert.conversions) |conversion| {
         const hiragana_matches = std.mem.startsWith(u8, hiragana_to_type, conversion.hiragana);
         const hiragana_matches_next: ?bool = if (hiragana_to_type_next != null) std.mem.startsWith(u8, hiragana_to_type_next.?, conversion.hiragana) else null;
 
@@ -485,7 +488,8 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
         _ = matched_for_current_note;
 
         //Iterate over all conversions,
-        for (self.state.convert.conversions) |conversion| {
+        for (self.app.convert.conversions) |conversion| {
+            //TODO: WHAT THE FUCK WAS THIS SUPPOSED TO BE WHY DID I JUST STOP HERE
             _ = conversion;
         }
     }
@@ -572,7 +576,7 @@ pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
     if (end_cut_hit and current_hiragana_finished and !current_note_finished) {
         hiragana_to_type = current_note.text[data.typed_hiragana.len..];
 
-        for (self.state.convert.conversions) |conversion| {
+        for (self.app.convert.conversions) |conversion| {
             if (std.mem.startsWith(u8, hiragana_to_type, conversion.hiragana)) {
                 //Add the typed characters to the typed romaji
                 data.typed_romaji = conversion.romaji[0..typed_char.len];
@@ -777,17 +781,17 @@ pub fn keyDown(self: *Screen, key: core.Key) anyerror!void {
     if (data.phase == .ready) {
         data.phase = .main;
 
-        try self.state.audio_tracker.music.?.play(true);
+        try self.app.audio_tracker.music.?.play(true);
 
         return;
     }
 
-    switch (key.sym) {
+    switch (key) {
         .backslash => {
-            if (try self.state.audio_tracker.music.?.activeState() == .playing) {
-                try self.state.audio_tracker.music.?.pause();
+            if (try self.app.audio_tracker.music.?.activeState() == .playing) {
+                try self.app.audio_tracker.music.?.pause();
             } else {
-                try self.state.audio_tracker.music.?.play(false);
+                try self.app.audio_tracker.music.?.play(false);
             }
         },
         .enter => {
@@ -881,7 +885,7 @@ inline fn getDrawPosY(x: f32) f32 {
 pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     var data = self.getData(GameplayData);
 
-    data.current_time = try self.state.audio_tracker.music.?.getSecondPosition() - data.audio_offset;
+    data.current_time = try self.app.audio_tracker.music.?.getSecondPosition() - data.audio_offset;
 
     //In debug mode, allow the user to scrub through the song
     if (builtin.mode == .Debug) {
@@ -902,9 +906,9 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
             }
 
             if (right_depressed and mouse_x != data.last_mouse_x) {
-                const byte: u64 = @intFromFloat(@as(f64, @floatFromInt(try self.state.audio_tracker.music.?.getLength(.byte))) * (mouse_x / max_x));
+                const byte: u64 = @intFromFloat(@as(f64, @floatFromInt(try self.app.audio_tracker.music.?.getLength(.byte))) * (mouse_x / max_x));
 
-                try self.state.audio_tracker.music.?.setPosition(byte, .byte, .{});
+                try self.app.audio_tracker.music.?.setPosition(byte, .byte, .{});
             }
 
             data.last_mouse_x = mouse_x;
@@ -980,7 +984,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
     try render_state.fontstash.renderer.end();
 
-    try render_state.fontstash.renderer.draw(render_state.render_ffffffffffFfffff_encoder);
+    try render_state.fontstash.renderer.draw(render_state.render_pass_encoder);
 
     //If we are in the fade out or result phases
     if (data.phase == .fade_out or data.phase == .result) {
@@ -1347,10 +1351,10 @@ fn drawStatGauge(render_state: Screen.RenderState, data: *GameplayData) !void {
 
     for (&data.gauge_data.draw_x, &data.gauge_data.draw_v, &data.gauge_data.lengths) |*x, *velocity, length| {
         //Add a little bit of velocity, depending on the amount we need to change
-        velocity.* += 0.12 * (length - x.*) * render_state.game_state.delta_time * 60;
+        velocity.* += 0.12 * (length - x.*) * core.delta_time * 60;
         x.* += velocity.*;
         //Slow the velocity down
-        velocity.* *= 0.7 * render_state.game_state.delta_time * 60;
+        velocity.* *= 0.7 * core.delta_time * 60;
     }
 
     var rate: f32 = 20;
@@ -1384,7 +1388,7 @@ fn drawStatGauge(render_state: Screen.RenderState, data: *GameplayData) !void {
         try drawLight(render_state, @floatCast(light.*), y + @as(f32, @floatFromInt(i)) * single_bar_height, single_bar_height, colour[1]);
 
         //Lower the amount of light by 0.85
-        light.* *= 1 - ((1 - 0.95) * (render_state.game_state.delta_time * 250));
+        light.* *= 1 - ((1 - 0.95) * (core.delta_time * 250));
     }
 }
 
@@ -1423,7 +1427,7 @@ const accuracy_y = 90;
 
 fn drawScoreUi(render_state: Screen.RenderState, data: *GameplayData) !void {
     const combined_score: f64 = @floatFromInt(data.score.accuracy_score + data.score.typing_score);
-    data.draw_score += (render_state.game_state.delta_time * 25 * (combined_score - data.draw_score));
+    data.draw_score += (core.delta_time * 25 * (combined_score - data.draw_score));
 
     //Draw the score
     var buf: [8]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -1681,12 +1685,12 @@ fn drawGameplayLyrics(render_state: Screen.RenderState, data: *GameplayData) !vo
                     },
                 );
 
-                if (lyric.hit_result == null and render_state.game_state.config.display_romaji) {
+                if (lyric.hit_result == null and render_state.app.config.display_romaji) {
                     //Draw the possible romaji below the notes
                     //Create a variable to store how many we have drawn
                     var rendered_romaji: usize = 0;
                     //Iterate over all conversions
-                    for (render_state.game_state.convert.conversions) |conversion| {
+                    for (render_state.app.convert.conversions) |conversion| {
                         //Get the text that has yet to be typed
                         const to_type = if (i == data.active_note) lyric.text[data.typed_hiragana.len..] else lyric.text;
 

@@ -72,12 +72,14 @@ const quad_per_buf = 5000;
 const vtx_per_buf = quad_per_buf * 4;
 const vtx_buf_size = (@sizeOf(Gfx.Vector2) + @sizeOf(Gfx.Vector2) + @sizeOf(Gfx.ColorF)) * vtx_per_buf;
 const idx_per_buf = quad_per_buf * 6;
+
 const IndexType = u16;
+const IndexTypeEnum = .uint16;
 
 fn createRenderBuffer(self: *Self) !void {
     try self.queued_buffers.append(RenderBuffer{
-        .vtx_buf = try self.gfx.device.createBuffer(u8, vtx_buf_size, .vertex),
-        .idx_buf = try self.gfx.device.createBuffer(IndexType, idx_per_buf, .index),
+        .vtx_buf = try Gfx.createBuffer(u8, vtx_buf_size, .{ .vertex = true }),
+        .idx_buf = try Gfx.createBuffer(IndexType, idx_per_buf, .{ .index = true }),
         .scissor = self.gfx.viewport,
     });
 }
@@ -163,8 +165,8 @@ fn dump(self: *Self) !void {
         //If it was used,
         if (recording_buffer.used_idx != 0) {
             //Write the CPU buffers to the GPU buffer
-            self.gfx.queue.writeBuffer(recording_buffer.vtx_buf, 0, u8, self.cpu_vtx_raw);
-            self.gfx.queue.writeBuffer(recording_buffer.idx_buf, 0, IndexType, self.cpu_idx[0..recording_buffer.used_idx]);
+            core.queue.writeBuffer(recording_buffer.vtx_buf, 0, self.cpu_vtx_raw);
+            core.queue.writeBuffer(recording_buffer.idx_buf, 0, self.cpu_idx[0..recording_buffer.used_idx]);
 
             //Add to the recorded buffers
             try self.recorded_buffers.append(recording_buffer);
@@ -314,7 +316,7 @@ pub fn reserve(self: *Self, vtx_count: u64, idx_count: u64) !ReservedData {
     };
 }
 
-pub fn draw(self: *Self, encoder: *Gfx.RenderPassEncoder) !void {
+pub fn draw(self: *Self, encoder: *core.gpu.RenderPassEncoder) !void {
     //We should never be started
     std.debug.assert(!self.started);
 
@@ -324,11 +326,14 @@ pub fn draw(self: *Self, encoder: *Gfx.RenderPassEncoder) !void {
     encoder.setBindGroup(1, self.texture.bind_group.?, &.{});
 
     for (self.recorded_buffers.items) |recorded_buffer| {
-        encoder.setScissor(recorded_buffer.scissor);
+        // const scissor_width = @min(self.gfx.viewport[2], recorded_buffer.scissor[2]);
+        // const scissor_height = @min(self.gfx.viewport[3], recorded_buffer.scissor[3]);
+
+        // encoder.setScissorRect(0, 0, scissor_width, scissor_height);
         encoder.setVertexBuffer(0, recorded_buffer.vtx_buf, 0, @sizeOf(Gfx.Vector2) * vtx_per_buf);
         encoder.setVertexBuffer(1, recorded_buffer.vtx_buf, @sizeOf(Gfx.Vector2) * vtx_per_buf, @sizeOf(Gfx.Vector2) * vtx_per_buf);
         encoder.setVertexBuffer(2, recorded_buffer.vtx_buf, @sizeOf(Gfx.Vector2) * 2 * vtx_per_buf, @sizeOf(Gfx.ColorF) * vtx_per_buf);
-        encoder.setIndexBuffer(recorded_buffer.idx_buf, IndexType, 0, recorded_buffer.idx_buf.size);
+        encoder.setIndexBuffer(recorded_buffer.idx_buf, IndexTypeEnum, 0, idx_per_buf * @sizeOf(IndexType));
         encoder.drawIndexed(@intCast(recorded_buffer.used_idx), 1, 0, 0, 0);
     }
 }
