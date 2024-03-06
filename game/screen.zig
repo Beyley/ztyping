@@ -1,12 +1,11 @@
 const std = @import("std");
 const bass = @import("bass");
+const core = @import("mach-core");
 
-const c = @import("main.zig").c;
-
+const App = @import("app.zig");
 const Renderer = @import("renderer.zig");
 const Gfx = @import("gfx.zig");
 const Fontstash = @import("fontstash.zig");
-const GameState = @import("game_state.zig");
 
 const Self = @This();
 
@@ -20,15 +19,15 @@ pub const RenderState = struct {
     renderer: *Renderer,
     fontstash: *Fontstash,
     render_pass_encoder: *Gfx.RenderPassEncoder,
-    game_state: *GameState,
+    app: *App,
 };
 
 close_screen: bool = false,
 screen_push: ?*Self = null,
-state: *GameState,
+app: *App,
 render: *const fn (*Self, RenderState) anyerror!void,
-char: ?*const fn (*Self, []const u8) anyerror!void = null,
-key_down: ?*const fn (*Self, c.SDL_Keysym) anyerror!void = null,
+char: ?*const fn (*Self, u21) anyerror!void = null,
+key_down: ?*const fn (*Self, core.Key) anyerror!void = null,
 init: *const fn (*Self, std.mem.Allocator, Gfx) anyerror!void,
 ///Called when the screen is re-entered (eg. the screen higher on the stack closes)
 reenter: ?*const fn (*Self) anyerror!void = null,

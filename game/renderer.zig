@@ -1,14 +1,13 @@
 const std = @import("std");
-
-const c = @import("main.zig").c;
+const core = @import("mach-core");
 
 const Gfx = @import("gfx.zig");
 
 const Self = @This();
 
 const RenderBuffer = struct {
-    vtx_buf: Gfx.Buffer,
-    idx_buf: Gfx.Buffer,
+    vtx_buf: *core.gpu.Buffer,
+    idx_buf: *core.gpu.Buffer,
     used_vtx: u64 = 0,
     used_idx: u64 = 0,
     scissor: Gfx.RectU,

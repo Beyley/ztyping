@@ -25,10 +25,7 @@ const Gfx = @import("gfx.zig");
 
 const Self = @This();
 
-const c = @cImport({
-    // @cDefine("STBTT_STATIC", "");
-    @cInclude("stb_truetype.h");
-});
+const c = @import("stb_truetype").c;
 
 pub const Rectangle = struct {
     tl: Gfx.Vector2u,
