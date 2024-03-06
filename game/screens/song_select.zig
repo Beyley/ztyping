@@ -8,7 +8,7 @@ const Gameplay = @import("gameplay.zig");
 const Music = @import("../music.zig");
 const Fontstash = @import("../fontstash.zig");
 const Challenge = @import("../challenge.zig");
-const App = @import("app");
+const App = @import("../app.zig");
 
 const RenderState = Screen.RenderState;
 
@@ -27,7 +27,7 @@ pub var SongSelect = Screen{
     .reenter = reenter,
     .key_down = keyDown,
     .data = undefined,
-    .state = undefined,
+    .app = undefined,
 };
 
 pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerror!void {
@@ -42,7 +42,7 @@ pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerro
             .add_height = std.mem.zeroes([DrawInfo.add_height_count]f32),
             .add_height_wait = 25,
             .music_iter = .{
-                .music = self.state.map_list,
+                .music = self.app.map_list,
                 .idx = 0,
             },
             .ranking_pos = 0,
@@ -83,13 +83,13 @@ pub fn keyDown(self: *Screen, key: core.Key) anyerror!void {
         //If the user presses either enter/return key,
         .enter, .kp_enter => {
             //Set the current map
-            self.state.current_map = data.draw_info.music_iter.curr().*;
+            self.app.current_map = data.draw_info.music_iter.curr().*;
             //Push the gameplay scene onto the top of the stack
             self.screen_push = &Gameplay.Gameplay;
             Gameplay.challenge = data.challenge_info;
         },
         .r => {
-            data.draw_info.random(self.state);
+            data.draw_info.random(self.app);
         },
         .f => {
             //TODO: search
@@ -152,7 +152,7 @@ pub fn keyDown(self: *Screen, key: core.Key) anyerror!void {
             }
         },
         //Key up
-        .equals => {
+        .equal => {
             if (data.challenge_info.key < 12) {
                 data.challenge_info.key += 1;
             }
@@ -630,13 +630,13 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
         var state = Fontstash.Normal;
         state.alignment.horizontal = .right;
 
-        if (std.mem.eql(u8, self.state.name, "(guest)")) {
+        if (std.mem.eql(u8, self.app.name, "(guest)")) {
             state.color = .{ 0.5, 0.5, 0.5, 1 };
         } else {
             state.color = .{ 1, 1, 1, 1 };
         }
 
-        const bounds = try render_state.fontstash.textBounds(self.state.name, state);
+        const bounds = try render_state.fontstash.textBounds(self.app.name, state);
         const width = bounds.x2 - bounds.x1;
 
         const background_color = .{ 0.0627, 0.0627, 0.1254, 1 };
@@ -648,7 +648,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
         _ = try render_state.fontstash.drawText(
             .{ Screen.display_width - 10, Screen.display_height - 20 },
-            self.state.name,
+            self.app.name,
             state,
         );
     }
@@ -843,7 +843,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
     const step_timer_length = 1.0 / 60.0;
 
-    data.step_timer += render_state.game_state.delta_time;
+    data.step_timer += core.delta_time;
 
     if (data.step_timer >= step_timer_length) {
         data.draw_info.step();

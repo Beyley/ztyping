@@ -145,8 +145,8 @@ fn toSelf(ptr: *anyopaque) *Self {
 fn create(self_ptr: ?*anyopaque, width: usize, height: usize) anyerror!void {
     var self = toSelf(self_ptr.?);
 
-    self.texture = try self.gfx.device.createBlankTexture(@intCast(width), @intCast(height));
-    try self.texture.?.createBindGroup(self.gfx.device, self.gfx.sampler, self.gfx.bind_group_layouts);
+    self.texture = try Gfx.createBlankTexture(@intCast(width), @intCast(height));
+    try self.texture.?.createBindGroup(self.gfx.sampler, self.gfx.bind_group_layouts);
 }
 
 fn resize(self_ptr: ?*anyopaque, width: usize, height: usize) anyerror!void {
@@ -159,9 +159,9 @@ fn resize(self_ptr: ?*anyopaque, width: usize, height: usize) anyerror!void {
     std.debug.print("resizing texture to {d}/{d}...\n", .{ width, height });
 
     //Recreate the texture with the new width
-    self.texture = try self.gfx.device.createBlankTexture(@intCast(width), @intCast(height));
+    self.texture = try Gfx.createBlankTexture(@intCast(width), @intCast(height));
     //Recreate the texture with the new height
-    try self.texture.?.createBindGroup(self.gfx.device, self.gfx.sampler, self.gfx.bind_group_layouts);
+    try self.texture.?.createBindGroup(self.gfx.sampler, self.gfx.bind_group_layouts);
 
     self.renderer.texture = self.texture.?;
 }
@@ -205,20 +205,24 @@ fn update(self_ptr: ?*anyopaque, rect: Fontstash.Rectangle, data: []const u8) an
         }
     }
 
-    self.gfx.queue.writeTexture(
-        self.texture.?,
-        Gfx.ColorB,
-        full,
-        core.gpu.Origin3D{
-            .x = @intCast(rect_x),
-            .y = @intCast(rect_y),
-            .z = 0,
+    core.queue.writeTexture(
+        &.{
+            .texture = self.texture.?.tex,
+            .origin = .{
+                .x = @intCast(rect_x),
+                .y = @intCast(rect_y),
+                .z = 0,
+            },
         },
-        core.gpu.Extent3D{
+        &.{
+            .bytes_per_row = @intCast(@sizeOf(Gfx.ColorB) * w),
+            .rows_per_image = @intCast(h),
+        },
+        &.{
             .width = @intCast(w),
             .height = @intCast(h),
-            .depthOrArrayLayers = 1,
         },
+        full,
     );
 }
 

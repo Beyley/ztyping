@@ -25,8 +25,6 @@ map_list: []Music,
 current_map: ?Music,
 ///The loaded convert file
 convert: Convert,
-///The delta time for the current frame
-delta_time: f64,
 ///The counter time frequency
 counter_freq: f64,
 ///The current time counter
@@ -48,14 +46,14 @@ screen_stack: ScreenStack,
 pub fn init(app: *App) !void {
     try core.init(.{
         .title = "ilo nanpa pi ilo nanpa",
-        .is_app = true,
         .power_preference = .low_power,
     });
+
+    const config = try Config.readConfig();
 
     //Initialize our graphics
     var gfx: Gfx = try Gfx.init(app.config);
 
-    const config = try Config.readConfig();
     app.* = .{
         .is_running = true,
         .audio_tracker = .{
@@ -64,13 +62,12 @@ pub fn init(app: *App) !void {
         .map_list = try Music.readUTypingList(core.allocator),
         .convert = try Convert.readUTypingConversions(core.allocator),
         .current_map = null,
-        .delta_time = 0,
         .counter_freq = 0,
         .counter_curr = 0,
         .config = config,
         .name = undefined,
         .gfx = try Gfx.init(config),
-        .texture = try gfx.device.createTexture(gfx.queue, core.allocator, @embedFile("content/atlas.qoi")),
+        .texture = try Gfx.createTexture(core.allocator, @embedFile("content/atlas.qoi")),
         .renderer = undefined,
         .fontstash = undefined,
         .screen_stack = ScreenStack.init(core.allocator),
@@ -87,7 +84,7 @@ pub fn init(app: *App) !void {
     //Create the bind group for the texture
     // try texture.createBindGroup(gfx.device, gfx.sampler, gfx.bind_group_layouts);
 
-    gfx.updateProjectionMatrixBuffer(gfx.queue);
+    gfx.updateProjectionMatrixBuffer();
 
     //Init the renderer
     app.renderer = try Renderer.init(core.allocator, &gfx, app.texture);
@@ -103,7 +100,6 @@ pub fn deinit(app: *App) void {
     defer core.deinit();
     defer app.gfx.deinit();
     defer app.texture.deinit();
-    defer core.allocator.destroy(app.fontstash);
     defer app.fontstash.deinit();
     defer {
         //Pop all of the screens
@@ -133,7 +129,9 @@ pub fn deinit(app: *App) void {
     app.renderer.deinit();
 }
 
-fn update(app: *App) !bool {
+pub fn update(app: *App) !bool {
+    std.debug.print("update\n", .{});
+
     //Get the top screen
     var screen = app.screen_stack.top();
 
@@ -155,8 +153,6 @@ fn update(app: *App) !bool {
         }
     }
 
-    const queue = core.queue;
-    _ = queue; // autofix
     const back_buffer_view = core.swap_chain.getCurrentTextureView().?;
     const color_attachment = gpu.RenderPassColorAttachment{
         .view = back_buffer_view,
@@ -176,8 +172,8 @@ fn update(app: *App) !bool {
     try screen.render(screen, .{
         .gfx = &app.gfx,
         .renderer = &app.renderer,
-        .fontstash = app.fontstash,
-        .render_pass_encoder = &render_pass_encoder,
+        .fontstash = &app.fontstash,
+        .render_pass_encoder = render_pass_encoder,
         .app = app,
     });
 
@@ -200,6 +196,8 @@ fn update(app: *App) !bool {
     core.queue.submit(&.{command});
     command.release();
 
+    core.swap_chain.present();
+
     if (screen.close_screen) {
         _ = app.screen_stack.pop();
         screen.close_screen = false;
@@ -209,7 +207,9 @@ fn update(app: *App) !bool {
             try re_enter(top);
         }
     } else if (screen.screen_push) |new_screen| {
-        try app.screen_stack.load(new_screen, &app.gfx, app);
+        try app.screen_stack.load(new_screen, app.gfx, app);
         screen.screen_push = null;
     }
+
+    return false;
 }

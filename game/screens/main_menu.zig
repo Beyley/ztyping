@@ -22,7 +22,7 @@ pub var MainMenu = Screen{
     .char = char,
     .key_down = keyDown,
     .data = undefined,
-    .state = undefined,
+    .app = undefined,
 };
 
 pub fn initScreen(self: *Screen, allocator: std.mem.Allocator, gfx: Gfx) anyerror!void {
@@ -44,22 +44,29 @@ pub fn deinitScreen(self: *Screen) void {
     self.allocator.destroy(data);
 }
 
-pub fn char(self: *Screen, typed_char: []const u8) anyerror!void {
+pub fn char(self: *Screen, typed_char: u21) anyerror!void {
     var data = self.getData(MainMenuData);
 
-    try data.name.appendSlice(typed_char);
+    //Count the amount of needed bytes for this codepoint
+    const needed = try std.unicode.utf8CodepointSequenceLength(typed_char);
+    //Ensure we have the amount of data needed
+    try data.name.ensureUnusedCapacity(needed);
+    //Increase the length of the items slice by the amount needed
+    data.name.items.len += needed;
+    //Encode the codepoint into the items array at the end
+    std.debug.assert(try std.unicode.utf8Encode(typed_char, data.name.items[data.name.items.len - needed .. data.name.items.len]) == needed);
 
     //Set the name slice
-    self.state.name = data.name.items;
+    self.app.name = data.name.items;
 }
 
 pub fn keyDown(self: *Screen, key: core.Key) anyerror!void {
     var data = self.getData(MainMenuData);
 
-    switch (key.sym) {
+    switch (key) {
         .escape => {
             if (data.name.items.len == 0) {
-                self.state.is_running = false;
+                self.app.is_running = false;
             } else {
                 data.name.clearRetainingCapacity();
             }
@@ -74,7 +81,7 @@ pub fn keyDown(self: *Screen, key: core.Key) anyerror!void {
             //If they did not enter a name, mark them as a guest
             if (data.name.items.len == 0) {
                 try data.name.appendSlice("(guest)");
-                self.state.name = data.name.items;
+                self.app.name = data.name.items;
             }
 
             self.screen_push = &SongSelect.SongSelect;

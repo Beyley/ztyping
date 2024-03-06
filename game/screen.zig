@@ -18,7 +18,7 @@ pub const RenderState = struct {
     gfx: *Gfx,
     renderer: *Renderer,
     fontstash: *Fontstash,
-    render_pass_encoder: *Gfx.RenderPassEncoder,
+    render_pass_encoder: *core.gpu.RenderPassEncoder,
     app: *App,
 };
 
