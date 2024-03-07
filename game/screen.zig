@@ -1,6 +1,6 @@
 const std = @import("std");
 const bass = @import("bass");
-const core = @import("mach-core");
+const core = @import("mach").core;
 
 const App = @import("app.zig");
 const Renderer = @import("renderer.zig");
