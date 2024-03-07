@@ -13,6 +13,7 @@ pub fn build(b: *std.Build) !void {
     const zig_bass = b.addModule("bass", .{
         .root_source_file = .{ .path = root_path ++ "libs/zig-bass/src/bass.zig" },
     });
+    zig_bass.addIncludePath(.{ .path = root_path ++ "libs/zig-bass/src" });
 
     const stb_truetype = b.addModule("stb_truetype", .{
         .optimize = optimize,
@@ -60,7 +61,7 @@ pub fn build(b: *std.Build) !void {
     bass.linkBass(app_module);
     bass.installBass(b, target.result);
 
-    app.compile.addIncludePath(.{ .path = root_path ++ "libs/zig-bass/src" });
+    app_module.addIncludePath(.{ .path = root_path ++ "libs/zig-bass/src" });
 
     { //iconv
         const iconv_lib = iconv.createIconv(b, target, optimize);

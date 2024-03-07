@@ -80,8 +80,9 @@ pub fn init(app: *App) !void {
     };
     std.debug.print("loaded {d} maps!\n", .{app.map_list.len});
 
+    //On the DirectSound API, we should to pass the HWND into Bass so that windows will link the audio stream to the window
     const bass_window_ptr: usize = if (builtin.os.tag == .windows)
-        core.nativeWindowWin32()
+        @intFromPtr(core.nativeWindowWin32())
     else
         0;
 
