@@ -326,10 +326,12 @@ pub fn draw(self: *Self, encoder: *core.gpu.RenderPassEncoder) !void {
     encoder.setBindGroup(1, self.texture.bind_group.?, &.{});
 
     for (self.recorded_buffers.items) |recorded_buffer| {
-        // const scissor_width = @min(self.gfx.viewport[2], recorded_buffer.scissor[2]);
-        // const scissor_height = @min(self.gfx.viewport[3], recorded_buffer.scissor[3]);
-
-        // encoder.setScissorRect(0, 0, scissor_width, scissor_height);
+        encoder.setScissorRect(
+            recorded_buffer.scissor[0],
+            recorded_buffer.scissor[1],
+            recorded_buffer.scissor[2],
+            recorded_buffer.scissor[3],
+        );
         encoder.setVertexBuffer(0, recorded_buffer.vtx_buf, 0, @sizeOf(Gfx.Vector2) * vtx_per_buf);
         encoder.setVertexBuffer(1, recorded_buffer.vtx_buf, @sizeOf(Gfx.Vector2) * vtx_per_buf, @sizeOf(Gfx.Vector2) * vtx_per_buf);
         encoder.setVertexBuffer(2, recorded_buffer.vtx_buf, @sizeOf(Gfx.Vector2) * 2 * vtx_per_buf, @sizeOf(Gfx.ColorF) * vtx_per_buf);
