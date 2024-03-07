@@ -130,8 +130,6 @@ pub fn deinit(app: *App) void {
 }
 
 pub fn update(app: *App) !bool {
-    std.debug.print("update\n", .{});
-
     //Get the top screen
     var screen = app.screen_stack.top();
 
@@ -210,6 +208,9 @@ pub fn update(app: *App) !bool {
         try app.screen_stack.load(new_screen, app.gfx, app);
         screen.screen_push = null;
     }
+
+    if (!app.is_running)
+        return true;
 
     return false;
 }

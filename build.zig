@@ -74,43 +74,6 @@ pub fn build(b: *std.Build) !void {
 
     app.compile.addIncludePath(.{ .path = root_path ++ "libs/zig-bass/src" });
 
-    // if (target.isDarwin()) {
-    //     exe.addIncludePath(.{ .path = root_path ++ "libs/system-sdk/macos12/usr/include" });
-    //     exe.addFrameworkPath(.{ .path = root_path ++ "libs/system-sdk/macos12/System/Library/Frameworks" });
-    //     exe.addLibraryPath(.{ .path = root_path ++ "libs/system-sdk/macos12/usr/lib" });
-
-    //     if (!builtin.target.isDarwin()) {
-    //         b.sysroot = root_path ++ "libs/system-sdk/macos12";
-    //     }
-
-    //     exe.linkFramework("Metal");
-    //     exe.linkFramework("QuartzCore");
-    //     exe.linkFramework("Foundation");
-
-    //     exe.linkSystemLibrary("objc");
-    // }
-
-    // if (target.isLinux() and !target.isNative()) {
-    //     exe.addIncludePath(.{ .path = root_path ++ "libs/system-sdk/linux/include" });
-    //     exe.addLibraryPath(.{ .path = b.fmt(root_path ++ "libs/system-sdk/linux/lib/{s}", .{try target.linuxTriple(b.allocator)}) });
-    // }
-
-    { //zig-bass
-    } //zig-bass
-
-    // { //cimgui
-    //     const cimgui_lib = try cimgui.create_cimgui(b, target, optimize);
-
-    //     cimgui_lib.installLibraryHeaders(sdl_lib);
-    //     cimgui_lib.linkLibrary(sdl_lib);
-    //     try cimgui_lib.lib_paths.appendSlice(sdl_lib.lib_paths.items);
-    //     try cimgui_lib.include_dirs.appendSlice(sdl_lib.include_dirs.items);
-
-    //     exe.addIncludePath(.{ .path = "libs/cimgui/" });
-
-    //     exe.linkLibrary(cimgui_lib);
-    // } //cimgui
-
     { //iconv
         const iconv_lib = iconv.createIconv(b, target, optimize);
 
@@ -147,23 +110,23 @@ pub fn build(b: *std.Build) !void {
     });
     b.installArtifact(tempo);
 
-    // const clap = b.dependency("clap", .{});
-    // const fumen_compile = b.addExecutable(.{
-    //     .name = "fumen_compile",
-    //     .root_source_file = .{ .path = root_path ++ "util/fumen_compile.zig" },
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
-    // fumen_compile.root_module.addImport("clap", clap.module("clap"));
-    // b.installArtifact(fumen_compile);
+    const clap = b.dependency("clap", .{});
+    const fumen_compile = b.addExecutable(.{
+        .name = "fumen_compile",
+        .root_source_file = .{ .path = root_path ++ "util/fumen_compile.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    fumen_compile.root_module.addImport("clap", clap.module("clap"));
+    b.installArtifact(fumen_compile);
 
-    // const fumen_compile_cmd = b.addRunArtifact(fumen_compile);
-    // fumen_compile_cmd.step.dependOn(b.getInstallStep());
-    // if (b.args) |args| {
-    //     fumen_compile_cmd.addArgs(args);
-    // }
-    // const fumen_compile_step = b.step("fumen_compile", "Run the fumen compiler");
-    // fumen_compile_step.dependOn(&fumen_compile_cmd.step);
+    const fumen_compile_cmd = b.addRunArtifact(fumen_compile);
+    fumen_compile_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        fumen_compile_cmd.addArgs(args);
+    }
+    const fumen_compile_step = b.step("fumen_compile", "Run the fumen compiler");
+    fumen_compile_step.dependOn(&fumen_compile_cmd.step);
 
     const tempo_cmd = b.addRunArtifact(tempo);
     tempo_cmd.step.dependOn(b.getInstallStep());
