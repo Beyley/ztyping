@@ -505,15 +505,15 @@ pub fn createBuffer(comptime contents_type: type, count: u64, buffer_type: core.
 
 pub fn setErrorCallbacks(self: *Self) void {
     _ = self; // autofix
-    // core.device.setUncapturedErrorCallback({}, uncapturedError);
+    core.device.setUncapturedErrorCallback({}, uncapturedError);
 
     std.debug.print("setup wgpu device callbacks\n", .{});
 }
 
-fn uncapturedError(ctx: void, error_type: core.gpu.ErrorType, message: [*:0]const u8) void {
+inline fn uncapturedError(ctx: void, error_type: core.gpu.ErrorType, message: [*:0]const u8) void {
     _ = ctx; // autofix
 
-    std.debug.print("Got uncaptured error {d} with message {s}\n", .{ error_type, std.mem.span(message) });
+    std.debug.print("Got uncaptured error {s} with message {s}\n", .{ @tagName(error_type), std.mem.span(message) });
     // @panic("uncaptured wgpu error");
 }
 
@@ -540,6 +540,7 @@ pub fn updateProjectionMatrixBuffer(self: *Self) void {
         1,
     );
 
+    std.debug.print("thsathss {}\n", .{mat});
     core.queue.writeBuffer(self.projection_matrix_buffer, 0, &[_]math.Mat4x4{mat});
 }
 
