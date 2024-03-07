@@ -1,6 +1,6 @@
 const std = @import("std");
 const bass = @import("bass");
-const core = @import("mach-core");
+const core = @import("mach").core;
 const gpu = core.gpu;
 const builtin = @import("builtin");
 const Gfx = @import("gfx.zig");

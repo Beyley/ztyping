@@ -1,5 +1,5 @@
 const std = @import("std");
-const core = @import("mach-core");
+const core = @import("mach").core;
 
 const Gfx = @import("gfx.zig");
 const Renderer = @import("renderer.zig");

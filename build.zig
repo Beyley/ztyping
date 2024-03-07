@@ -4,16 +4,11 @@ const cimgui = @import("libs/cimgui/build.zig");
 const iconv = @import("libs/iconv-zig/build.zig");
 const ImageProcessor = @import("image_processor.zig");
 const builtin = @import("builtin");
-const mach_core = @import("mach_core");
+const mach_core = @import("mach");
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-
-    const mach_core_dep = b.dependency("mach_core", .{
-        .target = target,
-        .optimize = optimize,
-    });
 
     const zig_bass = b.addModule("bass", .{
         .root_source_file = .{ .path = root_path ++ "libs/zig-bass/src/bass.zig" },
@@ -29,19 +24,12 @@ pub fn build(b: *std.Build) !void {
     stb_truetype.addIncludePath(.{ .path = root_path ++ "libs/stb" });
 
     const zigimg_module = b.dependency("zigimg", .{}).module("zigimg");
-    const app = try mach_core.App.init(b, mach_core_dep.builder, .{
+    const app = try mach_core.App.init(b, .{
         .name = "ztyping",
         .src = "game/app.zig",
         .target = target,
         .optimize = optimize,
         .deps = &[_]std.Build.Module.Import{
-            .{
-                .name = "mach",
-                .module = b.dependency("mach", .{
-                    .target = target,
-                    .optimize = optimize,
-                }).module("mach"),
-            },
             .{
                 .name = "zigimg",
                 .module = zigimg_module,

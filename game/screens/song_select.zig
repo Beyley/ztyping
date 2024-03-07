@@ -1,6 +1,6 @@
 const builtin = @import("builtin");
 const std = @import("std");
-const core = @import("mach-core");
+const core = @import("mach").core;
 
 const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");

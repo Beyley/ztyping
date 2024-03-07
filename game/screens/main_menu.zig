@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const core = @import("mach-core");
+const core = @import("mach").core;
 
 const SongSelect = @import("song_select.zig");
 

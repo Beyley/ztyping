@@ -2,7 +2,7 @@ const std = @import("std");
 const bass = @import("bass");
 const builtin = @import("builtin");
 const fumen_compiler = @import("fumen_compiler");
-const core = @import("mach-core");
+const core = @import("mach").core;
 
 const Screen = @import("../screen.zig");
 const Gfx = @import("../gfx.zig");
