@@ -16,6 +16,11 @@ const AudioTracker = @import("audio_tracker.zig");
 
 pub const App = @This();
 
+pub const mach_core_options = core.ComptimeOptions{
+    .use_wgpu = true,
+    .use_sysgpu = false,
+};
+
 is_running: bool,
 ///The tracker for our audio state
 audio_tracker: AudioTracker,
@@ -44,15 +49,16 @@ fontstash: Fontstash,
 screen_stack: ScreenStack,
 
 pub fn init(app: *App) !void {
+    const config = try Config.readConfig();
+
+    const width: u32 = @intFromFloat(640 * config.window_scale);
+    const height: u32 = @intFromFloat(480 * config.window_scale);
+
     try core.init(.{
         .title = "ilo nanpa pi ilo nanpa",
         .power_preference = .low_power,
+        .size = .{ .width = width, .height = height },
     });
-
-    const config = try Config.readConfig();
-
-    //Initialize our graphics
-    var gfx: Gfx = try Gfx.init(app.config);
 
     app.* = .{
         .is_running = true,
@@ -66,7 +72,7 @@ pub fn init(app: *App) !void {
         .counter_curr = 0,
         .config = config,
         .name = undefined,
-        .gfx = try Gfx.init(config),
+        .gfx = try Gfx.init(app.config),
         .texture = try Gfx.createTexture(core.allocator, @embedFile("content/atlas.qoi")),
         .renderer = undefined,
         .fontstash = undefined,
@@ -74,30 +80,32 @@ pub fn init(app: *App) !void {
     };
     std.debug.print("loaded {d} maps!\n", .{app.map_list.len});
 
-    const bass_window_ptr: usize = 0;
+    const bass_window_ptr: usize = if (builtin.os.tag == .windows)
+        core.nativeWindowWin32()
+    else
+        0;
 
     try bass.init(.default, null, .{}, bass_window_ptr);
-    defer bass.deinit();
 
     try bass.setConfig(.global_stream_volume, @intFromFloat(app.config.volume * 10000));
 
     //Create the bind group for the texture
-    // try texture.createBindGroup(gfx.device, gfx.sampler, gfx.bind_group_layouts);
+    try app.texture.createBindGroup(app.gfx.sampler, app.gfx.bind_group_layouts);
 
-    gfx.updateProjectionMatrixBuffer();
+    app.gfx.updateProjectionMatrixBuffer();
 
     //Init the renderer
-    app.renderer = try Renderer.init(core.allocator, &gfx, app.texture);
+    app.renderer = try Renderer.init(core.allocator, &app.gfx, app.texture);
 
     //Init the font stash
     try app.fontstash.init(&app.gfx, core.allocator);
 
     //Load the main menu
-    try app.screen_stack.load(&Screen.MainMenu.MainMenu, gfx, app);
+    try app.screen_stack.load(&Screen.MainMenu.MainMenu, app.gfx, app);
 }
 
 pub fn deinit(app: *App) void {
-    defer core.deinit();
+    defer bass.deinit();
     defer app.gfx.deinit();
     defer app.texture.deinit();
     defer app.fontstash.deinit();
@@ -125,8 +133,9 @@ pub fn deinit(app: *App) void {
         app.convert.deinit();
     }
 
-    app.gfx.deinit();
     app.renderer.deinit();
+
+    core.deinit();
 }
 
 pub fn update(app: *App) !bool {

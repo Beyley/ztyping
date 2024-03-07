@@ -110,7 +110,7 @@ pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
 
     _ = try render_state.fontstash.drawText(
         .{ Screen.display_width - 10, Screen.display_height - 10 },
-        "(c)2023 Beyley",
+        "(c)2024 Beyley",
         .{
             .font = Fontstash.Gothic,
             .size = Fontstash.ptToPx(16),

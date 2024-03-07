@@ -131,7 +131,7 @@ pub fn init(config: Config) !Self {
         .min = .{ .width = width, .height = height },
         .max = .{ .width = width, .height = height },
     });
-    core.setSize(.{ .width = width, .height = height });
+    // core.setSize(.{ .width = width, .height = height });
 
     //Update the viewport
     self.viewport = RectU{ 0, 0, @intCast(width), @intCast(height) };
@@ -153,12 +153,22 @@ pub fn init(config: Config) !Self {
 
     //Create the projection matrix buffer
     self.projection_matrix_buffer = try createBuffer(math.Mat4x4, 1, .{ .uniform = true, .copy_dst = true });
+    std.debug.print("got proj matrix buffer {*}\n", .{self.projection_matrix_buffer});
 
     //Create the projection matrix bind group
     self.projection_matrix_bind_group = core.device.createBindGroup(&core.gpu.BindGroup.Descriptor.init(.{
         .label = "Projection Matrix Bind Group",
         .layout = self.bind_group_layouts.projection_matrix,
-        .entries = &.{core.gpu.BindGroup.Entry.buffer(0, self.projection_matrix_buffer, 0, @sizeOf(math.Mat4x4))},
+        .entries = &.{
+            core.gpu.BindGroup.Entry.buffer(
+                0,
+                self.projection_matrix_buffer,
+                0,
+                @sizeOf(math.Mat4x4),
+                // REENABLE THIS TO FIX SYSGPU
+                // @sizeOf(math.Mat4x4),
+            ),
+        },
     }));
     std.debug.print("got projection matrix bind group {*}\n", .{self.projection_matrix_bind_group});
 
@@ -540,7 +550,6 @@ pub fn updateProjectionMatrixBuffer(self: *Self) void {
         1,
     );
 
-    std.debug.print("thsathss {}\n", .{mat});
     core.queue.writeBuffer(self.projection_matrix_buffer, 0, &[_]math.Mat4x4{mat});
 }
 
