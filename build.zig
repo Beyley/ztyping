@@ -1,7 +1,6 @@
 const std = @import("std");
 const bass = @import("libs/zig-bass/build.zig");
 const cimgui = @import("libs/cimgui/build.zig");
-const iconv = @import("libs/iconv-zig/build.zig");
 const ImageProcessor = @import("image_processor.zig");
 const builtin = @import("builtin");
 const mach_core = @import("mach");
@@ -14,6 +13,13 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = .{ .path = root_path ++ "libs/zig-bass/src/bass.zig" },
     });
     zig_bass.addIncludePath(.{ .path = root_path ++ "libs/zig-bass/src" });
+
+    const slice_iterator = b.addModule(
+        "slice_iterator",
+        .{
+            .root_source_file = .{ .path = root_path ++ "util/slice_iterator.zig" },
+        },
+    );
 
     const stb_truetype = b.addModule("stb_truetype", .{
         .optimize = optimize,
@@ -49,8 +55,18 @@ pub fn build(b: *std.Build) !void {
                     "fumen_compiler",
                     .{
                         .root_source_file = .{ .path = root_path ++ "util/fumen_compile.zig" },
+                        .imports = &.{
+                            .{
+                                .name = "slice_iterator",
+                                .module = slice_iterator,
+                            },
+                        },
                     },
                 ),
+            },
+            .{
+                .name = "slice_iterator",
+                .module = slice_iterator,
             },
         },
     });
@@ -62,17 +78,6 @@ pub fn build(b: *std.Build) !void {
     bass.installBass(b, target.result);
 
     app_module.addIncludePath(.{ .path = root_path ++ "libs/zig-bass/src" });
-
-    { //iconv
-        const iconv_lib = iconv.createIconv(b, target, optimize);
-
-        app_module.linkLibrary(iconv_lib);
-
-        //On MacOS, we need to link iconv manually, on other platforms its part of libc (Linux) or by ourselves through win_iconv (Windows)
-        if (target.result.os.tag == .macos) {
-            app_module.linkSystemLibrary("iconv", .{});
-        }
-    } //iconv
 
     { //process assets
         var process_assets_exe = b.addExecutable(.{
@@ -106,6 +111,7 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
+    fumen_compile.root_module.addImport("slice_iterator", slice_iterator);
     fumen_compile.root_module.addImport("clap", clap.module("clap"));
     b.installArtifact(fumen_compile);
 

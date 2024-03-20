@@ -1,5 +1,6 @@
 const std = @import("std");
-const IConv = @import("iconv.zig");
+const Conv = @import("conv.zig");
+const App = @import("app.zig");
 
 const Self = @This();
 
@@ -31,7 +32,7 @@ fn conversionLessThan(context: void, lhs: Conversion, rhs: Conversion) bool {
     return lhs.hiragana.len > rhs.hiragana.len;
 }
 
-pub fn readUTypingConversions(allocator: std.mem.Allocator) !Self {
+pub fn readUTypingConversions(conv: Conv, allocator: std.mem.Allocator) !Self {
     var file = try std.fs.cwd().openFile("convert.dat", .{});
     defer file.close();
 
@@ -40,28 +41,26 @@ pub fn readUTypingConversions(allocator: std.mem.Allocator) !Self {
 
     _ = try file.readAll(raw_data);
 
-    var iconv = IConv.ziconv_open("Shift_JIS", "UTF-8");
-    defer IConv.ziconv_close(iconv);
-
     //Do the initial conversion from Shift_JIS to UTF-8
-    var converted_data = try iconv.convert(allocator, raw_data);
-    defer allocator.free(converted_data);
+    var converted_data = std.ArrayList(u8).init(allocator);
+    defer converted_data.deinit();
+    try conv.sjisToUtf8(raw_data, converted_data.writer());
 
     //Allocate a staging buffer to do the replacements in
-    var raw_replaced_data = try allocator.alloc(u8, converted_data.len);
+    var raw_replaced_data = try allocator.alloc(u8, converted_data.items.len);
     defer allocator.free(raw_replaced_data);
 
     //NOTE: this is safe as the tilde and backslash are both 1 bytes long, while the overline and yen sign are both longer, so the data is always guarenteed to be shoretr
     //Replace the tilde with the overline
-    const underlines_replaced = std.mem.replace(u8, converted_data, "‾", "~", raw_replaced_data);
+    const underlines_replaced = std.mem.replace(u8, converted_data.items, "‾", "~", raw_replaced_data);
     //Replace the yen sign with the backslash
-    const yen_replaced = std.mem.replace(u8, raw_replaced_data[0..(raw_replaced_data.len - underlines_replaced * ("‾".len - "~".len))], "¥", "\\", converted_data);
+    const yen_replaced = std.mem.replace(u8, raw_replaced_data[0..(raw_replaced_data.len - underlines_replaced * ("‾".len - "~".len))], "¥", "\\", converted_data.items);
 
     //Calculate the length to cut off the end of the file, as the replacements will have shortened it
     const length_to_cut = underlines_replaced * ("‾".len - "~".len) + yen_replaced * ("¥".len - "\\".len);
 
     //Cut off the end of the file
-    const data = converted_data[0..(converted_data.len - length_to_cut)];
+    const data = converted_data.items[0..(converted_data.items.len - length_to_cut)];
 
     var conversions = std.ArrayList(Conversion).init(allocator);
     errdefer {

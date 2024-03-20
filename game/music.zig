@@ -1,12 +1,12 @@
 const std = @import("std");
 
-const IConv = @import("iconv.zig");
 const Fumen = @import("fumen.zig");
 const Ranking = @import("ranking.zig");
 
 const Gfx = @import("gfx.zig");
 const Screen = @import("screen.zig");
 const Fontstash = @import("fontstash.zig");
+const Conv = @import("conv.zig");
 
 const Self = @This();
 
@@ -46,13 +46,10 @@ pub fn deinit(self: *Self) void {
     self.* = undefined;
 }
 
-pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs.File, sort_idx: usize) !Self {
+pub fn readFromFile(conv: Conv, allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs.File, sort_idx: usize) !Self {
     var self: Self = undefined;
     self.sort_idx = sort_idx;
     self.allocator = allocator;
-
-    var iconv = IConv.ziconv_open("Shift_JIS", "UTF-8");
-    defer IConv.ziconv_close(iconv);
 
     var comments = std.ArrayList([:0]const u8).init(allocator);
     errdefer {
@@ -80,10 +77,11 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs
     const orig_file = try file.readToEndAlloc(allocator, 10000);
     defer allocator.free(orig_file);
 
-    const read_file = try iconv.convert(allocator, orig_file);
-    defer allocator.free(read_file);
+    var read_file = std.ArrayList(u8).init(allocator);
+    defer read_file.deinit();
+    try conv.sjisToUtf8(orig_file, read_file.writer());
 
-    var iter = std.mem.split(u8, read_file, "\n");
+    var iter = std.mem.split(u8, read_file.items, "\n");
 
     var i: usize = 0;
     while (iter.next()) |orig_line| {
@@ -149,7 +147,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs
 
     self.fumen = try allocator.create(Fumen);
     errdefer allocator.destroy(self.fumen);
-    self.fumen.* = try Fumen.readFromFile(allocator, fumen_file, path);
+    self.fumen.* = try Fumen.readFromFile(conv, allocator, fumen_file, path);
     errdefer self.fumen.deinit();
 
     const ranking_path = path.realpathAlloc(allocator, self.ranking_file_name) catch |err| blk: {
@@ -179,7 +177,7 @@ pub fn readFromFile(allocator: std.mem.Allocator, path: std.fs.Dir, file: std.fs
     return self;
 }
 
-pub fn readUTypingList(allocator: std.mem.Allocator) ![]Self {
+pub fn readUTypingList(conv: Conv, allocator: std.mem.Allocator) ![]Self {
     var list_file = try std.fs.cwd().openFile("UTyping_list.txt", .{});
     defer list_file.close();
 
@@ -208,7 +206,7 @@ pub fn readUTypingList(allocator: std.mem.Allocator) ![]Self {
         var music_dir = try std.fs.cwd().openDir(std.fs.path.dirname(normalized) orelse "", .{});
         defer music_dir.close();
 
-        const music = try readFromFile(allocator, music_dir, music_file, i);
+        const music = try readFromFile(conv, allocator, music_dir, music_file, i);
 
         try music_list.append(music);
         i += 1;
