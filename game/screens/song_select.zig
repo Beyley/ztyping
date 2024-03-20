@@ -420,20 +420,6 @@ pub const h_music_info_sub = 6 + h_comment + 4 + h_play_data + 6;
 pub fn renderScreen(self: *Screen, render_state: RenderState) anyerror!void {
     var data = self.getData(SongSelectData);
 
-    // var open = true;
-
-    // // if (builtin.mode == .Debug) {
-    // //     _ = c.igBegin("Test", &open, c.ImGuiWindowFlags_AlwaysVerticalScrollbar);
-
-    // //     for (data.draw_info.add_height) |height| {
-    // //         c.igText("height: %f", height);
-    // //     }
-    // //     c.igText("wait: %f", data.draw_info.add_height_wait);
-    // //     c.igText("ranking pos: %d", data.draw_info.ranking_pos);
-
-    // //     c.igEnd();
-    // // }
-
     try render_state.renderer.begin();
     try render_state.fontstash.renderer.begin();
 

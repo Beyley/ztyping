@@ -7,12 +7,16 @@
             .hash = "1220ba5472217ef81455b19d540967049bbfaf768b30d04534865707e907ee1c4aec",
         },
         .zigimg = .{
-            .url = "https://github.com/zigimg/zigimg/archive/8873f29fc449e1b63400e9f4ad86d3c76204f962.tar.gz",
+            .url = "git+https://github.com/zigimg/zigimg#8873f29fc449e1b63400e9f4ad86d3c76204f962",
             .hash = "122019f6439545235af116d0d8eb81fde1ff05fdb070da57c723772c557f84c5bf39",
         },
         .clap = .{
-            .url = "https://github.com/Hejsil/zig-clap/archive/0f2db7700b05356ebb1ccddbbf1797048925f072.tar.gz",
+            .url = "git+https://github.com/Hejsil/zig-clap#0f2db7700b05356ebb1ccddbbf1797048925f072",
             .hash = "12203896de6eedec14712f4f1eaac8b646939cfed213c56accf231a0abb05f9dbb77",
+        },
+        .zini = .{
+            .url = "git+https://github.com/Beyley/zini#aaeba1ad81742d52d3af086cb3c89c515ce5e728",
+            .hash = "1220b322b8ec9b10bc79e9da8def6cc3a49c9ffccf87d2e7577fc6e522bd0893173b",
         },
     },
     .paths = .{

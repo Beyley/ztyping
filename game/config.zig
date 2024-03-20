@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const Ini = @import("ini.zig").Ini(std.fs.File.Reader, 256, 0);
+const Ini = @import("zini").IniReader(std.fs.File.Reader, 256, 0);
 
 const Self = @This();
 
