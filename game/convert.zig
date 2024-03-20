@@ -50,7 +50,7 @@ pub fn readUTypingConversions(conv: Conv, allocator: std.mem.Allocator) !Self {
     var raw_replaced_data = try allocator.alloc(u8, converted_data.items.len);
     defer allocator.free(raw_replaced_data);
 
-    //NOTE: this is safe as the tilde and backslash are both 1 bytes long, while the overline and yen sign are both longer, so the data is always guarenteed to be shoretr
+    //NOTE: this is safe as the tilde and backslash are both 1 byte long, while the overline and yen sign are both longer, so the data is always guarenteed to be shoretr
     //Replace the tilde with the overline
     const underlines_replaced = std.mem.replace(u8, converted_data.items, "‾", "~", raw_replaced_data);
     //Replace the yen sign with the backslash

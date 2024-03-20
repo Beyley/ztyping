@@ -53,13 +53,11 @@ conv: Conv,
 pub fn init(app: *App) !void {
     const config = try Config.readConfig();
 
-    _ = try Conv.init(core.allocator);
-
     const width: u32 = @intFromFloat(640 * config.window_scale);
     const height: u32 = @intFromFloat(480 * config.window_scale);
 
     try core.init(.{
-        .title = "ilo nanpa pi ilo nanpa",
+        .title = "ztyping",
         .power_preference = .low_power,
         .size = .{ .width = width, .height = height },
     });
