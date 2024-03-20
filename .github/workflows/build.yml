@@ -25,6 +25,8 @@ jobs:
           
       - name: Install Zig
         uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.12.0-dev.2063+804cee3b9
           
       - name: Build 
         if: matrix.os == 'windows-latest'
