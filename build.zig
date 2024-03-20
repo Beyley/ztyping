@@ -1,6 +1,5 @@
 const std = @import("std");
 const bass = @import("libs/zig-bass/build.zig");
-const cimgui = @import("libs/cimgui/build.zig");
 const ImageProcessor = @import("image_processor.zig");
 const builtin = @import("builtin");
 const mach_core = @import("mach");
