@@ -821,7 +821,7 @@ pub fn keyDown(self: *Screen, key: core.Key) anyerror!void {
             defer fumen_file.close();
 
             //Read the new fumen information from the file
-            data.music.fumen.* = try Fumen.readFromFile(data.music.allocator, fumen_file, out_dir);
+            data.music.fumen.* = try Fumen.readFromFile(self.app.conv, data.music.allocator, fumen_file, out_dir);
 
             //Reset parts of the game state to let the user replay the map basically
             data.phase = Phase.main;

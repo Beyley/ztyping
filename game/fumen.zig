@@ -1,8 +1,8 @@
 const std = @import("std");
-const IConv = @import("iconv.zig");
 const RenderState = @import("screen.zig").RenderState;
 const Gfx = @import("gfx.zig");
 const Fontstash = @import("fontstash.zig");
+const Conv = @import("conv.zig");
 
 pub const Lyric = struct {
     //A valid hit result for the note, the explicit numbers are to match up with the stat gauge
@@ -111,7 +111,7 @@ pub fn deinit(self: *Self) void {
     self.* = undefined;
 }
 
-pub fn readFromFile(allocator: std.mem.Allocator, file: std.fs.File, dir: std.fs.Dir) !Self {
+pub fn readFromFile(conv: Conv, allocator: std.mem.Allocator, file: std.fs.File, dir: std.fs.Dir) !Self {
     var self: Self = .{
         .allocator = allocator,
         .audio_path = &.{},
@@ -122,9 +122,6 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: std.fs.File, dir: std.fs
         .lyric_cutoffs = &.{},
         .time_length = 0,
     };
-
-    var iconv = IConv.ziconv_open("Shift_JIS", "UTF-8");
-    defer IConv.ziconv_close(iconv);
 
     var lyrics = std.ArrayList(Lyric).init(allocator);
     errdefer {
@@ -145,18 +142,21 @@ pub fn readFromFile(allocator: std.mem.Allocator, file: std.fs.File, dir: std.fs
 
     errdefer if (self.audio_path.len != 0) allocator.free(self.audio_path);
 
+    var converted = std.ArrayList(u8).init(allocator);
+    defer converted.deinit();
+
     while (true) {
         var orig_line: []u8 = try file.reader().readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(u32)) orelse break;
         defer allocator.free(orig_line);
 
         const returnless = if (orig_line[orig_line.len - 1] == '\r') orig_line[0 .. orig_line.len - 1] else orig_line;
 
-        var converted = try iconv.convert(allocator, returnless);
-        defer allocator.free(converted);
+        converted.clearRetainingCapacity();
+        try conv.sjisToUtf8(returnless, converted.writer());
 
-        var without_identifier = converted[1..];
+        var without_identifier = converted.items[1..];
 
-        switch (converted[0]) {
+        switch (converted.items[0]) {
             '@' => {
                 self.audio_path = try allocator.dupeZ(u8, without_identifier);
             },

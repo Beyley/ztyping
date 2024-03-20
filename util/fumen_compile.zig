@@ -1,7 +1,7 @@
 const std = @import("std");
 const clap = @import("clap");
 
-const SliceIterator = @import("slice_iterator.zig").SliceIterator;
+const SliceIterator = @import("slice_iterator").SliceIterator;
 
 const io = std.io;
 

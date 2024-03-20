@@ -11,6 +11,7 @@ const Fontstash = @import("fontstash.zig");
 const Music = @import("music.zig");
 const Convert = @import("convert.zig");
 const Config = @import("config.zig");
+const Conv = @import("conv.zig");
 
 const AudioTracker = @import("audio_tracker.zig");
 
@@ -47,9 +48,12 @@ texture: Gfx.Texture,
 renderer: Renderer,
 fontstash: Fontstash,
 screen_stack: ScreenStack,
+conv: Conv,
 
 pub fn init(app: *App) !void {
     const config = try Config.readConfig();
+
+    _ = try Conv.init(core.allocator);
 
     const width: u32 = @intFromFloat(640 * config.window_scale);
     const height: u32 = @intFromFloat(480 * config.window_scale);
@@ -60,13 +64,16 @@ pub fn init(app: *App) !void {
         .size = .{ .width = width, .height = height },
     });
 
+    const conv = try Conv.init(core.allocator);
+
     app.* = .{
         .is_running = true,
         .audio_tracker = .{
             .music = null,
         },
-        .map_list = try Music.readUTypingList(core.allocator),
-        .convert = try Convert.readUTypingConversions(core.allocator),
+        .conv = conv,
+        .map_list = try Music.readUTypingList(conv, core.allocator),
+        .convert = try Convert.readUTypingConversions(conv, core.allocator),
         .current_map = null,
         .counter_freq = 0,
         .counter_curr = 0,
@@ -106,6 +113,7 @@ pub fn init(app: *App) !void {
 }
 
 pub fn deinit(app: *App) void {
+    app.conv.deinit();
     defer bass.deinit();
     defer app.gfx.deinit();
     defer app.texture.deinit();
