@@ -131,7 +131,6 @@ pub fn init(config: Config) !Self {
         .min = .{ .width = width, .height = height },
         .max = .{ .width = width, .height = height },
     });
-    // core.setSize(.{ .width = width, .height = height });
 
     //Update the viewport
     self.viewport = RectU{ 0, 0, @intCast(width), @intCast(height) };
