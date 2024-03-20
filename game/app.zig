@@ -42,8 +42,8 @@ random: std.rand.DefaultPrng = std.rand.DefaultPrng.init(35698752),
 ///The name of the user, this is owned by the main menu instance at the bottom of the screen stack
 name: []const u8,
 
-///Our main texture atlas
 gfx: Gfx,
+///Our main texture atlas
 texture: Gfx.Texture,
 renderer: Renderer,
 fontstash: Fontstash,
@@ -192,16 +192,6 @@ pub fn update(app: *App) !bool {
         .render_pass_encoder = render_pass_encoder,
         .app = app,
     });
-
-    // if (builtin.mode == .Debug) {
-    //     var open = false;
-    //     _ = c.igBegin("fps", &open, 0);
-    //     c.igText("%fms %dfps", state.delta_time * 1000, @as(usize, @intFromFloat(1 / state.delta_time)));
-    //     c.igEnd();
-    // }
-
-    // c.igRender();
-    // c.ImGui_ImplWGPU_RenderDrawData(c.igGetDrawData(), render_pass_encoder.c);
 
     render_pass_encoder.end();
     render_pass_encoder.release();

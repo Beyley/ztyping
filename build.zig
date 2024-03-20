@@ -30,6 +30,7 @@ pub fn build(b: *std.Build) !void {
     stb_truetype.addIncludePath(.{ .path = root_path ++ "libs/stb" });
 
     const zigimg_module = b.dependency("zigimg", .{}).module("zigimg");
+    const zini_module = b.dependency("zini", .{}).module("zini");
     const app = try mach_core.App.init(b, .{
         .name = "ztyping",
         .src = "game/app.zig",
@@ -39,6 +40,10 @@ pub fn build(b: *std.Build) !void {
             .{
                 .name = "zigimg",
                 .module = zigimg_module,
+            },
+            .{
+                .name = "zini",
+                .module = zini_module,
             },
             .{
                 .name = "bass",
