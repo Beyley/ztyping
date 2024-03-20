@@ -6,9 +6,9 @@ const Self = @This();
 
 pub const Conversion = struct {
     allocator: std.mem.Allocator,
-    hiragana: [:0]const u8,
-    romaji: [:0]const u8,
-    end_cut: ?[:0]const u8,
+    hiragana: []const u8,
+    romaji: []const u8,
+    end_cut: ?[]const u8,
     length: usize,
 
     pub fn deinit(self: Conversion) void {
@@ -114,9 +114,9 @@ pub fn readUTypingConversions(conv: Conv, allocator: std.mem.Allocator) !Self {
 
         try conversions.append(.{
             .allocator = allocator,
-            .hiragana = try allocator.dupeZ(u8, hiragana),
-            .romaji = try allocator.dupeZ(u8, romaji),
-            .end_cut = if (end_cut == null) null else try allocator.dupeZ(u8, end_cut.?),
+            .hiragana = try allocator.dupe(u8, hiragana),
+            .romaji = try allocator.dupe(u8, romaji),
+            .end_cut = if (end_cut == null) null else try allocator.dupe(u8, end_cut.?),
             .length = if (end_cut == null) romaji.len else romaji.len - end_cut.?.len,
         });
     }

@@ -13,7 +13,7 @@ pub const Lyric = struct {
         poor = 3,
     };
 
-    text: [:0]const u8,
+    text: []const u8,
     time: f64,
 
     /// The hit result that they *could* get if they completed the note
@@ -33,7 +33,7 @@ pub const LyricCutoff = struct {
 };
 pub const LyricKanji = struct {
     pub const Part = struct {
-        text: [:0]const u8,
+        text: []const u8,
         color: Gfx.ColorF,
     };
 
@@ -76,7 +76,7 @@ pub const BeatLine = struct {
     type: Type,
 };
 
-audio_path: [:0]const u8,
+audio_path: []const u8,
 lyrics: []Lyric,
 lyric_cutoffs: []const LyricCutoff,
 lyrics_kanji: []const LyricKanji,
@@ -158,14 +158,14 @@ pub fn readFromFile(conv: Conv, allocator: std.mem.Allocator, file: std.fs.File,
 
         switch (converted.items[0]) {
             '@' => {
-                self.audio_path = try allocator.dupeZ(u8, without_identifier);
+                self.audio_path = try allocator.dupe(u8, without_identifier);
             },
             '+' => {
                 const space_idx = std.mem.indexOf(u8, without_identifier, &.{' '}).?;
 
                 const lyric = Lyric{
                     .time = try std.fmt.parseFloat(f64, without_identifier[0..space_idx]),
-                    .text = try allocator.dupeZ(u8, without_identifier[(space_idx + 1)..]),
+                    .text = try allocator.dupe(u8, without_identifier[(space_idx + 1)..]),
                 };
 
                 try lyrics.append(lyric);
@@ -198,7 +198,7 @@ pub fn readFromFile(conv: Conv, allocator: std.mem.Allocator, file: std.fs.File,
                 var next = split_iterator.next();
                 while (next != null) {
                     try part_list.append(LyricKanji.Part{
-                        .text = try allocator.dupeZ(u8, next.?),
+                        .text = try allocator.dupe(u8, next.?),
                         .color = if (grey) .{ 0.25, 0.25, 1.0 / 3.0, 1 } else Gfx.WhiteF,
                     });
 

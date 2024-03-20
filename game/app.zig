@@ -91,8 +91,10 @@ pub fn init(app: *App) !void {
     else
         0;
 
+    //Init bass
     try bass.init(.default, null, .{}, bass_window_ptr);
 
+    //Set the volume to the one specified in the config
     try bass.setConfig(.global_stream_volume, @intFromFloat(app.config.volume * 10000));
 
     //Create the bind group for the texture

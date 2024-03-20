@@ -425,7 +425,7 @@ pub fn char(self: *Screen, typed_codepoint: u21) anyerror!void {
     var next_note: ?*Fumen.Lyric = if (data.active_note + 1 == data.music.fumen.lyrics.len) null else &data.music.fumen.lyrics[data.active_note + 1];
 
     var hiragana_to_type = current_note.text[data.typed_hiragana.len..];
-    const hiragana_to_type_next: ?[:0]const u8 = if (next_note != null) next_note.?.text else &.{};
+    const hiragana_to_type_next: ?[]const u8 = if (next_note != null) next_note.?.text else &.{};
 
     const Match = struct {
         //The matched conversion

@@ -10,13 +10,13 @@ const Conv = @import("conv.zig");
 
 const Self = @This();
 
-title: [:0]const u8,
-artist: [:0]const u8,
-author: [:0]const u8,
+title: []const u8,
+artist: []const u8,
+author: []const u8,
 level: u3,
-fumen_file_name: [:0]const u8,
-ranking_file_name: [:0]const u8,
-comment: []const [:0]const u8,
+fumen_file_name: []const u8,
+ranking_file_name: []const u8,
+comment: []const []const u8,
 folder_path: []const u8,
 ///The index assigned at load time for the song, used for "no sort" option, to return to original order
 sort_idx: usize,
@@ -51,7 +51,7 @@ pub fn readFromFile(conv: Conv, allocator: std.mem.Allocator, path: std.fs.Dir, 
     self.sort_idx = sort_idx;
     self.allocator = allocator;
 
-    var comments = std.ArrayList([:0]const u8).init(allocator);
+    var comments = std.ArrayList([]const u8).init(allocator);
     errdefer {
         for (comments.items) |comment| {
             allocator.free(comment);
@@ -62,11 +62,11 @@ pub fn readFromFile(conv: Conv, allocator: std.mem.Allocator, path: std.fs.Dir, 
     //Set to 12 to match COMMENT_N_LINES in UTyping.cpp
     try comments.ensureTotalCapacity(12);
 
-    var title: ?[:0]const u8 = null;
-    var artist: ?[:0]const u8 = null;
-    var author: ?[:0]const u8 = null;
-    var fumen_file_name: ?[:0]const u8 = null;
-    var ranking_file_name: ?[:0]const u8 = null;
+    var title: ?[]const u8 = null;
+    var artist: ?[]const u8 = null;
+    var author: ?[]const u8 = null;
+    var fumen_file_name: ?[]const u8 = null;
+    var ranking_file_name: ?[]const u8 = null;
 
     errdefer if (title) |title_ptr| allocator.free(title_ptr);
     errdefer if (artist) |artist_ptr| allocator.free(artist_ptr);
@@ -96,11 +96,11 @@ pub fn readFromFile(conv: Conv, allocator: std.mem.Allocator, path: std.fs.Dir, 
         }
 
         if (i == 0) {
-            title = try allocator.dupeZ(u8, line);
+            title = try allocator.dupe(u8, line);
         } else if (i == 1) {
-            artist = try allocator.dupeZ(u8, line);
+            artist = try allocator.dupe(u8, line);
         } else if (i == 2) {
-            author = try allocator.dupeZ(u8, line);
+            author = try allocator.dupe(u8, line);
         } else if (i == 3) {
             self.level = try std.fmt.parseUnsigned(u3, line, 10);
 
@@ -109,11 +109,11 @@ pub fn readFromFile(conv: Conv, allocator: std.mem.Allocator, path: std.fs.Dir, 
                 return error.MusicInvalidLevel;
             }
         } else if (i == 4) {
-            fumen_file_name = try allocator.dupeZ(u8, line);
+            fumen_file_name = try allocator.dupe(u8, line);
         } else if (i == 5) {
-            ranking_file_name = try allocator.dupeZ(u8, line);
+            ranking_file_name = try allocator.dupe(u8, line);
         } else {
-            try comments.append(try allocator.dupeZ(u8, line));
+            try comments.append(try allocator.dupe(u8, line));
         }
 
         i += 1;
